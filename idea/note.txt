@@ -1,0 +1,65 @@
+UI
+    pages
+    - Home: danh sách khu vực (room), thêm khu vực
+        + Thêm khu vực:
+            + Tên Phònh
+            + NOTE
+            + SSID
+            + PASS
+            + FIND HUB (option HIDE/SHOW)
+            + SAVE
+    - Chi tiết khu vực: danh sách thiết bị, thêm thiết bị, hiển thị trạng thái cơ bản, chỉnh màu hub
+        + Thêm thiết bị:
+            + Tên Thiết Bị
+            + Loại thiết bị
+                + AC
+                + TV
+                + RELAY
+                + ...
+            + Thương hiệu
+                + Daikin, Samsung, ...
+            + Kiểm tra chức năng bằng các gửi IR mở nguồn
+                * Gửi yêu cầu từ APP về ESP qua BLE/INTERNET với dữ liệu
+                    {
+                        "name":"exName",
+                        "type":"AC",
+                        "BRAND":"DAIKIN",
+                        "power":"ON"
+                    }
+                    nếu thiết bị được target đến phản hồi |
+            + Lưu thiết bị <-------------------------------
+    - Trang controll:
+        + TVs
+        + ACs
+        + Relays
+        + Schedule
+    + Hẹn giờ
+    + Kịch bản thông minh
+CORE
+    Target:  Mobile, Desktop, Web
+    Connections:
+        + ble (Mobile, Desktop) //done
+        + mqtt (Mobile, Desktop, Web)
+        + serial (Desktop)
+        + rs485 (Desktop)
+    - kiểm tra kết nối:
+        + nếu có kết nối ble dùg ble
+        + nếu mất kết nối ble dùng wifi + mqtt
+        + nếu mất kết nổi server dùng ble
+    Database
+        + room, device, deviceConfig, ...
+
+ESP
+- Nhận dữ liệu sau khi kết nối với app
+- Đổi tên thiết bị thành tên phòng đã Nhận
+- Kết nối WIFI
+- kiểm tra kết nối:
+    + nếu có kết nối ble dùg ble
+    + nếu mất kết nối ble dùng wifi + mqtt
+    + nếu mất kết nổi server dùng ble
+
+
+
+
+
+    

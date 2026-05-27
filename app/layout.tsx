@@ -1,16 +1,19 @@
 import { Geist, Geist_Mono, Inter } from "next/font/google"
-
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { cn } from "@/libs/utils";
+import { DrawerProvider } from "@/components/providers/drawer/DrawerProvider";
+import { Toaster } from "sonner";
+import { DatabaseProvider } from "@/components/providers/db/DatabaseProvider";
+import { TransportProvider } from "@/components/providers/transport/TransportProvider";
+import { SidecarProvider } from "@/components/providers/sidecar/SidecarProvider";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -20,10 +23,20 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
-    >
+      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <SidecarProvider>
+            <DatabaseProvider>
+              <TransportProvider>
+                <DrawerProvider>
+                  {children}
+                </DrawerProvider>
+                <Toaster richColors position="top-right" />
+              </TransportProvider>
+            </DatabaseProvider>
+          </SidecarProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

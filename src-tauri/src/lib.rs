@@ -1,0 +1,47 @@
+use serde_json::Value;
+mod http_client;
+
+#[tauri::command]
+async fn api_request(
+    method: String,
+    url: String,
+    session_token: Option<String>,
+    body: Option<Value>,
+) -> Result<Value, String> {
+    match method.to_uppercase().as_str() {
+        "GET" => http_client::get(&url, session_token).await,
+        "POST" => http_client::post(&url, session_token, body).await,
+        "PUT" => http_client::put(&url, session_token, body).await,
+        "DELETE" => http_client::delete(&url, session_token).await,
+        _ => Err("Method không hợp lệ (Chỉ hỗ trợ GET, POST, PUT, DELETE)".to_string()),
+    }
+}
+
+
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_sql::Builder::default().build())
+        .plugin(tauri_plugin_blec::init())
+        .invoke_handler(tauri::generate_handler![api_request])
+        .setup(|app| {
+
+            // Khởi chạy file exe Next.js tự động
+            // let _sidecar = app.shell()
+            //     .sidecar("next-server")?
+            //     .env("PORT", "3000") // Đổi port tùy ý tránh trùng port 3000
+            //     .spawn()?;
+
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

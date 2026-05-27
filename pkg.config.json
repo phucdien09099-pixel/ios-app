@@ -1,0 +1,10 @@
+{
+    "scripts": [
+        "server.js",
+        "node_modules/**/*.js"
+    ],
+    "assets": [
+        ".next/**/*",
+        "public/**/*"
+    ]
+}
