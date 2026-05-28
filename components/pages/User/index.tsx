@@ -1,27 +1,25 @@
 import { Card, CardContent, } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage, } from "@/components/ui/avatar"
-import { ArrowRight01Icon, CustomerService01Icon, InformationCircleIcon, Message01Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, CustomerService01Icon, Message01Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import AddChildUser from "./AddChildUser"
+import MemberList from "./MemberList"
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"
-import { Button } from "@/components/ui/button"
-import ButtonShowInfor from "./ButtonShowInfor"
 
 const menus = [
     {
         title: "Quản lý người dùng",
         icon: UserGroupIcon,
-        element: <AddChildUser />,
-        extend: <ButtonShowInfor />
-
+        element: MemberList,
     },
     {
         title: "Trung tâm tin nhắn",
         icon: Message01Icon,
+        element: () => null
     },
     {
         title: "Câu hỏi thường gặp và phản hồi",
         icon: CustomerService01Icon,
+        element: () => null
     },
 ]
 
@@ -36,17 +34,14 @@ export default function UserPage() {
                             <AvatarImage src="/avatar.png" />
                             <AvatarFallback>HN</AvatarFallback>
                         </Avatar>
-
                         <div className="mt-4 text-center">
                             <h2 className="text-xl font-semibold tracking-tight">
                                 Han Nguyen
                             </h2>
-
                             <p className="mt-1 text-sm text-muted-foreground">
                                 Thành viên hệ thống
                             </p>
                         </div>
-
                     </CardContent>
                 </Card>
 
@@ -60,8 +55,7 @@ export default function UserPage() {
                                     onClick={() => open({
                                         id: item.title,
                                         title: item.title,
-                                        element: item.element,
-                                        renderRightButtonHeader: item.extend
+                                        component: item.element,
                                     })}
                                     className={`flex w-full items-center justify-between px-5 py-4 transition-all hover:bg-muted/50 active:scale-[0.995]`}>
                                     <div className="flex items-center gap-4">

@@ -24,7 +24,6 @@ interface LoginFormProps extends React.ComponentProps<"div"> {
 
 export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
 
-  const router = useRouter();
 
   const [serverError, setServerError] =
     React.useState("");

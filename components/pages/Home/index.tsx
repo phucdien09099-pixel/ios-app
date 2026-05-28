@@ -47,7 +47,7 @@ export function RoomPage() {
                         onClick={() => open({
                             id: "addition_room",
                             title: "Thêm Room",
-                            element: <AddRoom />,
+                            component: AddRoom,
                         })}>
                         <HugeiconsIcon icon={PlusSignIcon} />
                     </Button>
@@ -56,7 +56,7 @@ export function RoomPage() {
                         onClick={() => open({
                             id: "user",
                             title: "",
-                            element: <UserPage />,
+                            component: UserPage,
                             renderRightButtonHeader:
                                 <>
                                     <Button
@@ -65,7 +65,7 @@ export function RoomPage() {
                                         onClick={() => open({
                                             id: "qr_pair",
                                             title: "",
-                                            element: <></>,
+                                            component: () => { },
                                         })}>
                                         <HugeiconsIcon icon={ScanBarcode} />
                                     </Button>
@@ -75,7 +75,7 @@ export function RoomPage() {
                                         onClick={() => open({
                                             id: "qr_pair",
                                             title: "",
-                                            element: <></>,
+                                            component: () => { },
                                         })}>
                                         <HugeiconsIcon icon={Setting06FreeIcons} />
                                     </Button>

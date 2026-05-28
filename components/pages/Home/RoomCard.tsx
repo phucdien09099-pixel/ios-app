@@ -72,7 +72,12 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                     open({
                         id: room.id,
                         title: room.name,
-                        element: <DevicesRoom onLoad={onDeleted} roomId={room.id} />,
+                        component: DevicesRoom,
+                        props: {
+                            onload: onDeleted
+                            , roomId: room.id
+                        },
+                        direction: "right",
                         renderRightButtonHeader: (
                             <>
                                 <Button
@@ -80,7 +85,11 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                                         open({
                                             id: "addition_device",
                                             title: "Thêm thiết bị",
-                                            element: <AddDeviceForm roomId={room.id} />,
+                                            direction: "right",
+                                            component: AddDeviceForm,
+                                            props: {
+                                                roomId: room.id
+                                            }
                                         })
                                     }>
                                     <HugeiconsIcon icon={DashboardCircleAddIcon} />
@@ -91,7 +100,8 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                                         open({
                                             id: room.id + "setting",
                                             title: room.name,
-                                            element: <HubSettings />,
+                                            direction: "right",
+                                            component: HubSettings,
                                         })
                                     }
                                 >

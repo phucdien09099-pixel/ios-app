@@ -17,44 +17,37 @@ class TransportManager {
         this.type = type;
         return this.connection;
     }
-
     // =========================
     // AUTO CONNECT
     // =========================
     async autoConnect() {
         if (typeof window === "undefined") return;
-
         const raw = localStorage.getItem(this.STORAGE_KEY);
         if (!raw) return;
 
         const { type, config } = JSON.parse(raw);
-
         this.connection = createConnection(type);
         this.type = type;
 
-        // ⚠️ BLE RULE:
-        // nếu có device → connect lại
-        // nếu không → skip (không scan auto)
-        if (config?.device) {
-            const newDevice =
-                await this.connection.autoConnect(config);
+        if (!config?.device) {
+            console.warn("No BLE device to autoConnect");
+            return null;
+        }
 
-            if (newDevice) {
-                config.device = newDevice;
-            }
+        try {
 
             localStorage.setItem(
                 this.STORAGE_KEY,
-                JSON.stringify({
-                    type: this.type,
-                    config,
-                })
+                JSON.stringify({ type: this.type, config })
             );
+            console.log(config)
+            await this.connection.autoConnect(config);
             await this.connection.restore?.(config);
-            // console.log(newDevice)
-            return newDevice;
-        } else {
-            console.warn("No BLE device to autoConnect");
+
+            return await this.connection.autoConnect(config);;
+
+        } catch (err) {
+            console.error("AutoConnect failed:", err);
             return null;
         }
     }
@@ -63,31 +56,58 @@ class TransportManager {
     // CONNECT
     // =========================
     async connect(config: any) {
-
-        if (this.connection && this.connection.isConnected()) {
-            return;
-        }
-
-        // if (this.connection?.isConnected) {
-        //     await this.disconnect();
-        // }
+        if (this.connection?.isConnected()) return;
 
         const conn = this.connection;
         if (!conn) throw new Error("No Connection Selected");
 
+        // Connect first, get the actual device back
+        const connectedDevice = await conn.connect(config);
+        await conn.restore?.(config);
+
         if (typeof window !== "undefined") {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            const existing = raw ? JSON.parse(raw) : { type: this.type, config: {} };
+
+            const savedDevices: any[] = Array.isArray(existing.config?.device)
+                ? existing.config.device
+                : existing.config?.device
+                    ? [existing.config.device]
+                    : [];
+
+            // Use the actual connected device returned from connect()
+            const deviceToSave = connectedDevice ?? config.device;
+
+            if (deviceToSave) {
+                const alreadySaved = savedDevices.some(
+                    (d: any) =>
+                        d.address === deviceToSave.address ||
+                        d.name === deviceToSave.name
+                );
+
+                if (!alreadySaved) {
+                    savedDevices.push(deviceToSave);
+                } else {
+                    // Update existing entry with latest data
+                    const idx = savedDevices.findIndex(
+                        (d: any) => d.address === deviceToSave.address
+                    );
+                    if (idx !== -1) savedDevices[idx] = deviceToSave;
+                }
+            }
+
             localStorage.setItem(
                 this.STORAGE_KEY,
-                JSON.stringify({ type: this.type, config })
+                JSON.stringify({
+                    type: this.type,
+                    config: {
+                        ...config,
+                        device: savedDevices,
+                    },
+                })
             );
         }
-
-
-
-        await conn.connect(config);
-        await conn.restore?.(config);
     }
-
     // =========================
     // SCAN (BLE only safe call)
     // =========================
@@ -100,8 +120,6 @@ class TransportManager {
     // =========================
     async disconnect() {
         await this.connection?.disconnect();
-        this.connection = null;
-        this.type = null;
     }
 
     // =========================

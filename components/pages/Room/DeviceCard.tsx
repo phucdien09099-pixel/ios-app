@@ -1,3 +1,4 @@
+"use client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,10 @@ export default function DeviceCard({ device, onDeleted }: { device: Device, onDe
                     <Button onClick={() => open({
                         id: device.id,
                         title: device.name,
-                        element: <DeviceControll device={device} />,
+                        component: DeviceControll,
+                        props: {
+                            device
+                        },
                         renderRightButtonHeader:
                             device.type === "RELAY" ? (
                                 <Button
@@ -98,7 +102,7 @@ export default function DeviceCard({ device, onDeleted }: { device: Device, onDe
                                         open({
                                             id: device.id + device.name + "setting",
                                             title: device.name + " setting",
-                                            element: <SettingSwitchController />,
+                                            component: SettingSwitchController,
                                         });
                                     }}
                                 >
@@ -114,6 +118,6 @@ export default function DeviceCard({ device, onDeleted }: { device: Device, onDe
                     </Button>
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 }

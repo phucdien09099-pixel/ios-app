@@ -1,4 +1,4 @@
-
+"use client"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, } from "@/components/ui/empty"
 import { MeetingRoomIcon, PlusSignIcon } from "@hugeicons/core-free-icons"
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";

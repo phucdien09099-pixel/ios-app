@@ -21,14 +21,15 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
 
         setClosingId(pageId);
 
-        setTimeout(() => {
-            pop();
-            setClosingId(null);
-        }, 220);
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                pop();
+                setClosingId(null);
+            }, 220);
+        });
     };
-
     // HANDLE PHONE BACK BUTTON
-    usePreventExit(() => {
+    usePreventExit(stack.length > 0, () => {
         const current =
             stack[stack.length - 1];
 
@@ -47,19 +48,25 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
 
                 // Tất cả drawer đều mở, nhưng chỉ có top mới có thể đóng
                 const isOpen = !isClosing;
+                const Component = page.component;
 
+                if (!Component) {
+                    console.error("Drawer component missing:", page);
+                    return null;
+                }
                 return (
                     <Drawer
                         scrollLockTimeout={9999999999}
                         autoFocus={true}
                         noBodyStyles={true}
                         dismissible={false}
-                        direction="right"
+                        direction={page.direction ?? "right"}
                         key={page.id}
                         open={isOpen}
                         modal={true} >
                         <DrawerContent
                             className={cn(
+                                page.className,
                                 "before:border-0 before:shadow-none",
                                 "before:w-screen! bg-white",
                                 "p-0 pt-5! w-screen!" // Tắt padding
@@ -92,7 +99,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
 
                             </DrawerHeader>
                             <div className="p-4 pt-2! h-full overflow-auto">
-                                {page.element}
+                                <Component {...page.props} />
                             </div>
                         </DrawerContent>
                     </Drawer >

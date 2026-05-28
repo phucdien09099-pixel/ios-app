@@ -57,9 +57,16 @@ ESP
     + nếu có kết nối ble dùg ble
     + nếu mất kết nối ble dùng wifi + mqtt
     + nếu mất kết nổi server dùng ble
+- dữ liệu auto-actions :
+    {
+        action:{"type":"power",value:"ON",label:""},
+        days:[],
+        repeat:false,
+        time:"10:00",
+        device:{type:"AC",brand:"DAIKIN"}
+    }
 
 
 
 
 
-    

@@ -26,7 +26,7 @@ export function EmptyRoom() {
                     onClick={() => open({
                         id: "addition_room",
                         title: "Thêm Khu Vực",
-                        element: <AddRoom />,
+                        component: AddRoom,
                     })}><HugeiconsIcon icon={PlusSignIcon} />Tạo khu vực</Button>
                 {/* <Button variant="outline">Nhập khu vực</Button> */}
             </EmptyContent>

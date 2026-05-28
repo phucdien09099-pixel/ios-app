@@ -1,3 +1,4 @@
+"use client"
 import { Room } from "@/db/types/room";
 import DeviceCard from "./DeviceCard";
 import { EmptyDevices } from "./EmptyDevice";

@@ -22,10 +22,7 @@ class UserRepository extends SQLiteBase<User> {
 
     // ================= CREATE CHILD USER =================
 
-    async createChildUser(
-        parentId: string,
-        data: Partial<User>
-    ) {
+    async createChildUser(parentId: string, data: Partial<User>) {
         return await this.create({
             ...data,
             parent_id: parentId,
@@ -153,6 +150,18 @@ class UserRepository extends SQLiteBase<User> {
             WHERE parent_id = ?
             `,
             [parentId]
+        );
+    }
+
+    // ================= DELETE USER BY STRING ID =================
+
+    async deleteUser(id: string) {
+        return await this.execute(
+            `
+            DELETE FROM users
+            WHERE id = ?
+            `,
+            [id]
         );
     }
 

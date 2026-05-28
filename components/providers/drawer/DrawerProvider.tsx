@@ -6,10 +6,14 @@ import { NestedDrawers } from "./NestedDrawer";
 export type DrawerPage = {
     id: string;
     title?: string;
-    element: React.ReactNode;
-    renderRightButtonHeader?: React.ReactNode;
-};
 
+    component: React.ComponentType<any>;
+    props?: any;
+
+    renderRightButtonHeader?: React.ReactNode;
+    direction?: "right" | "left" | "bottom" | "top";
+    className?: string;
+};
 type DrawerContextType = {
     stack: DrawerPage[];
     push: (page: DrawerPage) => void;

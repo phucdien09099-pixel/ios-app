@@ -5,6 +5,50 @@ export async function initDB() {
 
     const db = await getDB();
 
+    // ================= ROOM_PERMISSION =================
+    await db.execute(`
+    CREATE TABLE IF NOT EXISTS room_permissions (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+
+        can_view INTEGER DEFAULT 1,
+        can_control INTEGER DEFAULT 0,
+        can_edit INTEGER DEFAULT 0,
+
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+        FOREIGN KEY (room_id)
+            REFERENCES rooms(id)
+            ON DELETE CASCADE,
+
+        FOREIGN KEY (user_id)
+            REFERENCES users(id)
+            ON DELETE CASCADE
+        )
+    `);
+    // ================= DEVICE_PERMISSION =================
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS device_permissions (
+            id TEXT PRIMARY KEY,
+            device_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+
+            can_view INTEGER DEFAULT 1,
+            can_control INTEGER DEFAULT 0,
+            can_edit INTEGER DEFAULT 0,
+
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (device_id)
+                REFERENCES devices(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(id)
+                ON DELETE CASCADE
+        )
+    `);
     // ================= SESSION =================
     await db.execute(`
         CREATE TABLE IF NOT EXISTS user_sessions (

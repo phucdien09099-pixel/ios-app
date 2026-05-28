@@ -37,10 +37,11 @@ export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) 
                     onClick={() => open({
                         id: "login",
                         title: "",
-                        element: <LoginForm onSuccess={() => {
-                            back(); // 1. Đóng khay Drawer lại
-                            onLoginSuccess(); // 2. Báo cho trang cha đổi sang RoomPage
-                        }} className=" h-[70vh]" />,
+                        component: LoginForm,
+                        props: {
+                            onSccess: () => { back(); onLoginSuccess() },
+                            className: "h-[70vh]"
+                        },
                         renderRightButtonHeader: <></>,
                     })}
                     className="h-12 w-full rounded-2xl text-base"
@@ -55,7 +56,10 @@ export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) 
                 <Button onClick={() => open({
                     id: "signup",
                     title: "",
-                    element: <SignupForm className="ring-0! h-[70vh]" />,
+                    component: SignupForm,
+                    props: {
+                        className: "ring-0! h-[70vh]"
+                    },
                     renderRightButtonHeader: <></>,
                 })}
                     variant="outline"
