@@ -165,32 +165,32 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     // =========================
     // BLE
     // =========================
-    const connectAllDeviceInrange = async () => {
-        const devices: BleDevice[] = await scan();
-        const rooms = await roomRepo.getRooms();
-        console.log(devices)
-        console.log(rooms)
-        const matchedDevices = devices && devices.filter((device: BleDevice) =>
-            rooms.some(room => room.name === device?.name)
-        );
+    // const connectAllDeviceInrange = async () => {
+    //     const devices: BleDevice[] = await scan();
+    //     const rooms = await roomRepo.getRooms();
+    //     console.log(devices)
+    //     console.log(rooms)
+    //     const matchedDevices = devices && devices.filter((device: BleDevice) =>
+    //         rooms.some(room => room.name === device?.name)
+    //     );
 
-        console.log(matchedDevices);
+    //     console.log(matchedDevices);
 
-        const connections = await Promise.all(
-            matchedDevices.map(async (device: BleDevice) => {
-                return await connect({
-                    device,
-                    txCharacteristic: process.env.NEXT_PUBLIC_CHAR_UUID_TX!,
-                    serviceUUID: process.env.NEXT_PUBLIC_SERVICE_UUID!,
-                });
-            })
-        );
+    //     const connections = await Promise.all(
+    //         matchedDevices.map(async (device: BleDevice) => {
+    //             return await connect({
+    //                 device,
+    //                 txCharacteristic: process.env.NEXT_PUBLIC_CHAR_UUID_TX!,
+    //                 serviceUUID: process.env.NEXT_PUBLIC_SERVICE_UUID!,
+    //             });
+    //         })
+    //     );
 
-        console.log(connections);
+    //     console.log(connections);
 
 
-        return matchedDevices;
-    };
+    //     return matchedDevices;
+    // };
     // =========================
     // STARTUP
     // =========================
@@ -200,18 +200,18 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         initializedRef.current = true;
 
         const bootstrap = async () => {
-            // try {
+            try {
                 initConn("Bluetooth");
-                await connectAllDeviceInrange();
-                // const device = await autoConnect();
-                // if (device) {
-                //     console.log("Auto-connected to:", device.name);
-                // } else {
-                //     console.log("No device in range");
-                // }
-            // } catch (err) {
-            //     console.error("Bootstrap error:", err);
-            // }
+                // await connectAllDeviceInrange();
+                const device = await autoConnect();
+                if (device) {
+                    console.log("Auto-connected to:", device.name);
+                } else {
+                    console.log("No device in range");
+                }
+            } catch (err) {
+                console.error("Bootstrap error:", err);
+            }
         };
 
         bootstrap();

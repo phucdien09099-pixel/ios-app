@@ -65,7 +65,7 @@ export default function AddRoom() {
 
     const onSubmit = async (data: FormData) => {
         if (!selectedHub) return;
-        await disconnect();
+        // await disconnect();
         setLoading(true);
         console.log(selectedHub)
         await pairDevice(selectedHub, data);

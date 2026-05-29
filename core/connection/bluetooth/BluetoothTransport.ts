@@ -62,71 +62,78 @@ export class BluetoothTransport implements TransportsInterface<{
     }
     async autoConnect(
         config?: {
-            device: BleDevice | BleDevice[];  // support array
+            device: BleDevice;
             txCharacteristic: string;
             rxCharacteristic: string;
             serviceUUID?: string;
         }
     ): Promise<any> {
-        if (!config) throw new Error("Config not found");
+        if (!config) {
+            throw new Error("Config not found");
+        }
 
         try {
             const deviceMap = new Map<string, BleDevice>();
+
             const timeout = 5000;
 
+            // start scan
             await bleService.startScan((devices) => {
                 for (const d of devices) {
                     if (!d?.address) continue;
+
                     deviceMap.set(d.address, d);
                 }
             }, timeout);
 
-            await new Promise((resolve) => setTimeout(resolve, timeout));
+            // wait scan finish
+            await new Promise((resolve) =>
+                setTimeout(resolve, timeout)
+            );
+
             await bleService.stopScan();
 
-            // Normalize to array
-            const savedDevices: BleDevice[] = Array.isArray(config.device)
-                ? config.device
-                : [config.device];
+            const recognizeName =
+                config.device.name?.toLowerCase() ?? "";
 
-            const scanned = Array.from(deviceMap.values());
+            const recognizeAddress =
+                config.device.address?.toLowerCase() ?? "";
 
-            // Find all saved devices that are currently in range
-            const candidates = scanned
-                .filter((d) => {
-                    const name = d.name?.toLowerCase() ?? "";
-                    const address = d.address?.toLowerCase() ?? "";
+            // find matched device
+            const found = Array.from(deviceMap.values()).find((d) => {
+                const name = d.name?.toLowerCase() ?? "";
+                const address = d.address?.toLowerCase() ?? "";
 
-                    return savedDevices.some((saved) => {
-                        const savedName = saved.name?.toLowerCase() ?? "";
-                        const savedAddress = saved.address?.toLowerCase() ?? "";
-                        return name.includes(savedName) || address === savedAddress;
-                    });
-                })
-                // Filter weak signal
-                .filter((d) => d.rssi >= -80)
-                // Sort by strongest signal first
-                .sort((a, b) => b.rssi - a.rssi);
+                // console.log("Recognize:", recognizeName);
+                // console.log("Scan Name:", name);
 
-            if (candidates.length === 0) {
-                throw new Error("No saved devices in range");
+                return (
+                    name.includes(recognizeName) ||
+                    address === recognizeAddress
+                );
+            });
+
+            if (!found) {
+                throw new Error(
+                    `Device "${config.device.name}" not found`
+                );
             }
 
-            // Try connecting to candidates in order (strongest signal first)
-            for (const candidate of candidates) {
-                try {
-                    const result = await this.connect({
-                        ...config,
-                        device: candidate,
-                    });
-                    console.log("Auto-connected to:", candidate.name, `(RSSI: ${candidate.rssi})`);
-                    return result;
-                } catch (err) {
-                    console.warn(`Failed to connect to ${candidate.name}, trying next...`, err);
-                }
+            // console.log("Auto connect device:", found);
+
+            // weak signal
+            if (found.rssi < -80) {
+                // console.warn(
+                //     `RSSI too weak: ${found.rssi}`
+                // );
+                return;
             }
 
-            throw new Error("All candidates failed to connect");
+            // reconnect
+            return await this.connect({
+                ...config,
+                device: found,
+            });;
 
         } catch (err: any) {
             this.onErrorCallback?.(err);
@@ -164,12 +171,12 @@ export class BluetoothTransport implements TransportsInterface<{
             this.connected = true;
 
             // subscribe RX (from ESP32 → client)
-            // await bleService.subscribeString(
-            //     this.txCharacteristic,
-            //     (data: string) => {
-            //         this.handleIncoming(data);
-            //     }
-            // );
+            await bleService.subscribeString(
+                this.txCharacteristic,
+                (data: string) => {
+                    this.handleIncoming(data);
+                }
+            );
             // console.log(config.device)
             return config.device;
         } catch (err: any) {

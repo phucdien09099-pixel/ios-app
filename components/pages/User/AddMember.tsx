@@ -81,6 +81,7 @@ export default function AddMember({ onSuccess }: Props) {
         try {
             const session = await userSessionRepo.getLatestActiveUser();
             console.log(session)
+            console.log(values)
             const data: User = {
                 id: "2",
                 name: values.username,
@@ -255,37 +256,6 @@ export default function AddMember({ onSuccess }: Props) {
                                 </div>
                             ))}
                         </div>
-
-                        <button
-                            type="button"
-                            className="flex w-full items-center justify-between rounded-2xl border border-dashed bg-background p-4 transition-colors hover:bg-muted/40"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="rounded-2xl bg-primary/10 p-2.5">
-                                    <HugeiconsIcon
-                                        icon={PlusSignIcon}
-                                        size={20}
-                                        className="text-primary"
-                                    />
-                                </div>
-
-                                <div className="text-left">
-                                    <div className="font-medium">
-                                        Tạo room riêng
-                                    </div>
-
-                                    <div className="text-xs text-muted-foreground">
-                                        Room này chỉ thành viên nhìn thấy
-                                    </div>
-                                </div>
-                            </div>
-
-                            <HugeiconsIcon
-                                icon={ArrowRight01Icon}
-                                size={18}
-                                className="text-muted-foreground"
-                            />
-                        </button>
                     </CardContent>
                 </Card>
 

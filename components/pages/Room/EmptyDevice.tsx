@@ -26,11 +26,14 @@ export function EmptyDevices({ roomId }: { roomId: string }) {
                     onClick={() => open({
                         id: "addition_device",
                         title: "Thêm thiết bị",
-                        element: <AddDeviceForm roomId={roomId} />,
+                        props: {
+                            roomId: roomId
+                        },
+                        component: AddDeviceForm,
                     })}><HugeiconsIcon icon={PlusSignIcon} />Tạo thiết bị</Button>
                 {/* <Button variant="outline">Nhập khu vực</Button> */}
             </EmptyContent>
             {/* <Button variant="link" className="text-muted-foreground" size="sm" nativeButton={false} render={<a href="#">Tìm hiểu thêm</a>} /> */}
-        </Empty>
+        </Empty >
     )
 }
