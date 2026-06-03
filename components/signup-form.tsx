@@ -1,6 +1,12 @@
 "use client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel, } from "@/components/ui/field";
+import { useState } from "react";
+import { v4 as uuid } from "uuid";
+import { userRepo } from "@/db/repository/UserRepository";
+import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"; // Import để đóng drawer
+import { apiClient } from "@/utils/Tauri/HttpClient"; // Import để gọi Server
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -12,20 +18,55 @@ type FormValues = {
   confirmPassword: string;
 };
 
-export function SignupForm({
-  ...props
-}: React.ComponentProps<typeof Card>) {
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<FormValues>();
+export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
+  const { back } = useNavDrawer(); // Hook để điều khiển rèm
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormValues>();
 
   const password = watch("password");
 
-  const onSubmit = (data: FormValues) => {
-    console.log(data);
+  const onSubmit = async (data: FormValues) => {
+    try {
+      // 1. KIỂM TRA TRÙNG EMAIL TRONG SQLITE (Local)
+      const existingUser = await userRepo.findByEmail(data.email);
+      if (existingUser) {
+        window.alert("Email này đã được đăng ký. Vui lòng dùng email khác!");
+        return; // Dừng lại, popup tắt, người dùng ở lại form
+      }
+
+      // 2. GỌI LÊN SERVER ĐỂ ĐĂNG KÝ (ĐỂ ĐĂNG NHẬP KHÔNG BỊ LỖI)
+      // LƯU Ý: Đổi "/api/v1/auth/signup" thành đúng đường dẫn API đăng ký của backend bạn
+      // Nếu chưa có API backend, hãy comment lại đoạn này
+      try {
+        await apiClient.post("/api/v1/auth/signup", {
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        });
+      } catch (serverErr) {
+        console.warn("Chưa gọi được lên Server hoặc API chưa đúng:", serverErr);
+        // Tạm thời vẫn cho lưu SQLite để bạn test offline
+      }
+
+      // 3. LƯU VÀO DATABASE LOCAL (SQLite)
+      const newUserId = uuid();
+      await userRepo.create({
+        id: newUserId,
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: "user",
+        parent_id: null,
+        created_at: new Date().toISOString(),
+      });
+
+      // 4. HIỂN THỊ POPUP THÀNH CÔNG VÀ QUAY VỀ
+      window.alert("Tạo tài khoản thành công!");
+      back(); // Nhấn OK sẽ tự động lùi về màn hình có nút Đăng nhập
+
+    } catch (error) {
+      console.error("Lỗi khi lưu DB:", error);
+      window.alert("Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại!");
+    }
   };
 
   return (
@@ -33,21 +74,26 @@ export function SignupForm({
       <CardHeader>
         <CardTitle>Create an account</CardTitle>
         <CardDescription>
-          Enter your information below to create your
-          account
+          Enter your information below to create your account
         </CardDescription>
       </CardHeader>
-
       <CardContent>
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <FieldGroup>
+            
             <Field>
-              <FieldLabel htmlFor="email">
-                Email
-              </FieldLabel>
+              <FieldLabel htmlFor="name">Full Name</FieldLabel>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                {...register("name", { required: "Name is required" })}
+              />
+              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+            </Field>
 
+            <Field>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input
                 id="email"
                 type="email"
@@ -55,94 +101,49 @@ export function SignupForm({
                 {...register("email", {
                   required: "Email is required",
                   pattern: {
-                    value:
-                      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message:
-                      "Invalid email address",
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: "Invalid email address",
                   },
                 })}
               />
-
-              <FieldDescription>
-                We&apos;ll use this to contact you.
-              </FieldDescription>
-
-              {errors.email && (
-                <p className="text-sm text-red-500">
-                  {errors.email.message}
-                </p>
-              )}
+              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="password">
-                Password
-              </FieldLabel>
-
+              <FieldLabel htmlFor="password">Password</FieldLabel>
               <Input
                 id="password"
                 type="password"
                 {...register("password", {
-                  required:
-                    "Password is required",
+                  required: "Password is required",
                   minLength: {
                     value: 8,
-                    message:
-                      "Must be at least 8 characters",
+                    message: "Must be at least 8 characters",
                   },
                 })}
               />
-
-              <FieldDescription>
-                Must be at least 8 characters long.
-              </FieldDescription>
-
-              {errors.password && (
-                <p className="text-sm text-red-500">
-                  {errors.password.message}
-                </p>
-              )}
+              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="confirm-password">
-                Confirm Password
-              </FieldLabel>
-
+              <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
               <Input
                 id="confirm-password"
                 type="password"
                 {...register("confirmPassword", {
-                  required:
-                    "Please confirm your password",
-                  validate: (value) =>
-                    value === password ||
-                    "Passwords do not match",
+                  required: "Please confirm your password",
+                  validate: (value) => value === password || "Passwords do not match",
                 })}
               />
-
-              <FieldDescription>
-                Please confirm your password.
-              </FieldDescription>
-
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-500">
-                  {
-                    errors.confirmPassword
-                      .message
-                  }
-                </p>
-              )}
+              {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
             </Field>
 
             <Field>
-              <Button
-                type="submit"
-                className="w-full"
-              >
-                Create Account
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? "Creating..." : "Create Account"}
               </Button>
             </Field>
+
           </FieldGroup>
         </form>
       </CardContent>

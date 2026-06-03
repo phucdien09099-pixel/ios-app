@@ -39,7 +39,7 @@ export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) 
                         title: "",
                         component: LoginForm,
                         props: {
-                            onSccess: () => { back(); onLoginSuccess() },
+                            onSuccess: () => { back(); onLoginSuccess() },
                             className: "h-[70vh]"
                         },
                         renderRightButtonHeader: <></>,

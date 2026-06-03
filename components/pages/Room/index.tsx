@@ -23,20 +23,19 @@ export default function DevicesRoom({ roomId, onLoad }: { roomId: string, onLoad
 
     return (
         <AppPullToRefresh onRefresh={load}>
-            {devices && devices.length > 0
-                ? (
-                    <>
-                        < div className="m-2 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-                            {devices.map((d) => (
-                                <DeviceCard onDeleted={load} key={d.id} device={d as any} />
-                            ))}
-                        </div>
-                        <BottomNavBar deviceId={roomId} />
-                    </>
-
-                )
-                : (<EmptyDevices roomId={roomId} />)
-            }
-        </AppPullToRefresh >
+        {devices && devices.length > 0
+            ? (
+                <>
+                    <div className="m-2 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 pb-24">
+                        {devices.map((d) => (
+                            <DeviceCard onDeleted={load} key={d.id} device={d as any} />
+                        ))}
+                    </div>
+                    <BottomNavBar deviceId={roomId} />
+                </>
+            )
+            : (<EmptyDevices roomId={roomId} />)
+        }
+    </AppPullToRefresh >
     )
 }

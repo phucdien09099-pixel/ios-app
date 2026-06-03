@@ -11,7 +11,7 @@ import { cn } from "@/libs/utils";
 import { apiClient } from "@/utils/Tauri/HttpClient";
 import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 import { userRepo } from "@/db/repository/UserRepository";
-import { RoomPage } from "./pages/Home";
+
 
 type LoginFormValues = {
   email: string;
@@ -31,6 +31,7 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
   const {
     register,
     handleSubmit,
+    setValue, // Thêm hàm này vào đây để có quyền điền dữ liệu tự động vào ô Input
     formState: {
       errors,
       isSubmitting,
@@ -42,8 +43,16 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
     },
   });
 
-
-  // ... bên trong component LoginForm ...
+  // TỰ ĐỘNG ĐIỀN EMAIL NẾU TRƯỚC ĐÓ ĐÃ TỪNG ĐĂNG XUẤT ("Nhớ tài khoản")
+  React.useEffect(() => {
+    const remembered = localStorage.getItem("remembered_user");
+    if (remembered) {
+      const parsed = JSON.parse(remembered);
+      if (parsed.email) {
+        setValue("email", parsed.email); // Điền sẵn email cũ vào ô nhập liệu
+      }
+    }
+  }, [setValue]);
 
   async function onSubmit(values: LoginFormValues) {
     try {
@@ -129,10 +138,25 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
       // ================= 4. ĐIỀU HƯỚNG VỀ TRANG CHỦ =================
       console.log(data);
 
-      return <RoomPage />;
+      
     } catch (error: any) {
-      console.error(error);
-      setServerError(error?.message || "Login failed");
+      console.error("Lỗi gốc từ hệ thống:", error);
+      
+      // Biến đổi chuỗi lỗi để hiển thị
+      let rawError = error?.message || "Đăng nhập thất bại";
+      let friendlyError = "Đã xảy ra lỗi, vui lòng thử lại!";
+
+      if (rawError.includes("decoding response body") || rawError.includes("401") || rawError.includes("Unauthorized")) {
+        friendlyError = "Mật khẩu chưa đúng hoặc không hợp lệ!";
+      } 
+      else if (rawError.includes("404") || rawError.includes("Not Found")) {
+        friendlyError = "Email chưa được đăng ký hệ thống!";
+      } 
+      else if (rawError.includes("network") || rawError.includes("Failed to fetch")) {
+        friendlyError = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng!";
+      }
+
+      setServerError(friendlyError);
     }
   }
   return (

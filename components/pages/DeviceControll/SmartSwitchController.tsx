@@ -7,6 +7,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { CardContent } from "@/components/ui/card";
 import { NativeSelect, NativeSelectOption, } from "@/components/ui/native-select";
 import { Add01Icon, PowerIcon, Delete02Icon, BulbIcon, Fan01Icon, Tv01Icon, Wifi01Icon, Router01Icon, BluetoothIcon, Link01Icon, CheckmarkCircle02Icon, Cancel01Icon, } from "@hugeicons/core-free-icons";
+import { useTransport } from "@/components/providers/transport/TransportProvider";
 
 type IconType =
     | "LIGHT"
@@ -48,8 +49,16 @@ export function SmartSwitchController({ data }: { data: Device }) {
     const [selectedIcon, setSelectedIcon] =
         useState<IconType>("DEFAULT");
 
-    const sendCommand = (payload: any) => {
-        console.log("SEND MQTT", payload);
+    const { send } = useTransport(); // Khởi tạo hook
+
+    const sendCommand = async (action: Record<string, any>) => {
+        const payload = {
+            type: data.type, 
+            brand: data.brand || "UNKNOWN", // Fallback nếu DB chưa có brand
+            action: action, // Chỉ chứa 1 hành động duy nhất
+        };
+        console.log("Sending:", JSON.stringify(payload));
+        // await send(payload, "control"); // Mở comment này khi có provider chạy thật
     };
 
     const toggleDevice = (id: string) => {

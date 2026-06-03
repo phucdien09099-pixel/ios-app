@@ -108,4 +108,29 @@ export async function initDB() {
             ON DELETE CASCADE
         )
     `);
+    // ================= CONFIGS (TIMER / SCHEDULE) =================
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS configs (
+            id TEXT PRIMARY KEY,            
+            name TEXT,
+            config_type TEXT NOT NULL,                      
+            device_id TEXT NOT NULL,        
+            device_type TEXT NOT NULL,      
+            
+            power TEXT NOT NULL,            
+            
+            trigger_time TEXT NOT NULL,     
+            days_of_week TEXT NOT NULL,     
+            
+            duration_minutes INTEGER,       
+            action TEXT,                    
+            
+            is_active INTEGER DEFAULT 1,    
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (device_id) 
+                REFERENCES devices(id) 
+                ON DELETE CASCADE
+        )
+    `);
 }

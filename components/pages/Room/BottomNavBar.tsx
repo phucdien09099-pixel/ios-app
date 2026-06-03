@@ -54,11 +54,13 @@ export default function BottomNavBar({ deviceId, }: { deviceId: any; }) {
                                     title: item.label,
                                     component: BottomDrawer,
                                     props: {
-                                        type: item.key
+                                        type: item.key,
+                                        roomId: deviceId 
                                     },
                                     renderRightButtonHeader: <></>,
                                     direction: "bottom",
-                                    className: "mt-40! h-full! mx-auto rounded-2xl bg-white w-full"
+
+                                    className: "mt-[8vh]! w-screen bg-background rounded-t-2xl"
                                 })}
                                 className={cn(
                                     "flex h-auto w-full flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-all duration-200",
@@ -69,18 +71,12 @@ export default function BottomNavBar({ deviceId, }: { deviceId: any; }) {
                                     size={22}
                                     className={cn(
                                         "transition-colors",
-                                        // isActive
-                                        //     ? "text-primary"
-                                        //     : "text-muted-foreground"
                                     )}
                                 />
 
                                 <span
                                     className={cn(
                                         "text-[11px] leading-none transition-colors",
-                                        // isActive
-                                        //     ? "font-medium text-primary"
-                                        //     : "text-muted-foreground"
                                     )}
                                 >
                                     {item.label}
@@ -90,19 +86,17 @@ export default function BottomNavBar({ deviceId, }: { deviceId: any; }) {
                     })}
                 </div>
             </div >
-
-            {/* DRAWER */}
-
         </>
     );
 }
 
-function BottomDrawer({ type }: { type: string | null }) {
-    if (type === "smart") return <SmartSceneUI />;
-    if (type === "timer") return <TimerUI />;
+function BottomDrawer({ type, roomId }: { type: string | null; roomId: string }) {
+    if (type === "smart") return <SmartSceneUI roomId={roomId} />;
+    if (type === "timer") return <TimerUI roomId={roomId} />;
+    return null;
 }
 
-function SmartSceneUI() {
+function SmartSceneUI({ roomId }: { roomId: string }) {
     const [showCreateScene, setShowCreateScene] = useState(false);
     const { open } = useNavDrawer();
     usePreventExit(
@@ -172,7 +166,7 @@ function SmartSceneUI() {
                     component: CreateSmartSceneDrawer,
                     renderRightButtonHeader: <></>,
                     direction: "right",
-                    className: "mt-40 h-full! mx-auto rounded-2xl bg-white w-full"
+                    className: "h-[100dvh] w-screen max-h-screen !mt-0 bg-background rounded-none"
                 })}>
                 <HugeiconsIcon icon={AddCircleIcon} />
                 Thêm kịch bản

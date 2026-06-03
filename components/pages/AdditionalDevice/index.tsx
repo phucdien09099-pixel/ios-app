@@ -99,6 +99,7 @@ export default function AddDeviceForm({ roomId }: { roomId: string }) {
                     <NativeSelectOption value="FAN">Fan</NativeSelectOption>
                     <NativeSelectOption value="LIGHT">Light</NativeSelectOption>
                     <NativeSelectOption value="SMART_SCHEDULE">Schedule</NativeSelectOption>
+                    <NativeSelectOption value="RELAY">Relay</NativeSelectOption>
                 </NativeSelect>
 
                 {/* BRAND */}

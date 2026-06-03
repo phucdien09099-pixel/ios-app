@@ -88,6 +88,18 @@ export default function MemberList() {
             props: { onSuccess: loadMembers },
         })
     }
+    const openEditMember = (member: User) => {
+        open({
+            id: "edit_member", // ID khác đi một chút để phân biệt
+            title: "Cập nhật quyền thành viên", 
+            component: AddMember,
+            // Truyền thêm prop member để sang bên AddMember bạn biết là đang sửa ai
+            props: { 
+                member: member, 
+                onSuccess: loadMembers 
+            },
+        })
+    }
 
     return (
         <div className="min-h-[90vh] bg-muted/30 pb-24">
@@ -164,7 +176,8 @@ export default function MemberList() {
                                 {members.map((member) => (
                                     <div
                                         key={member.id}
-                                        className="flex items-center gap-4 px-5 py-4"
+                                        onClick={() => openEditMember(member)}
+                                        className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-muted/50 transition-colors"
                                     >
                                         <Avatar className="h-10 w-10 shrink-0 border border-border">
                                             <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -193,7 +206,10 @@ export default function MemberList() {
                                             variant="ghost"
                                             size="icon"
                                             className="shrink-0 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10"
-                                            onClick={() => setDeleteTarget(member)}
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // NGĂN SỰ KIỆN CLICK LAN RA DÒNG BÊN NGOÀI
+                                                setDeleteTarget(member);
+                                            }}
                                         >
                                             <HugeiconsIcon icon={Delete02Icon} size={18} />
                                         </Button>

@@ -4,6 +4,10 @@ import { ArrowRight01Icon, CustomerService01Icon, Message01Icon, UserGroupIcon }
 import { HugeiconsIcon } from "@hugeicons/react"
 import MemberList from "./MemberList"
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button"; 
+import { Logout01Icon } from "@hugeicons/core-free-icons"; 
+import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 
 const menus = [
     {
@@ -24,22 +28,62 @@ const menus = [
 ]
 
 export default function UserPage() {
-    const { open } = useNavDrawer();
+    const { open, back } = useNavDrawer();
+    const [userData, setUserData] = useState<{name: string, email: string, is_owner?: boolean} | null>(null);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            setUserData(JSON.parse(storedUser));
+        }
+    }, []);
+
+    const handleLogout = async () => {
+    try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            const parsed = JSON.parse(storedUser);
+            
+            // 1. GỌI XUỐNG SQLITE: Xóa phiên đăng nhập yên tâm chạy ngầm
+            await userSessionRepo.deleteByUserId(parsed.id);
+            
+            // 2. GHI NHỚ: Lưu lại thông tin user vào mục riêng để trang login đọc được
+            localStorage.setItem("remembered_user", storedUser);
+        }
+    } catch (error) {
+        console.error("Lỗi khi xóa session trong DB:", error);
+    }
+
+    // 3. Xóa token phiên làm việc hiện tại dưới localStorage
+    localStorage.removeItem("user");
+    localStorage.removeItem("refresh_token");
+
+    // Thêm dòng này để ĐÓNG cái Drawer (màn hình đè) đi:
+    back(); 
+
+    // 4. CHUẨN HOÁ: Phát sự kiện báo hiệu đăng xuất toàn cục
+    window.dispatchEvent(new Event("app-logout"));
+};
+
     return (
-        <div className="min-h-[90vh] bg-muted/30">
+        // THAY ĐỔI LỚN Ở ĐÂY: Thêm h-full, overflow-y-auto để cuộn, và pb-24 để không bị lấp nút
+        <div className="h-full overflow-y-auto bg-muted/30 pb-24 px-4 pt-4">
             <div className="mx-auto max-w-md space-y-6">
+                
                 <Card className="ring-0!">
                     <CardContent className="flex flex-col items-center py-8">
                         <Avatar className="h-24 w-24 border-4 border-background shadow-md">
                             <AvatarImage src="/avatar.png" />
-                            <AvatarFallback>HN</AvatarFallback>
+                            <AvatarFallback>
+                                {userData?.name?.charAt(0).toUpperCase() || userData?.email?.charAt(0).toUpperCase() || "U"}
+                            </AvatarFallback>
                         </Avatar>
                         <div className="mt-4 text-center">
                             <h2 className="text-xl font-semibold tracking-tight">
-                                Han Nguyen
+                                {userData ? userData.name : "Đang tải..."}
                             </h2>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Thành viên hệ thống
+                                {userData ? userData.email : ""}
                             </p>
                         </div>
                     </CardContent>
@@ -73,7 +117,18 @@ export default function UserPage() {
                         })}
                     </CardContent>
                 </Card>
+
+                {/* NÚT ĐĂNG XUẤT TO ĐƯỢC ĐƯA TRỞ LẠI RA NGOÀI */}
+                <Button 
+                    variant="destructive" 
+                    className="w-full h-14 rounded-2xl text-base font-medium shadow-sm hover:shadow-md transition-all mt-4"
+                    onClick={handleLogout}
+                >
+                    <HugeiconsIcon icon={Logout01Icon} className="mr-3 h-5 w-5" />
+                    Đăng xuất
+                </Button>
+
             </div>
-        </div >
+        </div>
     )
 }

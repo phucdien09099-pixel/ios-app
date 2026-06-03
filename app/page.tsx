@@ -1,53 +1,31 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/libs/utils";
 import { apiClient } from "@/utils/Tauri/HttpClient";
 import { userSessionRepo } from "@/db/repository/UserSessionRepository";
-import { userRepo } from "@/db/repository/UserRepository";
 import { RoomPage } from "@/components/pages/Home";
 import AuthSelectPage from "@/components/pages/auth";
 
-
-type LoginFormValues = {
-  email: string;
-  password: string;
-};
-
-export default function page({ className, ...props }: React.ComponentProps<"div">) {
-  const [serverError, setServerError] = React.useState("");
-
-  // Trạng thái kiểm soát giao diện: "checking" (đang quét DB), "logged_out" (hiện login), "logged_in" (hiện RoomPage)
+export default function EntryPointPage() {
+  // Trạng thái kiểm soát giao diện: 
+  // "checking" (đang quét DB), "logged_out" (về màn hình login), "logged_in" (vào thẳng trang chủ)
   const [appState, setAppState] = React.useState<"checking" | "logged_out" | "logged_in">("checking");
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormValues>({
-    defaultValues: { email: "", password: "" },
-  });
-
-  // ================= 0. TỰ ĐỘNG ĐĂNG NHẬP KHI MỞ APP =================
+  // ================= TỰ ĐỘNG ĐĂNG NHẬP KHI MỞ APP =================
   React.useEffect(() => {
     async function autoLogin() {
       try {
-        // Gọi hàm lấy active user mới nhất từ SQLite (Hàm chúng ta vừa viết ở bước trước)
+        // Lấy phiên đăng nhập active mới nhất từ SQLite
         const activeUser = await userSessionRepo.getLatestActiveUser();
 
         if (activeUser) {
           console.log("Tìm thấy phiên đăng nhập cũ hợp lệ:", activeUser);
-          // Set lại token vào HttpClient cho các request sau
+          // Cấu hình lại token vào HttpClient cho các request chạy ngầm sau đó
           await apiClient.setAccessToken(activeUser.access_token);
-          // Cho phép vào thẳng RoomPage
+          // Cho phép vào thẳng trang chủ RoomPage
           setAppState("logged_in");
         } else {
-          // Không có session nào -> Hiện form đăng nhập
+          // Không có session nào tồn tại hoặc vừa bấm Đăng xuất -> Hiện màn hình login
           setAppState("logged_out");
         }
       } catch (err) {
@@ -57,96 +35,40 @@ export default function page({ className, ...props }: React.ComponentProps<"div"
     }
     autoLogin();
   }, []);
+  React.useEffect(() => {
+    const handleGlobalLogout = () => {
+      console.log("Hệ thống nhận tín hiệu Đăng xuất -> Chuyển về màn hình Login ngay lập tức!");
+      setAppState("logged_out"); // Đổi trạng thái React để giao diện tự lật trang mượt mà
+    };
 
-  // ================= HÀM XỬ LÝ ĐĂNG NHẬP THỦ CÔNG =================
-  async function onSubmit(values: LoginFormValues) {
-    try {
-      setServerError("");
+    // Đăng ký lắng nghe sự kiện "app-logout" từ trang User bắn lên
+    window.addEventListener("app-logout", handleGlobalLogout);
+    
+    // Hủy lắng nghe khi component bị hủy để tránh rò rỉ bộ nhớ
+    return () => window.removeEventListener("app-logout", handleGlobalLogout);
+  }, []);
 
-      // ================= 1. GỌI API ĐĂNG NHẬP BÊN THỨ 3 =================
-      const data = await apiClient.post<{
-        token: string;
-        refreshToken: string;
-        id: string;
-        email: string;
-        name: string;
-        parentId: string | null;
-      }>("/api/v1/auth/login", values);
-
-      // ================= 2. LƯU TOKEN VÀO STATE / LOCALSTORAGE =================
-      await apiClient.setAccessToken(data.token);
-      localStorage.setItem("refresh_token", data.refreshToken);
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          parentId: data.parentId,
-        })
-      );
-
-      // ================= 3. ĐỒNG BỘ DỮ LIỆU XUỐNG SQLITE LOCAL =================
-      try {
-        const existingUser = await userRepo.findByEmail(data.email);
-        const isOwner = data.parentId === null || data.parentId === undefined || data.parentId === "";
-
-        if (!existingUser) {
-          await userRepo.create({
-            id: data.id,
-            email: data.email,
-            name: data.name || "user",
-            parent_id: data.parentId || null,
-            is_owner: isOwner,
-            created_at: new Date().toISOString(),
-          });
-          console.log(`Đã lưu User mới vào SQLite dưới dạng: ${isOwner ? "Owner" : "Member"}`);
-        } else {
-          await userRepo.update(data.id as any, {
-            name: data.name || "user",
-            parent_id: data.parentId || null,
-            is_owner: isOwner,
-          });
-          console.log("Đã cập nhật thông tin User trong SQLite.");
-        }
-
-        // Thao tác trên bảng `user_sessions`
-        await userSessionRepo.deleteByUserId(data.id);
-
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // Hết hạn sau 7 ngày
-
-        await userSessionRepo.createSession({
-          user_id: data.id,
-          access_token: data.token,
-          refresh_token: data.refreshToken,
-          device_name: "Desktop App",
-          expires_at: expiresAt.toISOString(),
-          created_at: new Date().toISOString(),
-        });
-
-        console.log("Đã đồng bộ Session thành công.");
-      } catch (dbError) {
-        console.error("Lỗi trong quá trình thao tác SQLite:", dbError);
-      }
-
-      // ================= 4. CHUYỂN GIAO DIỆN SANG ROOM PAGE =================
-      setAppState("logged_in");
-
-    } catch (error: any) {
-      console.error(error);
-      setServerError(error?.message || "Login failed");
-    }
-  }
-
-  // Giao diện hiển thị theo từng trạng thái ứng dụng
+  // ================= ĐIỀU HƯỚNG GIAO DIỆN =================
+  
   if (appState === "checking") {
     return <div className="flex h-screen items-center justify-center text-sm">Đang kiểm tra phiên đăng nhập...</div>;
   }
 
+  // 1. KHI ĐĂNG NHẬP (TRƯỢT TỪ PHẢI SANG TRÁI)
+  // THÊM key="room-page"
   if (appState === "logged_in") {
-    return <RoomPage />;
+    return (
+      <div key="room-page" className="h-full w-full animate-in slide-in-from-right-8 fade-in duration-300 ease-out">
+        <RoomPage />
+      </div>
+    );
   }
 
-  return <AuthSelectPage onLoginSuccess={() => setAppState("logged_in")} />;
+  // 2. KHI ĐĂNG XUẤT (TRƯỢT TỪ TRÁI SANG PHẢI)
+  // THÊM key="auth-page"
+  return (
+    <div key="auth-page" className="h-full w-full animate-in slide-in-from-left-8 fade-in duration-300 ease-out">
+      <AuthSelectPage onLoginSuccess={() => setAppState("logged_in")} />
+    </div>
+  );
 }

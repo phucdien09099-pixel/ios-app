@@ -7,6 +7,7 @@ import { cn } from "@/libs/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ChevronDown, ChevronUp, PowerIcon } from "@hugeicons/core-free-icons";
 import { Device } from "../Room/DeviceCard";
+import { useTransport } from "@/components/providers/transport/TransportProvider";
 
 const MODES = [
     {
@@ -32,8 +33,16 @@ export default function ACsController({ data }: { data: Device }) {
     const [fanSpeed, setFanSpeed] = useState(2);
     const [mode, setMode] = useState<"COOL" | "DRY" | "FAN">("COOL");
 
-    const sendCommand = (payload: any) => {
-        console.log("SEND MQTT / IR", payload);
+    const { send } = useTransport(); // Khởi tạo hook
+
+    const sendCommand = async (action: Record<string, any>) => {
+        const payload = {
+            type: data.type, 
+            brand: data.brand || "UNKNOWN", // Fallback nếu DB chưa có brand
+            action: action, // Chỉ chứa 1 hành động duy nhất
+        };
+        console.log("Sending payload:", payload);
+        // await send(payload, "control"); // Mở comment này khi có provider chạy thật
     };
 
     return (
@@ -66,10 +75,8 @@ export default function ACsController({ data }: { data: Device }) {
 
                                 setPower(next);
 
-                                sendCommand({
-                                    type: "POWER",
-                                    value: next,
-                                });
+                                // Đổi thành "ON" / "OFF" in hoa
+                                sendCommand({ power: next ? "ON" : "OFF" });
                             }}
                         >
                             <HugeiconsIcon
@@ -94,10 +101,7 @@ export default function ACsController({ data }: { data: Device }) {
 
                                     setTemperature(next);
 
-                                    sendCommand({
-                                        type: "TEMP",
-                                        value: next,
-                                    });
+                                    sendCommand({ temperature: next });
                                 }}
                             >
                                 <HugeiconsIcon icon={ChevronDown} />
@@ -124,10 +128,7 @@ export default function ACsController({ data }: { data: Device }) {
 
                                     setTemperature(next);
 
-                                    sendCommand({
-                                        type: "TEMP",
-                                        value: next,
-                                    });
+                                    sendCommand({ temperature: next });
                                 }}
                             >
                                 <HugeiconsIcon icon={ChevronUp} />
@@ -155,10 +156,8 @@ export default function ACsController({ data }: { data: Device }) {
                                         onClick={() => {
                                             setMode(item.key);
 
-                                            sendCommand({
-                                                type: "MODE",
-                                                value: item.key,
-                                            });
+                                            // Đổi thành toUpperCase() để lấy chữ IN HOA
+                                            sendCommand({ mode: item.key.toUpperCase() });
                                         }}
                                         className={cn(
                                             "rounded-2xl border h-24 flex items-center justify-center text-sm font-medium transition",
