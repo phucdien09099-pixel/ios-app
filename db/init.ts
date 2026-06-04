@@ -75,6 +75,7 @@ export async function initDB() {
             password TEXT,
             role TEXT DEFAULT 'user',
             is_owner INTEGER DEFAULT 0,
+            timezone TEXT DEFAULT 'UTC', 
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (parent_id)
                 REFERENCES users(id)
