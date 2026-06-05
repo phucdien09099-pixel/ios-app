@@ -58,7 +58,7 @@ export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) 
                     title: "",
                     component: SignupForm,
                     props: {
-                        className: "ring-0! h-[70vh]"
+                        className: "ring-0! h-[82vh]"
                     },
                     renderRightButtonHeader: <></>,
                 })}

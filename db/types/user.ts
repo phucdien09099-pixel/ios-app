@@ -18,5 +18,7 @@ export interface User {
 
     is_owner: boolean;
 
+    timezone?: string;
+
     created_at?: string;
 }

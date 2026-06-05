@@ -1,53 +1,75 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { v4 as uuid } from "uuid";
 import { userRepo } from "@/db/repository/UserRepository";
-import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"; // Import để đóng drawer
-import { apiClient } from "@/utils/Tauri/HttpClient"; // Import để gọi Server
+import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"; 
+import { apiClient } from "@/utils/Tauri/HttpClient"; 
+import { toast } from "sonner"; // ✨ Import thư viện Toast siêu đẹp
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
+import { TimezoneCombobox } from "@/components/timezone-combobox"; 
 
 type FormValues = {
   name: string;
   email: string;
   password: string;
   confirmPassword: string;
+  timezone: string;
 };
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
-  const { back } = useNavDrawer(); // Hook để điều khiển rèm
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormValues>();
+  const { back } = useNavDrawer(); 
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      timezone: "", 
+    }
+  });
 
   const password = watch("password");
 
+  // TỰ ĐỘNG NHẬN DIỆN MÚI GIỜ HỆ THỐNG
+  useEffect(() => {
+    try {
+      let tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz === "Etc/GMT-7" || tz === "GMT-7" || tz === "Asia/Saigon") {
+        tz = "Asia/Ho_Chi_Minh";
+      }
+      setValue("timezone", tz);
+    } catch (e) {
+      setValue("timezone", "Asia/Ho_Chi_Minh");
+    }
+  }, [setValue]);
+
   const onSubmit = async (data: FormValues) => {
     try {
-      // 1. KIỂM TRA TRÙNG EMAIL TRONG SQLITE (Local)
+      // 1. KIỂM TRA TRÙNG EMAIL
       const existingUser = await userRepo.findByEmail(data.email);
       if (existingUser) {
-        window.alert("Email này đã được đăng ký. Vui lòng dùng email khác!");
-        return; // Dừng lại, popup tắt, người dùng ở lại form
+        toast.error("Email này đã được đăng ký. Vui lòng dùng email khác!"); // ✨ Đổi sang Toast
+        return; 
       }
 
-      // 2. GỌI LÊN SERVER ĐỂ ĐĂNG KÝ (ĐỂ ĐĂNG NHẬP KHÔNG BỊ LỖI)
-      // LƯU Ý: Đổi "/api/v1/auth/signup" thành đúng đường dẫn API đăng ký của backend bạn
-      // Nếu chưa có API backend, hãy comment lại đoạn này
+      // 2. GỌI SERVER
       try {
         await apiClient.post("/api/v1/auth/signup", {
           name: data.name,
           email: data.email,
           password: data.password,
+          // timezone: data.timezone, 
         });
       } catch (serverErr) {
         console.warn("Chưa gọi được lên Server hoặc API chưa đúng:", serverErr);
-        // Tạm thời vẫn cho lưu SQLite để bạn test offline
       }
 
-      // 3. LƯU VÀO DATABASE LOCAL (SQLite)
+      // 3. LƯU VÀO SQLITE
       const newUserId = uuid();
       await userRepo.create({
         id: newUserId,
@@ -56,16 +78,17 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         password: data.password,
         role: "user",
         parent_id: null,
+        timezone: data.timezone,
         created_at: new Date().toISOString(),
       });
 
-      // 4. HIỂN THỊ POPUP THÀNH CÔNG VÀ QUAY VỀ
-      window.alert("Tạo tài khoản thành công!");
-      back(); // Nhấn OK sẽ tự động lùi về màn hình có nút Đăng nhập
+      // 4. THÔNG BÁO VÀ CHUYỂN HƯỚNG
+      toast.success("Tạo tài khoản thành công! 🎉"); // ✨ Đổi sang Toast
+      back(); // Quay lại trang trước an toàn
 
     } catch (error) {
       console.error("Lỗi khi lưu DB:", error);
-      window.alert("Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại!");
+      toast.error("Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại!"); // ✨ Đổi sang Toast
     }
   };
 
@@ -136,6 +159,14 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                 })}
               />
               {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
+            </Field>
+
+            <Field>
+              <FieldLabel>Khu vực nhà (Múi giờ)</FieldLabel>
+              <TimezoneCombobox
+                value={watch("timezone")}
+                onChange={(val) => setValue("timezone", val)}
+              />
             </Field>
 
             <Field>

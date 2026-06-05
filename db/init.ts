@@ -134,4 +134,25 @@ export async function initDB() {
                 ON DELETE CASCADE
         )
     `);
+    // ================= AUTOMATIONS (KỊCH BẢN TỰ ĐỘNG) =================
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS automations (
+            id TEXT PRIMARY KEY,
+            room_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            
+            -- ĐIỀU KIỆN (NẾU)
+            trigger_config TEXT NOT NULL, -- Lưu JSON: {"type": "temperature", "operator": ">", "value": 28}
+            
+            -- HÀNH ĐỘNG (THÌ)
+            device_id TEXT NOT NULL,      -- ID thiết bị cần điều khiển
+            action TEXT NOT NULL,         -- Lưu JSON hành động: {"type":"power","value":"ON","label":"Bật máy lạnh daikin"}
+            
+            is_active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+            FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+        )
+    `);
 }

@@ -79,13 +79,25 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                 page.direction === "bottom" && "[&>div:first-child]:hidden"
                             )}>
 
-                            {/* Thanh ngắn tự làm - chỉ hiện khi bottom */}
-                            {page.direction === "bottom" && (
-                                <div className="mx-auto mt-3 mb-1 h-1.5 w-12 rounded-full bg-muted-foreground/20 flex-shrink-0" />
-                            )}
-
-                            {/* Chỉ show header với nút back khi KHÔNG phải bottom */}
-                            {page.direction !== "bottom" && (
+                            {page.direction === "bottom" ? (
+                                <>
+                                    <div className="mx-auto mt-3 mb-1 h-1.5 w-12 rounded-full bg-muted-foreground/20 flex-shrink-0" />
+                                    <DrawerHeader className="relative flex flex-row items-center px-4">
+                                        <Button
+                                            onClick={() => handleClose(page.id, isTop)}
+                                            variant="ghost"
+                                            size="icon"
+                                            aria-label="Go Back"
+                                            className="shrink-0"
+                                        >
+                                            <HugeiconsIcon icon={ArrowLeftIcon} />
+                                        </Button>
+                                        <DrawerTitle className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none max-w-[60%] truncate">
+                                            {page.title ?? "Menu"}
+                                        </DrawerTitle>
+                                    </DrawerHeader>
+                                </>
+                            ) : (
                                 <DrawerHeader className="relative flex flex-row items-center px-4">
                                     <Button
                                         onClick={() => handleClose(page.id, isTop)}
@@ -105,10 +117,19 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                 </DrawerHeader>
                             )}
 
-                            <div className={cn(
-                                "h-full overflow-auto",
-                                page.direction !== "bottom" ? "p-4 pt-2!" : ""
-                            )}>
+                            <div 
+                                className={cn(
+                                    "h-full overflow-auto",
+                                    page.direction !== "bottom" ? "p-4 pt-2!" : ""
+                                )}
+                                style={{ touchAction: "auto" }}
+                                onPointerDownCapture={(e) => {
+                                    const target = e.target as HTMLElement;
+                                    if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                                        e.stopPropagation();
+                                    }
+                                }}
+                            >
                                 <Component {...page.props} />
                             </div>
                         </DrawerContent>

@@ -1,117 +1,222 @@
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch"; // Bổ sung import Switch
-import { Button } from "@/components/ui/button"; // Bổ sung import Button
-import { useState } from "react";
-import { PlayIcon } from "@hugeicons/core-free-icons";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Device } from "@/db/types/devive";
+import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
+import { deviceRepo } from "@/db/repository/DeviceRepository";
+import { automationRepo } from "@/db/repository/AutomationRepository";
+import { IcoIcon, AddCircleIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/libs/utils";
+import CreateAutomation from "./CreateAutomation";
+import { SceneTypeSelector } from "./SceneTypeSelector";
 
-export default function CreateSmartSceneDrawer() {
-    const [form, setForm] = useState({
-        name: "",
-        time: "18:00",
-        room: "Living Room",
-        enabled: true,
-    });
+interface CreateSmartSceneDrawerProps {
+    roomId: string;
+}
 
-    const handleSave = () => {
-        console.log("Smart Scene Output:", JSON.stringify(form, null, 2));
-        setForm({
-            name: "",
-            time: "18:00",
-            room: "Living Room",
-            enabled: true,
+export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawerProps) {
+    const { open, back } = useNavDrawer();
+    const [devices, setDevices] = useState<Device[]>([]);
+    const [automations, setAutomations] = useState<any[]>([]);
+
+    const getDeviceIcon = (type: string) => IcoIcon;
+
+    const loadData = async () => {
+        if (!roomId) return;
+        const [roomDevices, roomAutomations] = await Promise.all([
+            deviceRepo.getByRoom(roomId),
+            automationRepo.getByRoom(roomId),
+        ]);
+        setDevices(roomDevices);
+        setAutomations(roomAutomations);
+    };
+
+    useEffect(() => {
+        loadData();
+    }, [roomId]);
+
+    const handleSelectAutomation = () => {
+        // 1. Đóng cái Menu "Chọn kịch bản" lại luôn
+        back();
+        
+        // 2. Chờ 0.25s cho Menu trượt xuống mượt mà, rồi đẩy Form lên thay thế
+        setTimeout(() => {
+            open({
+                id: "createAutomationForm",
+                title: "Tạo tự động hóa",
+                direction: "bottom",
+                className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
+                component: CreateAutomation,
+                props: {
+                    devices,
+                    getDeviceIcon,
+                    onCancel: back,
+                    onCreateAutomation: async (finalData: any) => {
+                        const targetDevice = devices.find(d => d.id === finalData.actionDeviceId);
+                        await automationRepo.createAutomation({
+                            room_id: roomId,
+                            name: finalData.name || "Tự động hóa",
+                            trigger_config: JSON.stringify({
+                                operator: finalData.operator,
+                                conditionValue: finalData.conditionValue,
+                            }),
+                            device_id: finalData.actionDeviceId,
+                            action: JSON.stringify(finalData.action || {}),
+                            is_active: 1,
+                        });
+                        console.log({
+                            room_id: roomId,
+                            name: finalData.name || "Tự động hóa",
+                            trigger_config: JSON.stringify({
+                                operator: finalData.operator,
+                                conditionValue: finalData.conditionValue,
+                            }),
+                            device_id: finalData.actionDeviceId,
+                            action: JSON.stringify(finalData.action || {}),
+                            is_active: 1,
+                        })
+                        await loadData();
+
+                        // 3. XONG! Bây giờ chỉ cần GỌI BACK() 1 LẦN DUY NHẤT
+                        // back(); 
+                    }
+                }
+            });
+        }, 250);
+    };
+
+    const handleOpenEdit = (automation: any) => {
+        const triggerConfig = automation.trigger_config ? JSON.parse(automation.trigger_config) : {};
+        const actionObj = automation.action ? JSON.parse(automation.action) : {};
+
+        open({
+            id: "editAutomationForm",
+            title: "Sửa tự động hóa",
+            direction: "bottom",
+            className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
+            component: CreateAutomation,
+            props: {
+                devices,
+                getDeviceIcon,
+                initialData: {
+                    name: automation.name,
+                    operator: triggerConfig.operator || "",
+                    conditionValue: triggerConfig.conditionValue || "28",
+                    actionDeviceId: automation.device_id,
+                    action: actionObj,
+                },
+                onCancel: back,
+                onCreateAutomation: async (finalData: any) => {
+                    await automationRepo.update(automation.id, {
+                        name: finalData.name || "Tự động hóa",
+                        trigger_config: JSON.stringify({
+                            operator: finalData.operator,
+                            conditionValue: finalData.conditionValue,
+                        }),
+                        device_id: finalData.actionDeviceId,
+                        action: JSON.stringify(finalData.action || {}),
+                    });
+                    await loadData();
+                    back();
+                }
+            }
         });
     };
 
+    // Màn hình danh sách kịch bản
     return (
-        <div className="px-4 pb-6 space-y-4 h-[70vh] overflow-auto">
-            {/* Tên kịch bản */}
-            <div>
-                <div className="mb-2 text-sm font-medium">Tên kịch bản</div>
-                <Input
-                    placeholder="Ví dụ: Bật đèn buổi tối"
-                    value={form.name}
-                    onChange={(e) =>
-                        setForm((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                        }))
-                    }
-                />
-            </div>
+        <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
 
-            {/* Thời gian */}
-            <div>
-                <div className="mb-2 text-sm font-medium">Thời gian chạy</div>
-                <Input
-                    type="time"
-                    value={form.time}
-                    onChange={(e) =>
-                        setForm((prev) => ({
-                            ...prev,
-                            time: e.target.value,
-                        }))
-                    }
-                />
-            </div>
+            {/* Vùng danh sách: Cho phép cuộn (flex-1 overflow-y-auto) */}
+            <div className="flex-1 overflow-y-auto px-4 pt-2">
+                {/* Thêm pb-6 ở đây để khi cuộn xuống dưới cùng, phần tử cuối không bị dính vào viền */}
+                <div className="w-full space-y-3 pb-6">
+                    {automations.length === 0 ? (
+                        <div className="py-16 text-center text-sm text-muted-foreground">
+                            Chưa có kịch bản nào được tạo
+                        </div>
+                    ) : (
+                    automations.map((automation) => {
+                        const device = devices.find(d => d.id === automation.device_id);
+                        const triggerConfig = automation.trigger_config ? JSON.parse(automation.trigger_config) : {};
+                        const actionObj = automation.action ? JSON.parse(automation.action) : {};
+                        const conditionLabel = triggerConfig.operator === ">"
+                            ? `Nhiệt độ trên ${triggerConfig.conditionValue}°C`
+                            : triggerConfig.operator === "<"
+                                ? `Nhiệt độ dưới ${triggerConfig.conditionValue}°C`
+                                : "Điều kiện chưa đặt";
 
-            {/* Phòng */}
-            <div>
-                <div className="mb-2 text-sm font-medium">Phòng</div>
-                <Input
-                    value={form.room}
-                    onChange={(e) =>
-                        setForm((prev) => ({
-                            ...prev,
-                            room: e.target.value,
-                        }))
-                    }
-                />
-            </div>
-
-            {/* Trạng thái kích hoạt */}
-            <div className="flex items-center justify-between rounded-2xl border p-3">
-                <div>
-                    <div className="font-medium">Kích hoạt</div>
-                    <div className="text-xs text-muted-foreground">
-                        Chạy kịch bản sau khi lưu
-                    </div>
+                        return (
+                            <div
+                                key={automation.id}
+                                className="rounded-3xl border border-border/50 bg-card overflow-hidden"
+                                onClick={() => handleOpenEdit(automation)}
+                            >
+                                <Card className="rounded-none border-none p-4 bg-transparent shadow-none active:bg-muted/60 transition-colors duration-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                                                <HugeiconsIcon icon={getDeviceIcon(device?.type || "")} size={22} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-semibold text-base truncate">{automation.name}</div>
+                                                <div className="text-xs text-muted-foreground truncate">{device?.name || "Thiết bị"}</div>
+                                                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground/80">
+                                                    <span className="truncate">{conditionLabel}</span>
+                                                    {actionObj?.label && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="truncate max-w-[100px]">{actionObj.label}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Bọc thẻ div có onPointerDown để chặn tuyệt đối việc mở Edit */}
+                                        <div 
+                                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                                            onPointerDown={(e) => e.stopPropagation()}
+                                        >
+                                            <Switch
+                                                checked={automation.is_active === 1}
+                                                onCheckedChange={async (checked) => {
+                                                    await automationRepo.update(automation.id, { is_active: checked ? 1 : 0 });
+                                                    setAutomations(prev =>
+                                                        prev.map(a => a.id === automation.id ? { ...a, is_active: checked ? 1 : 0 } : a)
+                                                    );
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                        );
+                    })
+                )}
                 </div>
-
-                <Switch
-                    checked={form.enabled}
-                    onCheckedChange={(enabled) =>
-                        setForm((prev) => ({
-                            ...prev,
-                            enabled,
-                        }))
-                    }
-                />
             </div>
 
-            {/* Nhóm nút bấm */}
-            <div className="flex gap-2">
+            <div className="shrink-0 p-3 pb-6 bg-background border-t shadow-[0_-15px_15px_-15px_rgba(0,0,0,0.05)] z-10">
                 <Button
-                    variant="outline"
-                    className="flex-1 gap-2 rounded-2xl"
-                    onClick={() => { }}
+                    className="w-full gap-2 rounded-2xl h-11"
+                    onClick={() => open({
+                        id: "sceneTypeSelector",
+                        title: "Kịch bản thông minh",
+                        direction: "bottom",
+                        className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
+                        component: SceneTypeSelector,
+                        props: {
+                            onSelectAutomation: handleSelectAutomation,
+                        }
+                    })}
                 >
-                    Hủy
+                    <HugeiconsIcon icon={AddCircleIcon} />
+                    Thêm kịch bản
                 </Button>
-                <Button
-                    className="flex-1 gap-2 rounded-2xl"
-                    onClick={handleSave}>
-                    <HugeiconsIcon icon={PlayIcon} />
-                    Lưu
-                </Button>
-            </div>
-
-            {/* Debug JSON Output */}
-            <div>
-                <div className="mb-2 text-sm font-medium">Output JSON</div>
-                <pre className="overflow-auto rounded-2xl bg-muted p-3 text-xs">
-                    {JSON.stringify(form, null, 2)}
-                </pre>
             </div>
         </div>
     );

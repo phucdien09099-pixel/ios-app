@@ -3,8 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
-import { Field, FieldError, FieldGroup, FieldLabel, } from "@/components/ui/field";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/libs/utils";
@@ -12,30 +12,23 @@ import { apiClient } from "@/utils/Tauri/HttpClient";
 import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 import { userRepo } from "@/db/repository/UserRepository";
 
-
 type LoginFormValues = {
   email: string;
   password: string;
 };
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
-  onSuccess?: () => void; // Khai báo prop nhận từ bên ngoài
+  onSuccess?: () => void;
 }
 
 export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
-
-
-  const [serverError, setServerError] =
-    React.useState("");
+  const [serverError, setServerError] = React.useState("");
 
   const {
     register,
     handleSubmit,
-    setValue, // Thêm hàm này vào đây để có quyền điền dữ liệu tự động vào ô Input
-    formState: {
-      errors,
-      isSubmitting,
-    },
+    setValue,
+    formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     defaultValues: {
       email: "",
@@ -43,13 +36,13 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
     },
   });
 
-  // TỰ ĐỘNG ĐIỀN EMAIL NẾU TRƯỚC ĐÓ ĐÃ TỪNG ĐĂNG XUẤT ("Nhớ tài khoản")
+  // TỰ ĐỘNG ĐIỀN EMAIL NẾU TRƯỚC ĐÓ ĐÃ TỪNG ĐĂNG XUẤT
   React.useEffect(() => {
     const remembered = localStorage.getItem("remembered_user");
     if (remembered) {
       const parsed = JSON.parse(remembered);
       if (parsed.email) {
-        setValue("email", parsed.email); // Điền sẵn email cũ vào ô nhập liệu
+        setValue("email", parsed.email);
       }
     }
   }, [setValue]);
@@ -58,17 +51,15 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
     try {
       setServerError("");
 
-      // ================= 1. GỌI API ĐĂNG NHẬP BÊN THỨ 3 =================
       const data = await apiClient.post<{
         token: string;
         refreshToken: string;
         id: string;
         email: string;
         name: string;
-        parentId: string | null; // Lấy thêm trường parentId từ API trả về
+        parentId: string | null;
       }>("/api/v1/auth/login", values);
 
-      // ================= 2. LƯU TOKEN VÀO STATE / LOCALSTORAGE =================
       await apiClient.setAccessToken(data.token);
       localStorage.setItem("refresh_token", data.refreshToken);
       localStorage.setItem(
@@ -81,38 +72,27 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
         })
       );
 
-      // ================= 3. ĐỒNG BỘ DỮ LIỆU XUỐNG SQLITE LOCAL =================
       try {
-        // Kiểm tra xem User này đã từng tồn tại dưới local chưa
         const existingUser = await userRepo.findByEmail(data.email);
-
-        // TỰ ĐỘNG XÁC ĐỊNH OWNER HOẶC MEMBER DỰA VÀO PARENT_ID
-        // Nếu không có parentId thì là Owner (true), ngược lại có parentId thì là Member (false)
         const isOwner = data.parentId === null || data.parentId === undefined || data.parentId === "";
 
         if (!existingUser) {
-          // Sử dụng hàm create gốc của SQLiteBase để tự định nghĩa các cờ theo logic parent_id
           await userRepo.create({
             id: data.id,
             email: data.email,
             name: "user",
             parent_id: data.parentId || null,
-            is_owner: isOwner, // true nếu là Owner, false nếu là Member
+            is_owner: isOwner,
             created_at: new Date().toISOString(),
           });
-          console.log(`Đã lưu User mới vào SQLite dưới dạng: ${isOwner ? "Owner" : "Member"}`);
         } else {
-          // Nếu đã tồn tại, cập nhật lại thông tin bao gồm cả việc thay đổi parent/owner (nếu có)
           await userRepo.update(data.id as any, {
             name: "user",
             parent_id: data.parentId || null,
             is_owner: isOwner,
-            // updated_at: new Date().toISOString(),
           });
-          console.log("Đã cập nhật thông tin User trong SQLite.");
         }
 
-        // --- Thao tác trên bảng `user_sessions` ---
         await userSessionRepo.deleteByUserId(data.id);
 
         const expiresAt = new Date();
@@ -127,175 +107,81 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
           created_at: new Date().toISOString(),
         });
 
-        console.log("Đã đồng bộ Session thành công.");
         if (onSuccess) {
           onSuccess();
         }
       } catch (dbError) {
         console.error("Lỗi trong quá trình thao tác SQLite:", dbError);
       }
-
-      // ================= 4. ĐIỀU HƯỚNG VỀ TRANG CHỦ =================
-      console.log(data);
-
-      
     } catch (error: any) {
       console.error("Lỗi gốc từ hệ thống:", error);
-      
-      // Biến đổi chuỗi lỗi để hiển thị
       let rawError = error?.message || "Đăng nhập thất bại";
       let friendlyError = "Đã xảy ra lỗi, vui lòng thử lại!";
 
       if (rawError.includes("decoding response body") || rawError.includes("401") || rawError.includes("Unauthorized")) {
         friendlyError = "Mật khẩu chưa đúng hoặc không hợp lệ!";
-      } 
-      else if (rawError.includes("404") || rawError.includes("Not Found")) {
+      } else if (rawError.includes("404") || rawError.includes("Not Found")) {
         friendlyError = "Email chưa được đăng ký hệ thống!";
-      } 
-      else if (rawError.includes("network") || rawError.includes("Failed to fetch")) {
+      } else if (rawError.includes("network") || rawError.includes("Failed to fetch")) {
         friendlyError = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng!";
       }
 
       setServerError(friendlyError);
     }
   }
+
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-6",
-        className
-      )}
-      {...props}
-    >
-      <Card className="w-full ring-0 focus-visible:ring-0">
-
-        <CardHeader>
-
-          <CardTitle>
-            Login to your account
-          </CardTitle>
-
-          <CardDescription>
-            Enter your email below
-            to login to your account
-          </CardDescription>
-
+    <div className={cn("flex flex-col gap-6 w-full max-w-md mx-auto p-4 sm:p-0", className)} {...props}>
+      <Card className="w-full ring-0 focus-visible:ring-0 border shadow-md rounded-2xl">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold tracking-tight">Login to your account</CardTitle>
+          <CardDescription>Enter your email below to login to your account</CardDescription>
         </CardHeader>
-
         <CardContent>
-
-          <form
-            onSubmit={handleSubmit(
-              onSubmit
-            )}
-          >
-
-            <FieldGroup>
-
-              {/* EMAIL */}
-
-              <Field>
-
-                <FieldLabel htmlFor="email">
-                  Email
-                </FieldLabel>
-
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <FieldGroup className="space-y-4">
+              <Field className="flex flex-col gap-1.5 w-full">
+                <FieldLabel htmlFor="email" className="text-sm font-medium">Email</FieldLabel>
                 <Input
                   id="email"
                   type="email"
                   placeholder="m@example.com"
-                  {...register(
-                    "email",
-                    {
-                      required:
-                        "Email is required",
-                    }
-                  )}
+                  className="w-full rounded-xl h-10"
+                  {...register("email", { required: "Email is required" })}
                 />
-
-                {errors.email && (
-                  <FieldError>
-                    {
-                      errors.email
-                        .message
-                    }
-                  </FieldError>
-                )}
-
+                {errors.email && <FieldError className="text-xs text-red-500">{errors.email.message}</FieldError>}
               </Field>
 
-              {/* PASSWORD */}
-
-              <Field>
-
-                <div className="flex items-center">
-
-                  <FieldLabel htmlFor="password">
-                    Password
-                  </FieldLabel>
-
-                  <a
-                    href="#"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
+              <Field className="flex flex-col gap-1.5 w-full">
+                <div className="flex items-center justify-between w-full">
+                  <FieldLabel htmlFor="password" className="text-sm font-medium">Password</FieldLabel>
+                  <a href="#" className="text-xs text-primary underline-offset-4 hover:underline transition-colors">
                     Forgot your password?
                   </a>
-
                 </div>
-
                 <Input
                   id="password"
                   type="password"
-                  {...register(
-                    "password",
-                    {
-                      required:
-                        "Password is required",
-                    }
-                  )}
+                  className="w-full rounded-xl h-10"
+                  {...register("password", { required: "Password is required" })}
                 />
-
-                {errors.password && (
-                  <FieldError>
-                    {
-                      errors.password
-                        .message
-                    }
-                  </FieldError>
-                )}
-
+                {errors.password && <FieldError className="text-xs text-red-500">{errors.password.message}</FieldError>}
               </Field>
 
-              {/* SERVER ERROR */}
-
               {serverError && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm font-medium text-red-500 bg-red-50/50 p-2.5 rounded-xl border border-red-100 text-center animate-in fade-in-50 duration-200">
                   {serverError}
                 </p>
               )}
 
-              {/* SUBMIT */}
-
-              <Field>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full"
-                >
-                  {isSubmitting
-                    ? "Logging in..."
-                    : "Login"}
+              <Field className="pt-2 w-full">
+                <Button type="submit" disabled={isSubmitting} className="w-full rounded-xl h-10 font-medium transition-all">
+                  {isSubmitting ? "Logging in..." : "Login"}
                 </Button>
-
               </Field>
-
             </FieldGroup>
-
           </form>
-
         </CardContent>
-
       </Card>
     </div>
   );

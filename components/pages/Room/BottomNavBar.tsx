@@ -13,6 +13,7 @@ import { usePreventExit } from "@/hooks/usePreventExit";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import CreateSmartSceneDrawer from "./CreateSmartSceneDrawer";
 
+
 type NavItem = {
     label: string;
     icon: any;
@@ -91,7 +92,7 @@ export default function BottomNavBar({ deviceId, }: { deviceId: any; }) {
 }
 
 function BottomDrawer({ type, roomId }: { type: string | null; roomId: string }) {
-    if (type === "smart") return <SmartSceneUI roomId={roomId} />;
+    if (type === "smart") return <CreateSmartSceneDrawer roomId={roomId} />;
     if (type === "timer") return <TimerUI roomId={roomId} />;
     return null;
 }
@@ -165,8 +166,9 @@ function SmartSceneUI({ roomId }: { roomId: string }) {
                     title: "Kịch bản thông minh",
                     component: CreateSmartSceneDrawer,
                     renderRightButtonHeader: <></>,
-                    direction: "right",
-                    className: "h-[100dvh] w-screen max-h-screen !mt-0 bg-background rounded-none"
+                    direction: 'bottom', 
+                    className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
+                    props: { roomId }
                 })}>
                 <HugeiconsIcon icon={AddCircleIcon} />
                 Thêm kịch bản
