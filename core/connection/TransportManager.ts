@@ -1,172 +1,291 @@
+import { ConnectionStatus } from "./connections";
+import { MqttConfig } from "./mqtt/MqttTransport";
+import { TransportConfigMap, TransportType } from "./TransportConfigMap";
 import { createConnection } from "./TransportConnections";
 import { TransportMessage, TransportsInterface } from "./TransportsInterface";
-import { MqttTransportInterface } from "./mqtt/MqttTransportInterface";
-import { ConnectionType } from "./connections";
+
+export interface BleConfig {
+    deviceId: string; // Tương đương MAC ADDRESS
+}
+
+export interface Rs485Config {
+    portName: string;
+    baudRate: number;
+    dataBits: number;
+    parity: "None" | "Odd" | "Even" | "Mark" | "Space";
+    stopBits: 1 | 1.5 | 2;
+    nodeId?: number;
+}
 
 class TransportManager {
-    private connection: TransportsInterface | null = null;
-    private type: ConnectionType | null = null;
+    // Quản lý danh sách các Driver Transport
+    private transports = new Map<TransportType, TransportsInterface>();
+    private configs = new Map<TransportType, any>();
 
-    private STORAGE_KEY = "myluvskadii";
+    // Trạng thái kết nối riêng biệt cho từng cổng mạng
+    private connectionStatuses = new Map<TransportType, ConnectionStatus>();
 
-    // =========================
-    // CREATE / SET CONNECTION
-    // =========================
-    public init(type: ConnectionType) {
-        this.connection = createConnection(type);
-        this.type = type;
-        return this.connection;
-    }
-    // =========================
-    // AUTO CONNECT
-    // =========================
-    async autoConnect() {
-        if (typeof window === "undefined") return;
-        const raw = localStorage.getItem(this.STORAGE_KEY);
-        if (!raw) return;
+    private STORAGE_KEY = "vdtas_hybrid_config";
+    private lastUpdatedMap = new Map<string, number>();
 
-        const { type, config } = JSON.parse(raw);
-        this.connection = createConnection(type);
-        this.type = type;
+    // Callbacks cho UI lắng nghe
+    private globalReceiveCallback: ((msg: any) => void) | null = null;
+    private statusCallback: ((status: Map<TransportType, ConnectionStatus>) => void) | null = null;
 
-        if (!config?.device) {
-            console.warn("No BLE device to autoConnect");
-            return null;
-        }
+    private lastSeenMap = new Map<string, number>();
+    private heartbeatTimeout = 15000;
+    private deadmanTimerId: NodeJS.Timeout | null = null;
 
-        try {
+    constructor() {
+        // Khởi tạo sẵn cả 2 driver phần cứng mạng
+        const availableProtocols: TransportType[] = ["MQTT", "Bluetooth"];
 
-            localStorage.setItem(
-                this.STORAGE_KEY,
-                JSON.stringify({ type: this.type, config })
-            );
-            console.log(config)
-            await this.connection.autoConnect(config);
-            await this.connection.restore?.(config);
-
-            return await this.connection.autoConnect(config);;
-
-        } catch (err) {
-            console.error("AutoConnect failed:", err);
-            return null;
+        for (const protocol of availableProtocols) {
+            const transportInstance = createConnection(protocol as any);
+            if (transportInstance) {
+                this.transports.set(protocol, transportInstance);
+                this.connectionStatuses.set(protocol, "idle");
+            }
         }
     }
 
-    // =========================
-    // CONNECT
-    // =========================
-    async connect(config: any) {
-        if (this.connection?.isConnected()) return;
+    private startHeartbeatMonitor() {
+        if (this.deadmanTimerId) clearInterval(this.deadmanTimerId);
 
-        const conn = this.connection;
-        if (!conn) throw new Error("No Connection Selected");
+        this.deadmanTimerId = setInterval(() => {
+            const now = Date.now();
+            for (const [entityId, lastSeenTime] of this.lastSeenMap.entries()) {
+                if (now - lastSeenTime > this.heartbeatTimeout) {
+                    this.lastSeenMap.delete(entityId);
+                    const [type, id] = entityId.split("_");
 
-        // Connect first, get the actual device back
-        const connectedDevice = await conn.connect(config);
-        await conn.restore?.(config);
+                    const offlineData: any = {
+                        id: id,
+                        type: type as "ROOM" | "DEVICE",
+                        isOnline: false,
+                        timestamp: now,
+                    };
 
-        if (typeof window !== "undefined") {
-            const raw = localStorage.getItem(this.STORAGE_KEY);
-            const existing = raw ? JSON.parse(raw) : { type: this.type, config: {} };
-
-            const savedDevices: any[] = Array.isArray(existing.config?.device)
-                ? existing.config.device
-                : existing.config?.device
-                    ? [existing.config.device]
-                    : [];
-
-            // Use the actual connected device returned from connect()
-            const deviceToSave = connectedDevice ?? config.device;
-
-            if (deviceToSave) {
-                const alreadySaved = savedDevices.some(
-                    (d: any) =>
-                        d.address === deviceToSave.address ||
-                        d.name === deviceToSave.name
-                );
-
-                if (!alreadySaved) {
-                    savedDevices.push(deviceToSave);
-                } else {
-                    // Update existing entry with latest data
-                    const idx = savedDevices.findIndex(
-                        (d: any) => d.address === deviceToSave.address
-                    );
-                    if (idx !== -1) savedDevices[idx] = deviceToSave;
+                    if (this.globalReceiveCallback) {
+                        this.globalReceiveCallback(offlineData);
+                    }
                 }
             }
-
-            localStorage.setItem(
-                this.STORAGE_KEY,
-                JSON.stringify({
-                    type: this.type,
-                    config: {
-                        ...config,
-                        device: savedDevices,
-                    },
-                })
-            );
-        }
-    }
-    // =========================
-    // SCAN (BLE only safe call)
-    // =========================
-    async scan() {
-        return this.connection?.scan?.();
+        }, 5000);
     }
 
-    // =========================
-    // DISCONNECT
-    // =========================
-    async disconnect() {
-        await this.connection?.disconnect();
-    }
+    // ==========================================
+    // 1. KẾT NỐI SONG SONG TẤT CẢ CÁC CỔNG MẠNG
+    // ==========================================
+    public async connectDual(configs: Partial<TransportConfigMap>) {
+        this.startHeartbeatMonitor();
 
-    // =========================
-    // SEND
-    // =========================
-    async send(data: any, channel: string) {
-        if (!this.connection) throw new Error("No active connection");
+        // Lưu trữ và cache cấu hình
+        Object.entries(configs).forEach(([key, cfg]) => {
+            this.configs.set(key as TransportType, cfg);
+        });
 
-        return this.connection.send({
-            channel,
-            payload: data,
+        // if (typeof window !== "undefined") {
+        //     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+        // }
+
+        // Đăng ký nhận tin & xử lý tái kết nối tự động cho từng cổng độc lập
+        this.transports.forEach((transport, type) => {
+            const config = configs[type];
+            if (!config) return;
+
+            // Đăng ký luồng dữ liệu nhận vào (Cả 2 cổng đều đẩy về một cổng xử lý tập trung)
+            transport.onReceive((msg) => this.handleIncomingRawData(msg, type));
+
+            // Xử lý khi có lỗi xảy ra trên luồng mạng: kích hoạt cơ chế tự động reconnect định kỳ
+            transport.onError?.(async (err) => {
+                console.warn(`[Transport Manager]: Cổng [${type}] bị mất kết nối:`, err);
+                this.updateStatus(type, "error");
+                this.startSingleReconnectionLoop(type);
+            });
+
+            // Tiến hành kích hoạt kết nối song song (Không chặn block nhau)
+            this.connectSingleTransport(type, config);
         });
     }
 
-    // =========================
-    // MQTT SUBSCRIBE SAFE
-    // =========================
-    subscribe(topic: string) {
-        const conn = this.connection as MqttTransportInterface;
+    // Hàm thực hiện kết nối độc lập cho một transport cụ thể
+    private async connectSingleTransport(type: TransportType, config: any) {
+        const transport = this.transports.get(type);
+        if (!transport) return;
 
-        if (conn?.subscribe) {
-            conn.subscribe(topic);
-        } else {
-            console.warn("Current transport does not support subscribe");
+        try {
+            this.updateStatus(type, "connecting");
+            console.log(`[Transport Manager]: Đang kết nối tới cổng [${type}]...`);
+            await transport.connect(config);
+
+            this.updateStatus(type, "connected");
+            console.log(`[Transport Manager]: Cổng [${type}] đã thông suốt và sẵn sàng.`);
+        } catch (error) {
+            console.error(`[Transport Manager]: Không thể kết nối tới cổng [${type}]:`, error);
+            this.updateStatus(type, "error");
+            // Kích hoạt vòng lặp tự động kết nối lại nếu lần đầu thất bại
+            this.startSingleReconnectionLoop(type);
         }
     }
 
-    // =========================
-    // EVENTS
-    // =========================
-    onReceive(callback: (data: TransportMessage) => void) {
-        this.connection?.onReceive(callback);
+    // Vòng lặp ngầm tự động tìm kiếm kết nối lại cho riêng từng cổng khi sập mạng
+    private startSingleReconnectionLoop(type: TransportType) {
+        const transport = this.transports.get(type);
+        const config = this.configs.get(type);
+
+        if (!transport || !config) return;
+
+        // Cơ chế Exponential Backoff hoặc cố định khoảng thời gian (ở đây để tạm 10s)
+        const intervalId = setInterval(async () => {
+            if (transport.isConnected()) {
+                this.updateStatus(type, "connected");
+                clearInterval(intervalId);
+                return;
+            }
+
+            try {
+                console.log(`[Reconnector]: Thử kết nối lại cổng [${type}]...`);
+                await transport.connect(config);
+                if (transport.isConnected()) {
+                    this.updateStatus(type, "connected");
+                    console.log(`[Reconnector]: Khôi phục cổng [${type}] thành công.`);
+                    clearInterval(intervalId);
+                }
+            } catch {
+                // Tiếp tục duy trì vòng lặp nếu chưa kết nối lại được
+            }
+        }, 10000);
     }
 
-    // =========================
-    // GETTERS
-    // =========================
-    getConnection() {
-        return this.connection;
+    // ==========================================
+    // 3. ĐỒNG BỘ DỮ LIỆU & BỘ LỌC CHỐNG TRÙNG TIN
+    // ==========================================
+    private handleIncomingRawData(msg: any, source: TransportType) {
+        // Vì nhận song song từ cả MQTT và BLE, gói tin trùng lặp gửi về là bình thường.
+        // Hệ thống sẽ dựa vào `lastUpdatedMap` (timestamp) bên dưới để loại bỏ tin cũ / tin trùng.
+
+        const topic = msg.channel || "/";
+        const rawPayload = typeof msg.payload === "string" ? msg.payload.trim() : "";
+
+        if (rawPayload !== "ping" && rawPayload !== "online") {
+            // Nếu là dữ liệu điều khiển thông thường, vẫn cho qua hoặc xử lý theo nhu cầu của bạn
+            if (this.globalReceiveCallback) this.globalReceiveCallback(msg);
+            return;
+        }
+
+        const topicParts = topic.split("/");
+        if (topicParts.length < 3) return;
+
+        const entityType = topicParts[0].toUpperCase() as "ROOM" | "DEVICE";
+        const entityId = topicParts[1];
+
+        const uniqueEntityId = `${entityType}_${entityId}`;
+        const currentTimestamp = Date.now();
+
+        // Chống lặp tin nhận trùng lặp từ cả 2 kênh bằng Timestamp vật lý
+        const lastUpdated = this.lastUpdatedMap.get(uniqueEntityId) || 0;
+        if (currentTimestamp <= lastUpdated) return;
+
+        this.lastUpdatedMap.set(uniqueEntityId, currentTimestamp);
+        this.lastSeenMap.set(uniqueEntityId, currentTimestamp);
+
+        if (this.globalReceiveCallback) {
+            this.globalReceiveCallback(msg);
+        }
     }
 
-    getType() {
-        return this.type;
+    // ==========================================
+    // 4. API TƯƠNG TÁC RA FRONTEND UI
+    // ==========================================
+    public onNormalizedReceive(callback: (data: any) => void) {
+        this.globalReceiveCallback = callback;
     }
 
-    isConnected() {
-        return this.connection?.isConnected();
+    // Thay đổi cấu trúc trả về map trạng thái cho UI để hiển thị chi tiết icon MQTT hay BLE đang On/Off
+    public onStatusChange(callback: (statusMap: Map<TransportType, ConnectionStatus>) => void) {
+        this.statusCallback = callback;
+    }
+
+    private updateStatus(type: TransportType, status: ConnectionStatus) {
+        this.connectionStatuses.set(type, status);
+        if (this.statusCallback) this.statusCallback(new Map(this.connectionStatuses));
+    }
+
+    /**
+     * Gửi dữ liệu ra thiết bị
+     * Bạn có thể tùy biến chiến lược gửi:
+     * - Chiến lược 1: Gửi qua cổng Bluetooth trước nếu online (Tốc độ phản hồi cục bộ nhanh), nếu sập thì gửi qua MQTT.
+     * - Chiến lược 2: Broadcast (Gửi đồng thời trên cả 2 kênh đang online).
+     */
+    public async send(data: any, channel: string, strategy: "smart" | "broadcast" = "smart") {
+        const mqtt = this.transports.get("MQTT");
+        const ble = this.transports.get("Bluetooth");
+
+        const isBleConnected = ble?.isConnected() ?? false;
+        const isMqttConnected = mqtt?.isConnected() ?? false;
+
+        if (!isBleConnected && !isMqttConnected) {
+            throw new Error(`[Hybrid Engine]: Toàn bộ các kênh mạng (MQTT, BLE) đều đang ngoại tuyến.`);
+        }
+
+        const payload = { channel, payload: data };
+        console.log(payload)
+        if (strategy === "broadcast") {
+            // Gửi đồng thời lên cả 2 kênh
+            const promises: Promise<any>[] = [];
+            if (isBleConnected) promises.push(ble!.send(payload));
+            if (isMqttConnected) promises.push(mqtt!.send(payload));
+            return Promise.all(promises);
+        } else {
+            // Chiến lược thông minh: Ưu tiên BLE (Cục bộ không delay), fallback sang MQTT
+            if (isBleConnected) {
+                return ble!.send(payload);
+            }
+            return mqtt!.send(payload);
+        }
+    }
+
+    public subscribe(topic: string) {
+        // Đăng ký subscribe topic trên tất cả các kênh đang chạy để đón đầu dữ liệu
+        this.transports.forEach((transport) => {
+            if (transport.isConnected()) {
+                transport.subscribe(topic);
+            }
+        });
+    }
+
+    public async disconnect() {
+        if (this.deadmanTimerId) {
+            clearInterval(this.deadmanTimerId);
+            this.deadmanTimerId = null;
+        }
+        this.lastSeenMap.clear();
+
+        this.transports.forEach((_, type) => this.updateStatus(type, "disconnected"));
+
+        const disconnectPromises: Promise<void>[] = [];
+        this.transports.forEach((transport) => {
+            disconnectPromises.push(transport.disconnect());
+        });
+        await Promise.all(disconnectPromises);
+    }
+
+    // Các hàm kiểm tra trạng thái
+    public getStatuses(): Map<TransportType, ConnectionStatus> { return this.connectionStatuses; }
+
+    public isConnected(type?: TransportType): boolean {
+        if (type) {
+            return this.transports.get(type)?.isConnected() ?? false;
+        }
+        // Trả về true nếu ít nhất một trong các cổng mạng thông suốt
+        return Array.from(this.transports.values()).some(t => t.isConnected());
+    }
+
+    public async scan(targetTransport: TransportType = "Bluetooth"): Promise<any[]> {
+        const transport = this.transports.get(targetTransport);
+        if (!transport) return [];
+        return transport.scan?.() ?? [];
     }
 }
 

@@ -18,7 +18,10 @@ export class RS458Transports implements TransportsInterface {
         const ports = await scanCOM();
         return ports;
     }
-
+    async subscribe(topic: string, qos: number = 0): Promise<void> {
+        // RS485 đọc ghi trực tiếp qua Bus, không có khái niệm Broker Subscribe
+        console.warn("RS485 does not support native Pub/Sub subscribe operation.");
+    }
     async autoConnect(): Promise<void> {
 
     }

@@ -20,7 +20,8 @@
     "sql:allow-load",
     "sql:allow-execute",
     "sql:allow-select",
-    "sql:allow-close"
+    "sql:allow-close",
+    "mqtt:default"
   ],
   "platforms": [
     "android",

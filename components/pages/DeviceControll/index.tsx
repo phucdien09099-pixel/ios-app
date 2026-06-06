@@ -7,7 +7,7 @@ import TVsController from "./TVsController";
 import LightsController from "./LightsController";
 
 
-export default function DeviceControll({ device }: { device: Device }) {
+export default function DeviceControll({ device, roomName }: { roomName: string, device: Device }) {
     switch (device.type) {
         case "TV":
             return <TVsController data={device} />;
@@ -18,6 +18,6 @@ export default function DeviceControll({ device }: { device: Device }) {
         case "LIGHT":
             return <LightsController data={device} />;
         default:
-            return <ACsController data={device} />;
+            return <ACsController data={device} roomName={roomName} />;
     }
 }

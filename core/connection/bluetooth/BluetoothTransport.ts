@@ -5,10 +5,11 @@ import {
 } from "../TransportsInterface";
 import { BleDevice } from "@mnlphlp/plugin-blec";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export class BluetoothTransport implements TransportsInterface<{
     device: any;
     txCharacteristic: string;
-    rxCharacteristic: string;
     serviceUUID?: string;
 }, string | Uint8Array> {
     private connected = false;
@@ -18,19 +19,16 @@ export class BluetoothTransport implements TransportsInterface<{
     ) => void;
 
     private onErrorCallback?: (err: Error) => void;
+    private connectedDevices = new Set<string>();
 
-    private txCharacteristic = "";
-    private rxCharacteristic = "";
+    // Chỉ sử dụng duy nhất 1 Characteristic cho cả 2 chiều Gửi và Nhận
+    private txCharacteristic = process.env.NEXT_PUBLIC_CHAR_UUID_TX || "";
 
     private buffer: string = "";
 
     async scan(): Promise<any[]> {
         return new Promise(async (resolve) => {
-            const deviceMap = new Map<
-                string,
-                BleDevice
-            >();
-
+            const deviceMap = new Map<string, BleDevice>();
             const timeout = 5000;
 
             await bleService.startScan((devices) => {
@@ -41,9 +39,7 @@ export class BluetoothTransport implements TransportsInterface<{
 
             setTimeout(async () => {
                 await bleService.stopScan();
-                resolve(
-                    Array.from(deviceMap.values())
-                );
+                resolve(Array.from(deviceMap.values()));
             }, timeout);
         });
     }
@@ -55,16 +51,17 @@ export class BluetoothTransport implements TransportsInterface<{
             await bleService.connect(config.address, () => {
                 this.connected = false;
             }, true);
-
+            this.connected = true;
         } catch (e) {
             console.warn("BLE restore failed:", e);
+            this.connected = false;
         }
     }
+
     async autoConnect(
         config?: {
             device: BleDevice;
             txCharacteristic: string;
-            rxCharacteristic: string;
             serviceUUID?: string;
         }
     ): Promise<any> {
@@ -74,140 +71,139 @@ export class BluetoothTransport implements TransportsInterface<{
 
         try {
             const deviceMap = new Map<string, BleDevice>();
-
             const timeout = 5000;
 
-            // start scan
             await bleService.startScan((devices) => {
                 for (const d of devices) {
                     if (!d?.address) continue;
-
                     deviceMap.set(d.address, d);
                 }
             }, timeout);
 
-            // wait scan finish
-            await new Promise((resolve) =>
-                setTimeout(resolve, timeout)
-            );
-
+            await new Promise((resolve) => setTimeout(resolve, timeout));
             await bleService.stopScan();
 
-            const recognizeName =
-                config.device.name?.toLowerCase() ?? "";
+            const recognizeName = config.device.name?.toLowerCase() ?? "";
+            const recognizeAddress = config.device.address?.toLowerCase() ?? "";
 
-            const recognizeAddress =
-                config.device.address?.toLowerCase() ?? "";
-
-            // find matched device
             const found = Array.from(deviceMap.values()).find((d) => {
                 const name = d.name?.toLowerCase() ?? "";
                 const address = d.address?.toLowerCase() ?? "";
-
-                // console.log("Recognize:", recognizeName);
-                // console.log("Scan Name:", name);
-
-                return (
-                    name.includes(recognizeName) ||
-                    address === recognizeAddress
-                );
+                return name.includes(recognizeName) || address === recognizeAddress;
             });
 
             if (!found) {
-                throw new Error(
-                    `Device "${config.device.name}" not found`
-                );
+                throw new Error(`Device "${config.device.name}" not found`);
             }
 
-            // console.log("Auto connect device:", found);
+            if (found.rssi < -80) return;
 
-            // weak signal
-            if (found.rssi < -80) {
-                // console.warn(
-                //     `RSSI too weak: ${found.rssi}`
-                // );
-                return;
-            }
-
-            // reconnect
             return await this.connect({
                 ...config,
-                device: found,
-            });;
+                deviceId: found.address,
+            });
 
         } catch (err: any) {
             this.onErrorCallback?.(err);
             throw err;
         }
     }
-    async connect(config?: {
-        device: BleDevice;
-        txCharacteristic: string;
-        rxCharacteristic: string;
-        serviceUUID?: string;
-    }): Promise<any> {
+
+    async connect(config: any): Promise<any> {
         try {
-            if (!config) {
-                throw new Error(
-                    "Missing BLE config"
-                );
+            console.log("[BLE Transport Config]:", config);
+            if (!config || (!config.deviceId && !config.devices)) {
+                throw new Error("Missing BLE config: 'deviceId' or 'devices' array is required.");
             }
-            // console.log(config)
 
-            this.txCharacteristic = config.txCharacteristic;
-            this.rxCharacteristic = config.rxCharacteristic;
+            // Đồng bộ gán khóa đặc tính duy nhất
+            this.txCharacteristic = config.txCharacteristic || process.env.NEXT_PUBLIC_CHAR_UUID_TX!;
 
-            // set service if provided
-            if (config.serviceUUID) {
-                bleService.setService(config.serviceUUID);
+            if (config.serviceUUID || process.env.NEXT_PUBLIC_SERVICE_UUID) {
+                bleService.setService(config.serviceUUID || process.env.NEXT_PUBLIC_SERVICE_UUID!);
             }
-            if (this.connected) bleService.disconnect();
 
-            await bleService.connect(config.device, () => {
-                this.connected = false;
-            }, true);
-            // console.log(this.connected)
+            const targetDevices: any[] = config.devices
+                ? config.devices
+                : [{ deviceId: config.deviceId }];
 
-            this.connected = true;
+            const connectionPromises = targetDevices.map(async (device) => {
+                const id = device.deviceId;
+                if (!id) return;
 
-            // subscribe RX (from ESP32 → client)
-            await bleService.subscribeString(
-                this.txCharacteristic,
-                (data: string) => {
-                    this.handleIncoming(data);
+                try {
+                    console.log(`[BLE Transport]: Kết nối tới thiết bị: ${id}`);
+
+                    await bleService.connect(id, () => {
+                        console.warn(`[BLE Transport]: Thiết bị ${id} ngắt kết nối.`);
+                        this.connectedDevices.delete(id);
+                        if (this.connectedDevices.size === 0) {
+                            this.connected = false;
+                        }
+                        this.onErrorCallback?.(new Error(`Device ${id} disconnected.`));
+                    }, true);
+
+                    // Khắc phục lỗi HRESULT 0x80000013 bằng cách chờ Driver OS ổn định
+                    await sleep(300);
+
+                    this.connectedDevices.add(id);
+                    this.connected = true;
+
+                    try {
+                        await bleService.unsubscribe(this.txCharacteristic).catch(() => { });
+                    } catch { }
+
+                    console.log(`[BLE Transport]: Lắng nghe tin báo về trên cổng: ${this.txCharacteristic}`);
+
+                    // Đăng ký nhận tin nhắn Notify đổ về từ chính cổng này
+                    await bleService.subscribeString(
+                        this.txCharacteristic,
+                        (data: string) => {
+                            this.handleIncoming(data);
+                        }
+                    );
+
+                } catch (deviceErr: any) {
+                    console.error(`[BLE Transport]: Lỗi kết nối thiết bị [${id}]:`, deviceErr);
+                    this.connectedDevices.delete(id);
+                    if (this.connectedDevices.size === 0) {
+                        this.connected = false;
+                    }
+                    await bleService.disconnect().catch(() => { });
                 }
-            );
-            // console.log(config.device)
-            return config.device;
+            });
+
+            await Promise.all(connectionPromises);
+            return config.devices || config.device;
         } catch (err: any) {
+            this.connected = false;
             this.onErrorCallback?.(err);
             throw err;
         }
     }
 
-    // =========================
-    // DISCONNECT
-    // =========================
     async disconnect(): Promise<void> {
-        await bleService.disconnect();
-        this.connected = false;
+        try {
+            await bleService.unsubscribe(this.txCharacteristic).catch(() => { });
+            await bleService.disconnect();
+        } catch (e) {
+            console.error("[BLE Transport]: Lỗi khi hủy kết nối:", e);
+        } finally {
+            this.connectedDevices.clear();
+            this.connected = false;
+        }
     }
 
-    // =========================
-    // STATUS
-    // =========================
     isConnected(): boolean {
         return this.connected;
     }
 
-    // =========================
-    // SEND (MQTT style)
-    // =========================
+    // =========================================================
+    // SEND (Đã chuyển sang bắn thẳng dữ liệu lệnh vào txCharacteristic)
+    // =========================================================
     async send(message: TransportMessage): Promise<any> {
         if (!this.connected) {
-            throw new Error(
-                "BLE not connected"
-            );
+            throw new Error("BLE not connected");
         }
 
         const topic = message.channel || "";
@@ -217,6 +213,8 @@ export class BluetoothTransport implements TransportsInterface<{
                 : JSON.stringify(message.payload);
 
         const packet = `${topic}|${payload}`;
+
+        // Khi dùng chung 1 kênh, Client ghi (Write) trực tiếp vào txCharacteristic
         await bleService.sendString(
             this.txCharacteristic,
             packet,
@@ -224,29 +222,18 @@ export class BluetoothTransport implements TransportsInterface<{
         );
     }
 
-    // =========================
-    // RECEIVE HANDLER
-    // =========================
     private handleIncoming(data: string) {
         try {
-            // support fragmented BLE packets
             this.buffer = data;
-            console.log(this.buffer)
-            // assume full message per line
-            const parsed = this.parseMessage(this.buffer)
-            console.log(parsed)
+            const parsed = this.parseMessage(this.buffer);
+            console.log("[BLE Transport Parsed]:", parsed);
 
-            this.onReceiveCallback?.(
-                parsed
-            );
+            this.onReceiveCallback?.(parsed);
         } catch (err: any) {
             this.onErrorCallback?.(err);
         }
     }
 
-    // =========================
-    // PARSE topic|payload
-    // =========================
     private parseMessage(raw: string): TransportMessage {
         const sep = raw.indexOf("|");
         if (sep === -1) return {} as TransportMessage;
@@ -256,30 +243,22 @@ export class BluetoothTransport implements TransportsInterface<{
 
         let payload: any = payloadRaw;
 
-        // try parse JSON
         try {
             payload = JSON.parse(payloadRaw);
-        } catch {
-            // keep string
-        }
+        } catch { }
         return {
             channel,
             payload,
         };
     }
 
-    // =========================
-    // CALLBACKS
-    // =========================
-    onReceive(
-        cb: (msg: TransportMessage) => void
-    ): void {
+    async subscribe(topic: string, qos: number = 0) { }
+
+    onReceive(cb: (msg: TransportMessage) => void): void {
         this.onReceiveCallback = cb;
     }
 
-    onError(
-        callback: (err: Error) => void
-    ): void {
+    onError(callback: (err: Error) => void): void {
         this.onErrorCallback = callback;
     }
 }

@@ -8,162 +8,143 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ChevronDown, ChevronUp, PowerIcon } from "@hugeicons/core-free-icons";
 import { Device } from "../Room/DeviceCard";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
+import { deviceRepo } from "@/db/repository/DeviceRepository";
 
 const MODES = [
-    {
-        key: "COOL",
-        label: "Cool",
-        // icon: Snowflake,
-    },
-    {
-        key: "DRY",
-        label: "Dry",
-        // icon: Droplets,
-    },
-    {
-        key: "FAN",
-        label: "Fan",
-        // icon: Wind,
-    },
+    { key: "COOL", label: "Cool" },
+    { key: "DRY", label: "Dry" },
+    { key: "FAN", label: "Fan" },
 ] as const;
 
-export default function ACsController({ data }: { data: Device }) {
+export default function ACsController({ data, roomName }: { roomName: string, data: Device }) {
     const [power, setPower] = useState(true);
     const [temperature, setTemperature] = useState(24);
-    const [fanSpeed, setFanSpeed] = useState(2);
+    const [fanSpeed, setFanSpeed] = useState(0); // Mặc định về 0 để khớp với firmware mẫu
     const [mode, setMode] = useState<"COOL" | "DRY" | "FAN">("COOL");
 
-    const { send } = useTransport(); // Khởi tạo hook
+    const topic = deviceRepo.getMqttTopic(data.id);
+    const { send } = useTransport();
 
-    const sendCommand = async (action: Record<string, any>) => {
+    // Ánh xạ chuỗi Mode sang dạng số nguyên (int) khớp với firmware ESP32 (Cool=1, Dry=2, Fan/Auto=0)
+    const getModeNumber = (currentMode: "COOL" | "DRY" | "FAN") => {
+        if (currentMode === "COOL") return 1;
+        if (currentMode === "DRY") return 2;
+        return 0; // FAN / AUTO
+    };
+
+    // Hàm tạo và gửi payload chứa toàn bộ State hiện tại
+    const sendFullState = async (overrideStates?: {
+        power?: boolean;
+        temperature?: number;
+        mode?: "COOL" | "DRY" | "FAN";
+        fanSpeed?: number;
+    }) => {
+        // Sử dụng giá trị mới nhất vừa thay đổi (override) hoặc fallback về state hiện tại
+        const nextPower = overrideStates?.power !== undefined ? overrideStates.power : power;
+        const nextTemp = overrideStates?.temperature !== undefined ? overrideStates.temperature : temperature;
+        const nextMode = overrideStates?.mode !== undefined ? overrideStates.mode : mode;
+        const nextFan = overrideStates?.fanSpeed !== undefined ? overrideStates.fanSpeed : fanSpeed;
+
         const payload = {
-            type: data.type, 
-            brand: data.brand || "UNKNOWN", // Fallback nếu DB chưa có brand
-            action: action, // Chỉ chứa 1 hành động duy nhất
+            type: data.type,
+            ir_devices: data.name,
+            brand: data.brand || "UNKNOWN",
+            action: {
+                power: nextPower ? "ON" : "OFF",
+                temp: nextTemp,
+                mode: getModeNumber(nextMode),
+                fan: nextFan
+            },
         };
-        console.log("Sending payload:", payload);
-        // await send(payload, "control"); // Mở comment này khi có provider chạy thật
+
+        console.log("Sending Full State Payload:", payload);
+        await send(payload, `device/${roomName}/control/set`);
     };
 
     return (
-        // <Card className="">
         <CardContent className="p-4 md:p-6">
             <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
-                    {/* HEADER */}
+                    {/* HEADER & POWER BUTTON */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-xl font-semibold">
-                                {data.name}
-                            </h1>
-
-                            <p className="text-sm text-muted-foreground">
-                                Air Conditioner
-                            </p>
+                            <h1 className="text-xl font-semibold">{data.name}</h1>
+                            <p className="text-sm text-muted-foreground">Air Conditioner</p>
                         </div>
 
                         <Button
                             size="icon"
                             className={cn(
                                 "rounded-2xl size-14",
-                                power
-                                    ? "bg-green-600 hover:bg-green-700"
-                                    : "bg-red-600 hover:bg-red-700"
+                                power ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
                             )}
-                            onClick={() => {
+                            onClick={async () => {
                                 const next = !power;
-
                                 setPower(next);
-
-                                // Đổi thành "ON" / "OFF" in hoa
-                                sendCommand({ power: next ? "ON" : "OFF" });
+                                // Truyền trạng thái power mới trực tiếp để tránh độ trễ bất đồng bộ của useState
+                                await sendFullState({ power: next });
                             }}
                         >
-                            <HugeiconsIcon
-                                icon={PowerIcon}
-                                size={26}
-                            />
+                            <HugeiconsIcon icon={PowerIcon} size={26} />
                         </Button>
                     </div>
-                    {/* TEMP */}
+
+                    {/* TEMPERATURE CONTROLLER */}
                     <div className="rounded-3xl border bg-muted/30 p-6">
-
                         <div className="flex items-center justify-between">
-
                             <Button
                                 size="icon"
                                 variant="outline"
                                 className="rounded-2xl size-14"
-                                onClick={() => {
+                                onClick={async () => {
                                     if (temperature <= 16) return;
-
                                     const next = temperature - 1;
-
                                     setTemperature(next);
-
-                                    sendCommand({ temperature: next });
+                                    await sendFullState({ temperature: next });
                                 }}
                             >
                                 <HugeiconsIcon icon={ChevronDown} />
                             </Button>
 
                             <div className="text-center">
-                                <div className="text-6xl lg:text-7xl font-bold">
-                                    {temperature}°
-                                </div>
-
-                                <div className="text-sm text-muted-foreground">
-                                    Temperature
-                                </div>
+                                <div className="text-6xl lg:text-7xl font-bold">{temperature}°</div>
+                                <div className="text-sm text-muted-foreground">Temperature</div>
                             </div>
 
                             <Button
                                 size="icon"
                                 variant="outline"
                                 className="rounded-2xl size-14"
-                                onClick={() => {
+                                onClick={async () => {
                                     if (temperature >= 30) return;
-
                                     const next = temperature + 1;
-
                                     setTemperature(next);
-
-                                    sendCommand({ temperature: next });
+                                    await sendFullState({ temperature: next });
                                 }}
                             >
                                 <HugeiconsIcon icon={ChevronUp} />
                             </Button>
-
                         </div>
-
                     </div>
                 </div>
+
                 <div className="space-y-6">
-                    {/* MODES */}
+                    {/* WORK MODES */}
                     <div className="space-y-3">
-
-                        <div className="text-sm font-medium">
-                            Mode
-                        </div>
-
+                        <div className="text-sm font-medium">Mode</div>
                         <div className="grid grid-cols-3 gap-3">
                             {MODES.map((item) => {
                                 const active = mode === item.key;
-
                                 return (
                                     <button
                                         key={item.key}
-                                        onClick={() => {
+                                        onClick={async () => {
                                             setMode(item.key);
-
-                                            // Đổi thành toUpperCase() để lấy chữ IN HOA
-                                            sendCommand({ mode: item.key.toUpperCase() });
+                                            await sendFullState({ mode: item.key });
                                         }}
                                         className={cn(
                                             "rounded-2xl border h-24 flex items-center justify-center text-sm font-medium transition",
-                                            active
-                                                ? "bg-primary text-primary-foreground border-primary"
-                                                : "hover:bg-muted"
+                                            active ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
                                         )}
                                     >
                                         {item.label}
@@ -171,58 +152,43 @@ export default function ACsController({ data }: { data: Device }) {
                                 );
                             })}
                         </div>
-
                     </div>
 
-                    {/* FAN */}
+                    {/* FAN SPEED LEVEL */}
                     <div className="space-y-3">
-
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">
-                                Fan Speed
-                            </span>
-
-                            <span className="text-xs text-muted-foreground">
-                                Level {fanSpeed}
-                            </span>
+                            <span className="text-sm font-medium">Fan Speed</span>
+                            <span className="text-xs text-muted-foreground">Level {fanSpeed}</span>
                         </div>
 
                         <div className="grid grid-cols-4 gap-3">
-                            {[1, 2, 3, 4].map((level) => (
+                            {[0, 1, 2, 3].map((level) => (
                                 <button
                                     key={level}
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setFanSpeed(level);
-
-                                        sendCommand({
-                                            type: "FAN_SPEED",
-                                            value: level,
-                                        });
+                                        await sendFullState({ fanSpeed: level });
                                     }}
                                     className={cn(
                                         "h-14 rounded-2xl border text-sm font-medium transition",
-                                        fanSpeed === level
-                                            ? "bg-primary text-primary-foreground border-primary"
-                                            : "hover:bg-muted"
+                                        fanSpeed === level ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
                                     )}
                                 >
-                                    {level}
+                                    {level === 0 ? "Auto" : level}
                                 </button>
                             ))}
                         </div>
-
                     </div>
 
-                    {/* QUICK ACTION */}
+                    {/* QUICK INTERACTIONS */}
                     <div className="grid grid-cols-2 gap-3">
-
                         <Button
                             variant="outline"
                             className="h-14 rounded-2xl"
-                            onClick={() => {
-                                sendCommand({
-                                    type: "SWING",
-                                });
+                            onClick={async () => {
+                                // Gửi lệnh kèm trigger phụ nếu cần thiết, hoặc giữ nguyên full state cũ
+                                await sendFullState();
+                                console.log("Triggered Swing command with current state context");
                             }}
                         >
                             Swing
@@ -231,20 +197,15 @@ export default function ACsController({ data }: { data: Device }) {
                         <Button
                             variant="outline"
                             className="h-14 rounded-2xl"
-                            onClick={() => {
-                                sendCommand({
-                                    type: "TIMER",
-                                });
+                            onClick={async () => {
+                                await sendFullState();
                             }}
                         >
                             Timer
                         </Button>
-
                     </div>
-
                 </div>
             </div>
         </CardContent>
-        // </Card>
     );
 }

@@ -15,7 +15,7 @@ export type BLEScanStateCallback = (
 ) => void;
 
 export class BLEService {
-    private connectedDevice: BleDevice | null = null;
+    private connectedDevice: boolean = false;
 
     private currentService?: string;
 
@@ -73,15 +73,19 @@ export class BLEService {
     // Connection
     // =========================
 
-    async connect(device: BleDevice, onDisconnect?: () => void, allowIbeacons = false) {
-        await connect(device.address, onDisconnect || null, allowIbeacons);
-        this.connectedDevice = device;
+    async connect(address: string, onDisconnect?: () => void, allowIbeacons = false) {
+        try {
+            await connect(address, onDisconnect || null, allowIbeacons);
+            this.connectedDevice = true;
+        } catch (error) {
+            this.connectedDevice = false;
+        }
     }
 
     async disconnect() {
         await disconnect();
 
-        this.connectedDevice = null;
+        this.connectedDevice = false;
     }
 
     async onConnectionUpdates(
@@ -104,17 +108,17 @@ export class BLEService {
     // Services
     // =========================
 
-    async listServices() {
-        if (!this.connectedDevice) {
-            throw new Error(
-                "No connected device"
-            );
-        }
+    // async listServices() {
+    //     if (!this.connectedDevice) {
+    //         throw new Error(
+    //             "No connected device"
+    //         );
+    //     }
 
-        return (await listServices(
-            this.connectedDevice.address
-        )) as BleService[];
-    }
+    //     return (await listServices(
+    //         this.connectedDevice.address
+    //     )) as BleService[];
+    // }
 
     setService(serviceUUID: string) {
         this.currentService = serviceUUID;

@@ -68,5 +68,48 @@ ESP
 
 
 
+===============================
+BLE
+trạng thái phòng -> quét ble cùng tên với phòng thì ONLINE
+trạng thái thiết bị -> nếu là loại thiết bị iot thông minh -> quét ble trong phạm vi thì ONLINE
+                    -> nếu là loại thiết bị dân dụng trong nhà -> !không hiện
+
+INTERNET
+trạng thái phòng -> mqtt gửi thông tin của HUB
+trạng thái thiết bị -> nếu là loại thiết bị iot thông minh -> subcribe status thiết bị
+                    -> nếu là loại thiết bị dân dụng trong nhà -> !không hiện
 
 
+=============================
+device/{device name(room)}/{serial device}/status
+device/{device name(room)}/{serial device}/controll
+device/{device name(room)}/{serial device}/init
+device/{device name(room)}/{serial device}/???/mode
+device/{device name(room)}/{serial device}/???/config
+device/{device name(room)}/{serial device}/heartbeat
+
+
+================================
+BLE
+- MAC ADDRESS
+MQTT
+- USER
+- PASS
+- CLIENT_ID
+- URL
+RS485
+- Địa chỉ node
+- port_name
+- baud_rate
+- data_bits
+- parity: "None" | "Odd" | "Even" | "Mark" | "Space";
+- stop_bits: 1 | 1.5 | 2;
+
+
+=> connect(var1,var2,...);
+
+=======================================
+Thêm Room =  Pair Device Hub + Add Room
+Thêm Device
+    + Device Thông thường(IR) không add được serial, phụ thuộc vào tên phòng và serial của hub
+    + Device IOT có serial riêng và điều khiển phụ thuộc vào tên phòng và serial của riêng thiết bị đó
