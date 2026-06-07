@@ -5,6 +5,7 @@ import SmartSchedule from "./SmartSchedule";
 import { SmartSwitchController } from "./SmartSwitchController";
 import TVsController from "./TVsController";
 import LightsController from "./LightsController";
+import LearningRemoteController from "./LearningRemoteController";
 
 
 export default function DeviceControll({ device, roomName }: { roomName: string, device: Device }) {
@@ -17,6 +18,8 @@ export default function DeviceControll({ device, roomName }: { roomName: string,
             return <SmartSchedule />;
         case "LIGHT":
             return <LightsController data={device} />;
+        case "LEARNING_REMOTE":
+            return <LearningRemoteController data={device} roomName={roomName} />;
         default:
             return <ACsController data={device} roomName={roomName} />;
     }

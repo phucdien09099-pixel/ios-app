@@ -17,7 +17,7 @@ import { useTransport } from "@/components/providers/transport/TransportProvider
 const schema = z.object({
     name: z.string().min(1, "Vui lòng nhập tên thiết bị"),
     connectionType: z.enum(["IR_RF", "IOT_SUB"]),
-    type: z.enum(["AC", "TV", "FAN", "LIGHT", "SMART_SCHEDULE", "RELAY"]),
+    type: z.enum(["AC", "TV", "FAN", "LIGHT", "SMART_SCHEDULE", "RELAY", "LEARNING_REMOTE"]),
     brand: z.string().optional(),
     iotDeviceId: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -211,6 +211,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                         <NativeSelectOption value="LIGHT">Light (Đèn)</NativeSelectOption>
                         <NativeSelectOption value="SMART_SCHEDULE">Schedule (Bộ hẹn giờ)</NativeSelectOption>
                         <NativeSelectOption value="RELAY">Relay (Rơ-le điều khiển)</NativeSelectOption>
+                        <NativeSelectOption value="LEARNING_REMOTE">Learning Remote (Remote học lệnh)</NativeSelectOption>
                     </NativeSelect>
                 </div>
 
@@ -228,6 +229,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                             <NativeSelectOption value="SAMSUNG">Samsung</NativeSelectOption>
                             <NativeSelectOption value="LG">LG</NativeSelectOption>
                             <NativeSelectOption value="XIAOMI">Xiaomi</NativeSelectOption>
+                            <NativeSelectOption value="PANASONIC">PANASONIC</NativeSelectOption>
                         </NativeSelect>
                     </div>
                 ) : (

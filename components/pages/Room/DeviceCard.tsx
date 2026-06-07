@@ -16,7 +16,7 @@ export type Device = {
     id: string;
     name: string;
     serial: string;
-    type: "AC" | "TV" | "FAN" | "LIGHT" | "RELAY" | "SMART_SCHEDULE";
+    type: "AC" | "TV" | "FAN" | "LIGHT" | "RELAY" | "SMART_SCHEDULE" | "LEARNING_REMOTE";
     brand: "DAIKIN" | "SAMSUNG" | "LG" | "XIAOMI";
     status: "ONLINE" | "OFFLINE" | "ERROR";
 };
