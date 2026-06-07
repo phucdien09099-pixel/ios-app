@@ -15,7 +15,8 @@ import { toast } from "sonner";
 export type Device = {
     id: string;
     name: string;
-    type: "AC" | "TV" | "FAN" | "LIGHT" | "RELAY" | "SMART_SCHEDULE";
+    serial: string;
+    type: "AC" | "TV" | "FAN" | "LIGHT" | "RELAY" | "SMART_SCHEDULE" | "LEARNING_REMOTE";
     brand: "DAIKIN" | "SAMSUNG" | "LG" | "XIAOMI";
     status: "ONLINE" | "OFFLINE" | "ERROR";
 };
@@ -26,7 +27,7 @@ const statusStyle = {
     ERROR: "bg-red-500",
 };
 
-export default function DeviceCard({ device, onDeleted }: { device: Device, onDeleted: () => Promise<void> }) {
+export default function DeviceCard({ roomName, device, onDeleted }: { roomName: string, device: Device, onDeleted: () => Promise<void> }) {
     const { open } = useNavDrawer();
 
     const hanldeDeleteDevice = async (deviceId: any) => {
@@ -90,7 +91,8 @@ export default function DeviceCard({ device, onDeleted }: { device: Device, onDe
                         title: device.name,
                         component: DeviceControll,
                         props: {
-                            device
+                            device,
+                            roomName
                         },
                         renderRightButtonHeader:
                             device.type === "RELAY" ? (

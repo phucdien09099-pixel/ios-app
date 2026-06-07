@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import AddDeviceForm from "../AdditionalDevice";
 
-export function EmptyDevices({ roomId }: { roomId: string }) {
+export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: string }) {
     const { open } = useNavDrawer();
 
     return (
@@ -28,6 +28,7 @@ export function EmptyDevices({ roomId }: { roomId: string }) {
                         title: "Thêm thiết bị",
                         props: {
                             roomId: roomId
+                            , roomName: roomName
                         },
                         component: AddDeviceForm,
                     })}><HugeiconsIcon icon={PlusSignIcon} />Tạo thiết bị</Button>

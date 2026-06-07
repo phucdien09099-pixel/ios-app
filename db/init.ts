@@ -75,7 +75,7 @@ export async function initDB() {
             password TEXT,
             role TEXT DEFAULT 'user',
             is_owner INTEGER DEFAULT 0,
-            timezone TEXT DEFAULT 'UTC', 
+            timezone TEXT DEFAULT 'UTC',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (parent_id)
                 REFERENCES users(id)
@@ -95,42 +95,50 @@ export async function initDB() {
 
     // ================= DEVICES =================
 
+    // ================= DEVICES =================
     await db.execute(`
         CREATE TABLE IF NOT EXISTS devices (
             id TEXT PRIMARY KEY,
             room_id TEXT NOT NULL,
+            parent_id TEXT,
             name TEXT NOT NULL,
             status TEXT,
             type TEXT,
+            serial TEXT UNIQUE,
             brand TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
             FOREIGN KEY (room_id)
-            REFERENCES rooms(id)
-            ON DELETE CASCADE
+                REFERENCES rooms(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (parent_id)
+                REFERENCES devices(id)
+                ON DELETE SET NULL
         )
     `);
     // ================= CONFIGS (TIMER / SCHEDULE) =================
     await db.execute(`
         CREATE TABLE IF NOT EXISTS configs (
-            id TEXT PRIMARY KEY,            
+            id TEXT PRIMARY KEY,
             name TEXT,
-            config_type TEXT NOT NULL,                      
-            device_id TEXT NOT NULL,        
-            device_type TEXT NOT NULL,      
-            
-            power TEXT NOT NULL,            
-            
-            trigger_time TEXT NOT NULL,     
-            days_of_week TEXT NOT NULL,     
-            
-            duration_minutes INTEGER,       
-            action TEXT,                    
-            
-            is_active INTEGER DEFAULT 1,    
+            config_type TEXT NOT NULL,
+            device_id TEXT NOT NULL,
+            device_type TEXT NOT NULL,
+
+            power TEXT NOT NULL,
+
+            trigger_time TEXT NOT NULL,
+            days_of_week TEXT NOT NULL,
+
+            duration_minutes INTEGER,
+            action TEXT,
+
+            is_active INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-            FOREIGN KEY (device_id) 
-                REFERENCES devices(id) 
+            FOREIGN KEY (device_id)
+                REFERENCES devices(id)
                 ON DELETE CASCADE
         )
     `);

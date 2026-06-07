@@ -5,7 +5,6 @@ export type TransportMessage = {
 };
 
 export interface TransportsInterface<TConfig = any, TData = Uint8Array | string> {
-    autoConnect(config: any): Promise<any>;
     connect(config?: TConfig): Promise<any>;
     disconnect(): Promise<void>;
     isConnected(): boolean;
@@ -13,6 +12,5 @@ export interface TransportsInterface<TConfig = any, TData = Uint8Array | string>
     onReceive(cb: (msg: TransportMessage) => void): void;
     onError?(callback: (err: Error) => void): void;
     scan(): Promise<TData[]>;
-
-    restore?(config: any): Promise<void>;
+    subscribe(topic: string): Promise<void>
 }

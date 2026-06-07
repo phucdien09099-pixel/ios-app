@@ -19,7 +19,7 @@ import { useEffect } from "react";
 
 export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Promise<void>; }) {
     const { open } = useNavDrawer();
-    const { getDeviceStatus } = useTransport();
+    const { deviceStates, getDeviceStatus } = useTransport();
 
     const handleDeleteRoom = async (idRoom: any) => {
         try {
@@ -30,6 +30,8 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
             toast.success("Delete Fail");
         }
     }
+
+    // console.log(room.name)
     return (
         <Card className="hover:shadow-md transition cursor-pointer"   >
             {/* HEADER */}
@@ -68,7 +70,8 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                 <div className="text-sm font-medium">
                     {room?.devices?.length || 0} devices
                 </div>
-                <Button onClick={() =>
+                <Button onClick={() => {
+                    console.log(room);
                     open({
                         id: room.id,
                         title: room.name,
@@ -76,6 +79,7 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                         props: {
                             onload: onDeleted
                             , roomId: room.id
+                            , roomName: room.name
                         },
                         direction: "right",
                         renderRightButtonHeader: (
@@ -88,7 +92,8 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                                             direction: "right",
                                             component: AddDeviceForm,
                                             props: {
-                                                roomId: room.id
+                                                roomId: room.id,
+                                                roomName: room.name
                                             }
                                         })
                                     }>
@@ -110,10 +115,10 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                             </>
                         ),
                     })
-                } size="sm" variant="outline">
+                }} size="sm" variant="outline">
                     Detail
                 </Button>
             </CardContent>
-        </Card>
+        </Card >
     );
 }

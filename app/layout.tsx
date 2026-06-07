@@ -6,7 +6,6 @@ import { DrawerProvider } from "@/components/providers/drawer/DrawerProvider";
 import { Toaster } from "sonner";
 import { DatabaseProvider } from "@/components/providers/db/DatabaseProvider";
 import { TransportProvider } from "@/components/providers/transport/TransportProvider";
-import { SidecarProvider } from "@/components/providers/sidecar/SidecarProvider";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -26,16 +25,14 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}>
       <body>
         <ThemeProvider>
-          <SidecarProvider>
-            <DatabaseProvider>
-              <TransportProvider>
-                <DrawerProvider>
-                  {children}
-                </DrawerProvider>
-                <Toaster richColors position="top-right" />
-              </TransportProvider>
-            </DatabaseProvider>
-          </SidecarProvider>
+          <DatabaseProvider>
+            <TransportProvider>
+              <DrawerProvider>
+                {children}
+              </DrawerProvider>
+              <Toaster richColors position="top-right" />
+            </TransportProvider>
+          </DatabaseProvider>
         </ThemeProvider>
       </body>
     </html>
