@@ -75,7 +75,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                 page.className,
                                 "before:border-0 before:shadow-none",
                                 "before:w-screen! bg-white",
-                                "p-0 pt-0! w-screen!",
+                                "p-0 pt-0! w-screen! flex flex-col max-h-screen",
                                 page.direction === "bottom" && "[&>div:first-child]:hidden"
                             )}>
 
@@ -119,7 +119,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
 
                             <div 
                                 className={cn(
-                                    "h-full overflow-auto",
+                                    "flex-1 overflow-auto",
                                     page.direction !== "bottom" ? "p-4 pt-2!" : ""
                                 )}
                                 style={{ touchAction: "auto" }}

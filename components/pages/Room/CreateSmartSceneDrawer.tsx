@@ -22,6 +22,8 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     const { open, back } = useNavDrawer();
     const [devices, setDevices] = useState<Device[]>([]);
     const [automations, setAutomations] = useState<any[]>([]);
+    const [isEditing, setIsEditing] = useState(false);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const getDeviceIcon = (type: string) => IcoIcon;
 
@@ -82,7 +84,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                         await loadData();
 
                         // 3. XONG! Bây giờ chỉ cần GỌI BACK() 1 LẦN DUY NHẤT
-                        // back(); 
+                        back(); 
                     }
                 }
             });
@@ -130,14 +132,61 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     // Màn hình danh sách kịch bản
     return (
         <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
+            <div className="flex items-center justify-between px-4 pt-2 pb-1 flex-shrink-0">
+                <Button
+                    variant="ghost"
+                    className="text-foreground hover:text-foreground font-medium p-0 h-auto hover:bg-transparent text-base transition-colors"
+                    onClick={() => { setIsEditing(!isEditing); setDeleteConfirmId(null); }}
+                >
+                    {isEditing ? "Xong" : "Xoá"}
+                </Button>
+                <Button
+                    variant="default"
+                    className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium"
+                    onClick={() => open({
+                        id: "sceneTypeSelector",
+                        title: "Kịch bản thông minh",
+                        direction: "bottom",
+                        className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
+                        component: SceneTypeSelector,
+                        props: { onSelectAutomation: handleSelectAutomation }
+                    })}
+                >
+                    <HugeiconsIcon icon={AddCircleIcon} size={18} />
+                    Thêm kịch bản
+                </Button>
+            </div>
 
             {/* Vùng danh sách: Cho phép cuộn (flex-1 overflow-y-auto) */}
             <div className="flex-1 overflow-y-auto px-4 pt-2">
                 {/* Thêm pb-6 ở đây để khi cuộn xuống dưới cùng, phần tử cuối không bị dính vào viền */}
                 <div className="w-full space-y-3 pb-6">
                     {automations.length === 0 ? (
-                        <div className="py-16 text-center text-sm text-muted-foreground">
-                            Chưa có kịch bản nào được tạo
+                        <div className="flex flex-col items-center justify-center py-20 gap-4">
+                            <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
+                                <HugeiconsIcon icon={AddCircleIcon} size={32} className="text-muted-foreground" />
+                            </div>
+                            <div className="text-center">
+                                <div className="font-semibold text-base">Chưa có kịch bản nào</div>
+                                <div className="text-sm text-muted-foreground mt-1">
+                                    Hãy bắt đầu bằng cách tạo kịch bản đầu tiên của bạn.
+                                </div>
+                            </div>
+                            <Button
+                                variant="default"
+                                className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-6"
+                                onClick={() => open({
+                                    id: "sceneTypeSelector",
+                                    title: "Kịch bản thông minh",
+                                    direction: "bottom",
+                                    className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
+                                    component: SceneTypeSelector,
+                                    props: { onSelectAutomation: handleSelectAutomation }
+                                })}
+                            >
+                                <HugeiconsIcon icon={AddCircleIcon} size={18} />
+                                Tạo kịch bản
+                            </Button>
                         </div>
                     ) : (
                     automations.map((automation) => {
@@ -151,72 +200,84 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                 : "Điều kiện chưa đặt";
 
                         return (
-                            <div
-                                key={automation.id}
-                                className="rounded-3xl border border-border/50 bg-card overflow-hidden"
-                                onClick={() => handleOpenEdit(automation)}
-                            >
-                                <Card className="rounded-none border-none p-4 bg-transparent shadow-none active:bg-muted/60 transition-colors duration-200">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
-                                                <HugeiconsIcon icon={getDeviceIcon(device?.type || "")} size={22} />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="font-semibold text-base truncate">{automation.name}</div>
-                                                <div className="text-xs text-muted-foreground truncate">{device?.name || "Thiết bị"}</div>
-                                                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground/80">
-                                                    <span className="truncate">{conditionLabel}</span>
-                                                    {actionObj?.label && (
-                                                        <>
-                                                            <span>•</span>
-                                                            <span className="truncate max-w-[100px]">{actionObj.label}</span>
-                                                        </>
-                                                    )}
+                            <div key={automation.id} className="relative w-full overflow-hidden rounded-3xl border border-border/50 bg-card">
+                                
+                                {/* 1. Nút Xóa nền đỏ ẩn ở dưới */}
+                                <div className={cn(
+                                    "absolute right-0 top-0 bottom-0 z-0 flex w-24 items-center justify-end transition-opacity duration-300",
+                                    isEditing ? "opacity-100" : "opacity-0"
+                                )}>
+                                    <Button
+                                        variant="destructive"
+                                        className="h-full w-full rounded-none rounded-r-3xl bg-red-500 hover:bg-red-600 text-white font-medium text-sm"
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            // Gọi hàm xóa trong DB (Giả sử bạn có hàm delete trong automationRepo)
+                                            await automationRepo.delete(automation.id); 
+                                            setAutomations((prev) => prev.filter((a) => a.id !== automation.id));
+                                        }}
+                                    >
+                                        Xóa
+                                    </Button>
+                                </div>
+
+                                {/* 2. Nội dung chính trượt sang trái khi bấm Sửa/Xóa */}
+                                <div className={cn(
+                                    "relative z-10 flex w-full items-center transition-transform duration-300 ease-in-out bg-card", 
+                                    isEditing ? "-translate-x-24" : "translate-x-0"
+                                )}>
+                                    
+                                    {/* 3. Phần thông tin thiết bị (Bỏ Card, dùng div) */}
+                                    <div 
+                                        className="flex-1 min-w-0 p-4 transition-colors duration-200 active:bg-muted/60 cursor-pointer"
+                                        onClick={() => handleOpenEdit(automation)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                                                    <HugeiconsIcon icon={getDeviceIcon(device?.type || "")} size={22} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-semibold text-base truncate">{automation.name}</div>
+                                                    <div className="text-xs text-muted-foreground truncate">{device?.name || "Thiết bị"}</div>
+                                                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground/80">
+                                                        <span className="truncate">{conditionLabel}</span>
+                                                        {actionObj?.label && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span className="truncate max-w-[100px]">{actionObj.label}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        {/* Bọc thẻ div có onPointerDown để chặn tuyệt đối việc mở Edit */}
-                                        <div 
-                                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                                            onPointerDown={(e) => e.stopPropagation()}
-                                        >
-                                            <Switch
-                                                checked={automation.is_active === 1}
-                                                onCheckedChange={async (checked) => {
-                                                    await automationRepo.update(automation.id, { is_active: checked ? 1 : 0 });
-                                                    setAutomations(prev =>
-                                                        prev.map(a => a.id === automation.id ? { ...a, is_active: checked ? 1 : 0 } : a)
-                                                    );
-                                                }}
-                                            />
-                                        </div>
                                     </div>
-                                </Card>
+                                    
+                                    {/* 4. Nút Switch (Ẩn đi khi isEditing = true) */}
+                                    <div className={cn(
+                                        "flex items-center transition-all duration-200 origin-right pr-4 flex-shrink-0",
+                                        isEditing ? "opacity-0 scale-50 pointer-events-none hidden" : "opacity-100 scale-100"
+                                    )}
+                                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                                    onPointerDown={(e) => e.stopPropagation()}>
+                                        <Switch
+                                            checked={automation.is_active === 1}
+                                            onCheckedChange={async (checked) => {
+                                                await automationRepo.update(automation.id, { is_active: checked ? 1 : 0 });
+                                                setAutomations(prev =>
+                                                    prev.map(a => a.id === automation.id ? { ...a, is_active: checked ? 1 : 0 } : a)
+                                                );
+                                            }}
+                                        />
+                                    </div>
+
+                                </div>
                             </div>
                         );
                     })
                 )}
                 </div>
-            </div>
-
-            <div className="shrink-0 p-3 pb-6 bg-background border-t shadow-[0_-15px_15px_-15px_rgba(0,0,0,0.05)] z-10">
-                <Button
-                    className="w-full gap-2 rounded-2xl h-11"
-                    onClick={() => open({
-                        id: "sceneTypeSelector",
-                        title: "Kịch bản thông minh",
-                        direction: "bottom",
-                        className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
-                        component: SceneTypeSelector,
-                        props: {
-                            onSelectAutomation: handleSelectAutomation,
-                        }
-                    })}
-                >
-                    <HugeiconsIcon icon={AddCircleIcon} />
-                    Thêm kịch bản
-                </Button>
             </div>
         </div>
     );
