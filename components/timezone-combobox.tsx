@@ -1,9 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronsUpDown, Globe, Search } from "lucide-react";
 import { cn } from "@/libs/utils";
 import { TIMEZONES } from "@/libs/timezones";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Tick02Icon,
+  ArrowUpDownIcon,
+  GlobalIcon,
+  Search01Icon
+} from "@hugeicons/core-free-icons";
 
 interface TimezoneComboboxProps {
   value: string;
@@ -122,10 +128,10 @@ export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
         className="flex w-full items-center justify-between rounded-xl border border-input bg-background px-3 py-2 text-sm font-normal text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-10 transition-colors"
       >
         <div className="flex items-center gap-2 text-foreground truncate">
-          <Globe className="h-4 w-4 text-primary shrink-0" />
+          <HugeiconsIcon icon={GlobalIcon} size={16} className="text-primary shrink-0" />
           <span className="truncate">{getDisplayLabel(value)}</span>
         </div>
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        <HugeiconsIcon icon={ArrowUpDownIcon} size={16} className="ml-2 shrink-0 opacity-50" />
       </button>
 
       {open && (
@@ -133,7 +139,7 @@ export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
         <div className="absolute left-0 right-0 bottom-[calc(100%+4px)] z-[99999] flex max-h-[280px] flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2">
           
           <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <HugeiconsIcon icon={Search01Icon} size={16} className="mr-2 shrink-0 opacity-50" />
             <input
               type="text"
               placeholder="Tìm kiếm múi giờ..."
@@ -180,9 +186,11 @@ export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
                           isSelected && "bg-accent text-accent-foreground font-medium"
                         )}
                       >
-                        <Check
+                        <HugeiconsIcon
+                          icon={Tick02Icon}
+                          size={16}
                           className={cn(
-                            "mr-2 h-4 w-4 shrink-0 text-primary",
+                            "mr-2 shrink-0 text-primary",
                             isSelected ? "opacity-100" : "opacity-0"
                           )}
                         />
