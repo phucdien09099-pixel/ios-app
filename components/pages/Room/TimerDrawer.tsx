@@ -8,7 +8,6 @@ import {
     AddCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useRef, useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import CreateTimerDrawer from "./CreateTimer";
@@ -65,10 +64,34 @@ export const DAYS_LABELS: Record<DayOfWeek, string> = {
     Sunday: "CN",
 };
 
+function buildConfigAndPayload(data: any, devices: Device[], existingId?: string) {
+    const id = existingId ?? crypto.randomUUID();
+    const deviceType = devices.find(d => d.id === data.deviceId)?.type ?? "LIGHT";
+    const config = {
+        id,
+        name: data.name || data.action?.label || "Hẹn giờ",
+        config_type: data.repeat ? "SCHEDULE" : "TIMER",
+        device_id: data.deviceId,
+        device_type: deviceType,
+        power: String(data.action?.value || "OFF"),
+        trigger_time: data.time || "00:00",
+        days_of_week: JSON.stringify(data.days || []),
+        action: JSON.stringify(data.action || {}),
+        is_active: 1,
+    };
+    const payload = {
+        id,
+        time: data.time,
+        repeat: data.repeat,
+        days: data.days || [],
+        device: deviceType,
+        actions: [data.action],
+    };
+    return { config, payload };
+}
+
 export function TimerUI({ roomId }: { roomId: string }) {
-    const [selectedTimerId, setSelectedTimerId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const pressTimer = useRef<NodeJS.Timeout | null>(null);
     const { open, back } = useNavDrawer();
     const { send } = useTransport();
 
@@ -90,7 +113,6 @@ export function TimerUI({ roomId }: { roomId: string }) {
             .map(config => {
                 const actionObj = config.action ? JSON.parse(config.action) : { label: "Hành động" };
                 const daysArr = config.days_of_week ? JSON.parse(config.days_of_week) : [];
-
                 return {
                     id: config.id,
                     deviceId: config.device_id,
@@ -114,6 +136,35 @@ export function TimerUI({ roomId }: { roomId: string }) {
         return IcoIcon;
     };
 
+    const openTimerDrawer = (timer?: any) =>
+        open({
+            id: timer ? "editTimer" : "createTimer",
+            title: timer ? "Sửa thông tin hẹn giờ" : "Tạo timer",
+            direction: 'bottom',
+            className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
+            component: CreateTimerDrawer,
+            props: {
+                devices,
+                ...(timer && { initialData: timer }),
+                onCreateTimer: async (data: any) => {
+                    const { config, payload } = buildConfigAndPayload(data, devices, timer?.id);
+                    console.log(config);
+                    if (timer) {
+                        const { id: _id, is_active: _ia, ...updateData } = config;
+                        await send({ ...payload, id: data.deviceId }, "auto/set");
+                        await configRepo.update(timer.id, updateData);
+                    } else {
+                        await send(payload, "auto/set");
+                        await configRepo.create(config);
+                    }
+                    await loadData();
+                    back();
+                },
+                onCancel: back,
+                getDeviceIcon,
+            },
+        });
+
     return (
         // 1. Khung tổng: Cố định chiều cao, không cuộn
         <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
@@ -132,55 +183,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
                 <Button
                     variant="default"
                     className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium transition-colors flex items-center justify-center"
-                    onClick={() => open({
-                        id: "createTimer",
-                        title: "Tạo timer",
-                        direction: 'bottom',
-                        className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
-                        component: CreateTimerDrawer,
-                        props: {
-                            devices,
-                            onCreateTimer: async (data: any) => {
-                                const newId = crypto.randomUUID();
-
-                                const targetDevice = devices.find(d => d.id === data.deviceId);
-                                const deviceType = targetDevice ? targetDevice.type : "LIGHT";
-                                const powerValue = data.action?.value || "OFF";
-                                const configType = data.repeat ? "SCHEDULE" : "TIMER";
-
-                                const newConfig = {
-                                    id: newId,
-                                    name: data.name || data.action?.label || "Hẹn giờ",
-                                    config_type: configType,
-                                    device_id: data.deviceId,
-                                    device_type: deviceType,
-                                    power: String(powerValue),
-                                    trigger_time: data.time || "00:00",
-                                    days_of_week: JSON.stringify(data.days || []),
-                                    action: JSON.stringify(data.action || {}),
-                                    is_active: 1
-                                };
-                                console.log(newConfig);
-
-                                const payload = {
-                                    id: newId,
-                                    time: data.time,
-                                    repeat: data.repeat,
-                                    days: data.days || [],
-                                    device: deviceType,
-                                    actions: [data.action]
-                                }
-                                await send(payload, "auto/set");
-
-                                await configRepo.create(newConfig);
-                                await loadData();
-                                back();
-                            },
-                            onCancel: back,
-                            getDeviceIcon,
-                        },
-                    })
-                    }
+                    onClick={() => openTimerDrawer()}
                 >
                     <HugeiconsIcon icon={AddCircleIcon} size={28} />
                     Thêm hẹn giờ
@@ -204,51 +207,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
                             <Button
                                 variant="default"
                                 className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-6"
-                                onClick={() => open({
-                                    id: "createTimer",
-                                    title: "Tạo timer",
-                                    direction: 'bottom',
-                                    className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
-                                    component: CreateTimerDrawer,
-                                    props: {
-                                        devices,
-                                        onCreateTimer: async (data: any) => {
-                                            const newId = crypto.randomUUID();
-                                            const targetDevice = devices.find(d => d.id === data.deviceId);
-                                            const deviceType = targetDevice ? targetDevice.type : "LIGHT";
-                                            const powerValue = data.action?.value || "OFF";
-                                            const configType = data.repeat ? "SCHEDULE" : "TIMER";
-                                            const newConfig = {
-                                                id: newId,
-                                                name: data.name || data.action?.label || "Hẹn giờ",
-                                                config_type: configType,
-                                                device_id: data.deviceId,
-                                                device_type: deviceType,
-                                                power: String(powerValue),
-                                                trigger_time: data.time || "00:00",
-                                                days_of_week: JSON.stringify(data.days || []),
-                                                action: JSON.stringify(data.action || {}),
-                                                is_active: 1
-                                            };
-                                            await configRepo.create(newConfig);
-                                            console.log(newConfig);
-
-                                            const payload = {
-                                                id: newId,
-                                                time: data.time,
-                                                repeat: data.repeat,
-                                                days: data.days || [],
-                                                device: deviceType,
-                                                actions: [data.action]
-                                            }
-                                            await send(payload, "auto/set");
-                                            await loadData();
-                                            back();
-                                        },
-                                        onCancel: back,
-                                        getDeviceIcon,
-                                    },
-                                })}
+                                onClick={() => openTimerDrawer()}
                             >
                                 <HugeiconsIcon icon={AddCircleIcon} size={18} />
                                 Tạo hẹn giờ
@@ -266,61 +225,13 @@ export function TimerUI({ roomId }: { roomId: string }) {
                                     ? "Một lần"
                                     : timer.days.map((d: DayOfWeek) => DAYS_LABELS[d]).join(", ");
 
-                            const handleOpenEdit = () => {
-                                open({
-                                    id: "editTimer",
-                                    title: "Sửa thông tin hẹn giờ",
-                                    direction: 'bottom',
-                                    className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
-                                    component: CreateTimerDrawer,
-                                    props: {
-                                        devices,
-                                        initialData: timer,
-                                        onCreateTimer: async (data: any) => {
-                                            const targetDevice = devices.find(d => d.id === data.deviceId);
-                                            const deviceType = targetDevice ? targetDevice.type : "LIGHT";
-                                            const powerValue = data.action?.value || "OFF";
-                                            const configType = data.repeat ? "SCHEDULE" : "TIMER";
-
-                                            // 1. Gom tất cả dữ liệu cần cập nhật vào 1 biến
-                                            const updateData = {
-                                                name: data.name || data.action?.label || "Hẹn giờ",
-                                                config_type: configType,
-                                                device_id: data.deviceId,
-                                                device_type: deviceType,
-                                                power: String(powerValue),
-                                                trigger_time: data.time || "00:00",
-                                                days_of_week: JSON.stringify(data.days || []),
-                                                action: JSON.stringify(data.action || {}),
-                                            };
-                                            console.log(updateData);
-
-                                            const payload = {
-                                                id: data.deviceId,
-                                                time: data.time,
-                                                repeat: data.repeat,
-                                                days: data.days || [],
-                                                device: deviceType,
-                                                actions: [data.action]
-                                            }
-                                            await send(payload, "auto/set");
-                                            await configRepo.update(timer.id, updateData);
-                                            await loadData();
-                                            back();
-                                        },
-                                        onCancel: back,
-                                        getDeviceIcon,
-                                    }
-                                });
-                            };
-
                             return (
                                 <div key={timer.id} className="relative w-full overflow-hidden rounded-3xl border border-border/50 bg-card">
 
                                     {/* 1. Nút Xoá nền đỏ ẩn ở dưới (Sẽ hiện ra khi isEditing = true) */}
                                     <div className={cn(
                                         "absolute right-0 top-0 bottom-0 z-0 flex w-24 items-center justify-end transition-opacity duration-300",
-                                        isEditing ? "opacity-100" : "opacity-0" // Dùng luôn isEditing thay vì isDeletingThis
+                                        isEditing ? "opacity-100" : "opacity-0"
                                     )}>
                                         <Button
                                             variant="destructive"
@@ -342,7 +253,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
                                     {/* 2. Nội dung chính (Trượt sang trái khi isEditing = true) */}
                                     <div className={cn(
                                         "relative z-10 flex w-full items-center transition-transform duration-300 ease-in-out bg-card",
-                                        isEditing ? "-translate-x-24" : "translate-x-0" // Dùng luôn isEditing
+                                        isEditing ? "-translate-x-24" : "translate-x-0"
                                     )}>
 
                                         {/* ĐÃ XÓA HOÀN TOÀN NÚT DẤU TRỪ ĐỎ Ở ĐÂY */}
@@ -350,7 +261,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
                                         {/* 3. Phần thông tin thiết bị (Gộp class siêu gọn, sạch bóng gạch dọc/viền) */}
                                         <div
                                             className="flex-1 min-w-0 p-4 transition-colors duration-200 active:bg-muted/60 cursor-pointer"
-                                            onClick={handleOpenEdit}
+                                            onClick={() => openTimerDrawer(timer)}
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -398,6 +309,6 @@ export function TimerUI({ roomId }: { roomId: string }) {
                     )}
                 </div>
             </div>
-        </div >
+        </div>
     );
 }
