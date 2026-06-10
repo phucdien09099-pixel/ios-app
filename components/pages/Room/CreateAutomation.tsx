@@ -1,27 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Cancel01Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { HugeiconsIcon } from "@hugeicons/react";
+import {
+    Cancel01Icon,
+    Clock01Icon,
+    Moon02Icon,
+    PlayIcon,
+    Settings02Icon,
+    SleepingIcon,
+    Sun03Icon,
+    TemperatureIcon,
+    ThermometerIcon,
+} from "@hugeicons/core-free-icons";
 import { Device } from "@/db/types/devive";
 import { useForm } from "react-hook-form";
 import ActionSelectionDrawer from "./ActionSelectionDrawer";
+import { TimerAction } from "./CreateTimer";
 import { cn } from "@/libs/utils";
 
 export type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
-
-export interface TimerAction {
-    type: string;
-    value: any;
-    label: string;
-}
+export type AutomationMode = "sleep" | "custom";
 
 export interface AutomationFormValues {
     name: string;
-    operator: string; 
+    automationMode: AutomationMode;
+    sleepTime: string;
+    wakeTime: string;
+    currentTemperature: string;
+    comfortTemperature: string;
+    operator: string;
     conditionValue: string;
     actionDeviceId: string;
     action: TimerAction | undefined;
@@ -31,63 +44,65 @@ export interface CreateAutomationDrawerProps {
     devices: Device[];
     onCreateAutomation: (finalData: any) => void;
     onCancel: () => void;
-    initialData?: any;
-    getDeviceIcon: (type: string) => any; 
+    initialData?: Partial<AutomationFormValues>;
+    getDeviceIcon: (type: string) => any;
 }
 
+const DEFAULT_VALUES: AutomationFormValues = {
+    name: "",
+    automationMode: "sleep",
+    sleepTime: "22:30",
+    wakeTime: "06:30",
+    currentTemperature: "28",
+    comfortTemperature: "26",
+    operator: ">",
+    conditionValue: "28",
+    actionDeviceId: "",
+    action: undefined,
+};
+
 export default function CreateAutomation({
-    devices = [], 
+    devices = [],
     onCreateAutomation,
     onCancel,
     initialData,
     getDeviceIcon,
 }: CreateAutomationDrawerProps) {
     const form = useForm<AutomationFormValues>({
-        defaultValues: initialData || {
-            name: "",
-            operator: "", 
-            conditionValue: "28", 
-            actionDeviceId: "",
-            action: undefined,
+        defaultValues: {
+            ...DEFAULT_VALUES,
+            ...initialData,
+            automationMode: initialData?.automationMode || DEFAULT_VALUES.automationMode,
         },
     });
 
     const { register, watch, setValue, handleSubmit } = form;
 
-
-
-    // Quản lý trạng thái hành động (THÌ)
     const [showActionDrawer, setShowActionDrawer] = useState(false);
     const [selectedActionDevice, setSelectedActionDevice] = useState<Device | null>(null);
 
+    const automationMode = watch("automationMode");
     const watchActionDeviceId = watch("actionDeviceId");
     const watchAction = watch("action");
     const watchConditionValue = watch("conditionValue") || "28";
+    const currentTemperature = watch("currentTemperature") || "28";
+    const comfortTemperature = watch("comfortTemperature") || "26";
 
-    // Khôi phục dữ liệu cũ nếu chỉnh sửa kịch bản có sẵn
     useEffect(() => {
-        if (initialData?.actionDeviceId) {
-            const dev = (devices || []).find(d => d.id === initialData.actionDeviceId);
-            if (dev) setSelectedActionDevice(dev);
-        }
-        
-        // BẠN HÃY XÓA ĐOẠN NÀY ĐI:
-        // if (initialData?.operator) {
-        //     setSelectedConditionLabel(...) 
-        // }
-        // VÌ GIAO DIỆN MỚI DÙNG REACT-HOOK-FORM ĐÃ TỰ ĐỘNG BẮT ĐƯỢC RỒI!
-        
+        if (!initialData?.actionDeviceId) return;
+
+        const device = devices.find((item) => item.id === initialData.actionDeviceId);
+        if (device) setSelectedActionDevice(device);
     }, [initialData, devices]);
 
-    // Xử lý tăng giảm nhiệt độ bằng nút cộng trừ
-    const handleDecrement = () => {
-        const current = parseInt(watchConditionValue, 10) || 0;
-        setValue("conditionValue", String(current - 1));
+    const handleDecrement = (field: "conditionValue" | "currentTemperature" | "comfortTemperature") => {
+        const current = parseInt(watch(field), 10) || 0;
+        setValue(field, String(current - 1));
     };
 
-    const handleIncrement = () => {
-        const current = parseInt(watchConditionValue, 10) || 0;
-        setValue("conditionValue", String(current + 1));
+    const handleIncrement = (field: "conditionValue" | "currentTemperature" | "comfortTemperature") => {
+        const current = parseInt(watch(field), 10) || 0;
+        setValue(field, String(current + 1));
     };
 
     const handleActionDeviceClick = (device: Device) => {
@@ -101,133 +116,251 @@ export default function CreateAutomation({
         setShowActionDrawer(false);
     };
 
-    return (
-    <div className="px-4 pb-40 space-y-4 overflow-y-auto select-text">
+    const canSubmit =
+        automationMode === "sleep"
+            ? Boolean(watch("sleepTime") && watch("wakeTime") && watchActionDeviceId && watchAction)
+            : Boolean(watch("operator") && watchConditionValue && watchActionDeviceId && watchAction);
 
-        {/* Tên tự động hóa */}
-        <div>
-            <div className="mb-2 text-sm font-medium">Tên tự động hóa</div>
-            <Input
-                placeholder="Ví dụ: Tự động bật điều hòa khi nóng"
-                {...register("name")}
+    return (
+        <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-4 pb-40 select-text">
+            <FieldGroup>
+                <Field>
+                    <FieldLabel htmlFor="automation-name">Tên tự động hóa</FieldLabel>
+                    <Input
+                        id="automation-name"
+                        placeholder="Ví dụ: Chế độ ngủ ngon"
+                        {...register("name")}
+                    />
+                </Field>
+
+                <Field>
+                    <FieldLabel htmlFor="automation-mode">Chức năng</FieldLabel>
+                    <NativeSelect id="automation-mode" className="w-full" {...register("automationMode")}>
+                        <NativeSelectOption value="sleep">Chế độ ngủ ngon</NativeSelectOption>
+                        <NativeSelectOption value="custom">Tùy chỉnh</NativeSelectOption>
+                    </NativeSelect>
+                </Field>
+            </FieldGroup>
+
+            {automationMode === "sleep" ? (
+                <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                            <HugeiconsIcon icon={SleepingIcon} />
+                        </div>
+                        <div>
+                            <div className="font-semibold">Chế độ ngủ ngon</div>
+                            <div className="text-xs text-muted-foreground">
+                                Thiết lập thời gian ngủ, thức dậy và mức nhiệt dễ chịu.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <Field>
+                            <FieldLabel htmlFor="sleep-time">Giờ ngủ</FieldLabel>
+                            <div className="relative">
+                                <HugeiconsIcon
+                                    icon={Moon02Icon}
+                                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                                />
+                                <Input id="sleep-time" type="time" className="pl-9" {...register("sleepTime")} />
+                            </div>
+                        </Field>
+
+                        <Field>
+                            <FieldLabel htmlFor="wake-time">Giờ thức</FieldLabel>
+                            <div className="relative">
+                                <HugeiconsIcon
+                                    icon={Sun03Icon}
+                                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                                />
+                                <Input id="wake-time" type="time" className="pl-9" {...register("wakeTime")} />
+                            </div>
+                        </Field>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <TemperatureStepper
+                            label="Nhiệt độ hiện tại"
+                            value={currentTemperature}
+                            inputProps={register("currentTemperature")}
+                            onMinus={() => handleDecrement("currentTemperature")}
+                            onPlus={() => handleIncrement("currentTemperature")}
+                            icon={TemperatureIcon}
+                            readOnly
+                        />
+                        <TemperatureStepper
+                            label="Nhiệt độ thoải mái"
+                            value={comfortTemperature}
+                            inputProps={register("comfortTemperature")}
+                            onMinus={() => handleDecrement("comfortTemperature")}
+                            onPlus={() => handleIncrement("comfortTemperature")}
+                            icon={ThermometerIcon}
+                        />
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                            <HugeiconsIcon icon={Settings02Icon} />
+                        </div>
+                        <div>
+                            <div className="font-semibold">Tùy chỉnh</div>
+                            <div className="text-xs text-muted-foreground">
+                                Tự đặt điều kiện nhiệt độ để kích hoạt hành động.
+                            </div>
+                        </div>
+                    </div>
+
+                    <Field>
+                        <FieldLabel htmlFor="temperature-operator">Điều kiện</FieldLabel>
+                        <NativeSelect id="temperature-operator" className="w-full" {...register("operator")}>
+                            <NativeSelectOption value=">">Nhiệt độ trên</NativeSelectOption>
+                            <NativeSelectOption value="<">Nhiệt độ dưới</NativeSelectOption>
+                        </NativeSelect>
+                    </Field>
+
+                    <TemperatureStepper
+                        label={watch("operator") === "<" ? "Nhiệt độ dưới" : "Nhiệt độ trên"}
+                        description="Kích hoạt khi đạt mức nhiệt này"
+                        value={watchConditionValue}
+                        inputProps={register("conditionValue")}
+                        onMinus={() => handleDecrement("conditionValue")}
+                        onPlus={() => handleIncrement("conditionValue")}
+                        icon={TemperatureIcon}
+                    />
+                </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+                <div className="text-sm font-medium">Chọn thiết bị và hành động</div>
+                <div className="grid gap-2">
+                    {devices.map((device) => {
+                        const isActive = watchActionDeviceId === device.id;
+
+                        return (
+                            <button
+                                key={device.id}
+                                type="button"
+                                onClick={() => handleActionDeviceClick(device)}
+                                className={cn(
+                                    "flex items-center gap-3 rounded-2xl border p-3 text-left transition-all",
+                                    isActive ? "border-primary bg-primary/10" : "border-border"
+                                )}
+                            >
+                                <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                                    <HugeiconsIcon icon={getDeviceIcon(device.type || "")} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="truncate font-medium">{device.name}</div>
+                                    <div className="text-xs text-muted-foreground">{device.type}</div>
+                                </div>
+                                {isActive && watchAction?.label ? (
+                                    <Badge variant="secondary" className="max-w-32 truncate">
+                                        {watchAction.label}
+                                    </Badge>
+                                ) : null}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={onCancel}>
+                    <HugeiconsIcon icon={Cancel01Icon} data-icon="inline-start" />
+                    Hủy
+                </Button>
+                <Button
+                    type="button"
+                    className="flex-1 rounded-2xl"
+                    disabled={!canSubmit}
+                    onClick={handleSubmit(onCreateAutomation)}
+                >
+                    <HugeiconsIcon icon={PlayIcon} data-icon="inline-start" />
+                    Lưu kịch bản
+                </Button>
+            </div>
+
+            <ActionSelectionDrawer
+                open={showActionDrawer}
+                onOpenChange={setShowActionDrawer}
+                device={selectedActionDevice}
+                currentAction={watchAction}
+                onSelectAction={handleSelectAction}
             />
         </div>
+    );
+}
 
-        {/* ĐIỀU KIỆN (NẾU) - Giao diện Card cố định không gây giật layout */}
-        <div className="bg-card rounded-3xl border border-border/50 p-4 space-y-4">
-            <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground uppercase tracking-wider">Điều kiện (NẾU)</span>
-                
-                {/* Dùng Select bọc giao diện cho gọn nhẹ và dễ hiểu */}
-                <select
-                    {...register("operator")}
-                    className="bg-muted/50 border border-border/50 text-sm font-medium rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer transition-colors hover:bg-muted"
-                >
-                    <option value="" disabled>-- Chọn điều kiện --</option>
-                    <option value=">">📈 Nhiệt độ trên</option>
-                    <option value="<">📉 Nhiệt độ dưới</option>
-                </select>
-            </div>
-
-            {/* Khung nhiệt độ luôn giữ nguyên chiều cao, dùng Opacity để hiện/ẩn mượt mà */}
-            <div className={cn(
-                "flex items-center justify-between border border-border/50 rounded-2xl p-4 transition-all duration-300",
-                watch("operator") ? "bg-background opacity-100" : "bg-muted/20 opacity-40 pointer-events-none"
-            )}>
-                <div>
-                    <div className="font-semibold text-sm text-foreground">
-                        {watch("operator") === ">" ? "Nhiệt độ trên" : watch("operator") === "<" ? "Nhiệt độ dưới" : "Ngưỡng kích hoạt"}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Kích hoạt khi đạt mức này</div>
+function TemperatureStepper({
+    label,
+    description,
+    value,
+    inputProps,
+    onMinus,
+    onPlus,
+    icon,
+    readOnly = false,
+}: {
+    label: string;
+    description?: string;
+    value: string;
+    inputProps: ReturnType<typeof useForm<AutomationFormValues>>["register"] extends (...args: any[]) => infer R ? R : never;
+    onMinus: () => void;
+    onPlus: () => void;
+    icon: any;
+    readOnly?: boolean;
+}) {
+    return (
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background p-3">
+            <div className="flex items-start gap-2">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                    <HugeiconsIcon icon={icon} />
                 </div>
-                
-                {/* Cụm nút cộng trừ tăng giảm số */}
-                <div className="flex items-center gap-2 bg-muted/40 border border-border/50 rounded-xl p-1 shadow-sm">
-                    <button
-                        type="button"
-                        onClick={handleDecrement}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background transition-colors text-lg font-semibold active:scale-90 select-none"
-                    >
-                        －
-                    </button>
-                    <div className="flex items-center justify-center min-w-[3rem]">
-                        {/* Đã áp dụng React Hook Form chuẩn cho TextBox */}
-                        <input
-                            type="number"
-                            className="w-8 text-center bg-transparent text-sm font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            {...register("conditionValue")}
-                        />
-                        <span className="text-sm font-bold text-foreground select-none">°C</span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={handleIncrement}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-background transition-colors text-lg font-semibold active:scale-90 select-none"
-                    >
-                        ＋
-                    </button>
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{label}</div>
+                    {description ? <FieldDescription>{description}</FieldDescription> : null}
                 </div>
             </div>
-        </div>
 
-        {/* Chọn thiết bị và hành động */}
-        <div>
-            <div className="mb-2 text-sm font-medium">Chọn thiết bị và hành động</div>
-            <div className="grid gap-2">
-                {(devices || []).map((device) => {
-                    const isActive = watchActionDeviceId === device.id;
-                    return (
-                        <button
-                            key={device.id}
-                            type="button"
-                            onClick={() => handleActionDeviceClick(device)}
-                            className={`flex items-center gap-3 rounded-2xl border p-3 transition-all ${
-                                isActive ? "border-primary bg-primary/10" : "border-border"
-                            }`}
-                        >
-                            <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
-                                <HugeiconsIcon icon={getDeviceIcon(device.type || "")} size={20} />
-                            </div>
-                            <div className="text-left flex-1">
-                                <div className="font-medium">{device.name}</div>
-                                <div className="text-xs text-muted-foreground">{device.type}</div>
-                            </div>
-                            {isActive && watchAction?.label && (
-                                <Badge variant="secondary" className="ml-auto animate-in fade-in duration-200 truncate max-w-[120px]">
-                                    {watchAction.label}
-                                </Badge>
-                            )}
-                        </button>
-                    );
-                })}
+            <div className="flex h-full! items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 p-1">
+                {!readOnly ? (
+                    <button
+                        type="button"
+                        onClick={onMinus}
+                        className="flex size-8 items-center justify-center rounded-lg text-lg font-semibold transition-colors hover:bg-background active:scale-95"
+                    >
+                        -
+                    </button>
+                ) : null}
+                <div className="flex min-w-0 flex-1 items-center justify-center">
+                    <input
+                        type="number"
+                        readOnly={readOnly}
+                        tabIndex={readOnly ? -1 : undefined}
+                        className={cn(
+                            "w-10 bg-transparent text-center text-sm font-bold outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                            readOnly && "pointer-events-none"
+                        )}
+                        {...inputProps}
+                    />
+                    <span className="text-sm font-bold">°C</span>
+                </div>
+                {!readOnly ? (
+                    <button
+                        type="button"
+                        onClick={onPlus}
+                        className="flex size-8 items-center justify-center rounded-lg text-lg font-semibold transition-colors hover:bg-background active:scale-95"
+                    >
+                        +
+                    </button>
+                ) : null}
             </div>
-        </div>
 
-        {/* Nút bấm */}
-        <div className="flex gap-2 pt-2">
-            <Button type="button" variant="outline" className="flex-1 gap-2 rounded-2xl" onClick={onCancel}>
-                <HugeiconsIcon icon={Cancel01Icon} size={18} />
-                Hủy
-            </Button>
-            <Button
-                type="button"
-                className="flex-1 gap-2 rounded-2xl"
-                disabled={!watch("operator") || !watchActionDeviceId || !watchAction}
-                onClick={handleSubmit(onCreateAutomation)}
-            >
-                <HugeiconsIcon icon={PlayIcon} size={18} />
-                Lưu kịch bản
-            </Button>
+            {/* <div className="text-center text-xs text-muted-foreground">{value}°C</div> */}
         </div>
-
-        {/* Drawer chọn hành động */}
-        <ActionSelectionDrawer
-            open={showActionDrawer}
-            onOpenChange={setShowActionDrawer}
-            device={selectedActionDevice}
-            currentAction={watchAction}
-            onSelectAction={handleSelectAction}
-        />
-    </div>
-);
+    );
 }

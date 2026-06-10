@@ -18,6 +18,22 @@ interface CreateSmartSceneDrawerProps {
     roomId: string;
 }
 
+const getAutomationConditionLabel = (triggerConfig: any, fallbackLabel: string) => {
+    if (triggerConfig.automationMode === "sleep") {
+        return `Ngủ ${triggerConfig.sleepTime || "22:30"} - thức ${triggerConfig.wakeTime || "06:30"} · ${triggerConfig.comfortTemperature || "26"}°C`;
+    }
+
+    if (triggerConfig.operator === ">") {
+        return `Nhiệt độ trên ${triggerConfig.conditionValue}°C`;
+    }
+
+    if (triggerConfig.operator === "<") {
+        return `Nhiệt độ dưới ${triggerConfig.conditionValue}°C`;
+    }
+
+    return fallbackLabel;
+};
+
 export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawerProps) {
     const { open, back } = useNavDrawer();
     const [devices, setDevices] = useState<Device[]>([]);
@@ -63,6 +79,11 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             room_id: roomId,
                             name: finalData.name || "Tự động hóa",
                             trigger_config: JSON.stringify({
+                                automationMode: finalData.automationMode,
+                                sleepTime: finalData.sleepTime,
+                                wakeTime: finalData.wakeTime,
+                                currentTemperature: finalData.currentTemperature,
+                                comfortTemperature: finalData.comfortTemperature,
                                 operator: finalData.operator,
                                 conditionValue: finalData.conditionValue,
                             }),
@@ -74,6 +95,11 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             room_id: roomId,
                             name: finalData.name || "Tự động hóa",
                             trigger_config: JSON.stringify({
+                                automationMode: finalData.automationMode,
+                                sleepTime: finalData.sleepTime,
+                                wakeTime: finalData.wakeTime,
+                                currentTemperature: finalData.currentTemperature,
+                                comfortTemperature: finalData.comfortTemperature,
                                 operator: finalData.operator,
                                 conditionValue: finalData.conditionValue,
                             }),
@@ -106,6 +132,11 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 getDeviceIcon,
                 initialData: {
                     name: automation.name,
+                    automationMode: triggerConfig.automationMode || "custom",
+                    sleepTime: triggerConfig.sleepTime || "22:30",
+                    wakeTime: triggerConfig.wakeTime || "06:30",
+                    currentTemperature: triggerConfig.currentTemperature || "28",
+                    comfortTemperature: triggerConfig.comfortTemperature || "26",
                     operator: triggerConfig.operator || "",
                     conditionValue: triggerConfig.conditionValue || "28",
                     actionDeviceId: automation.device_id,
@@ -116,6 +147,11 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     await automationRepo.update(automation.id, {
                         name: finalData.name || "Tự động hóa",
                         trigger_config: JSON.stringify({
+                            automationMode: finalData.automationMode,
+                            sleepTime: finalData.sleepTime,
+                            wakeTime: finalData.wakeTime,
+                            currentTemperature: finalData.currentTemperature,
+                            comfortTemperature: finalData.comfortTemperature,
                             operator: finalData.operator,
                             conditionValue: finalData.conditionValue,
                         }),
@@ -199,6 +235,8 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                 ? `Nhiệt độ dưới ${triggerConfig.conditionValue}°C`
                                 : "Điều kiện chưa đặt";
 
+                        const displayConditionLabel = getAutomationConditionLabel(triggerConfig, conditionLabel);
+
                         return (
                             <div key={automation.id} className="relative w-full overflow-hidden rounded-3xl border border-border/50 bg-card">
                                 
@@ -241,7 +279,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                                     <div className="font-semibold text-base truncate">{automation.name}</div>
                                                     <div className="text-xs text-muted-foreground truncate">{device?.name || "Thiết bị"}</div>
                                                     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground/80">
-                                                        <span className="truncate">{conditionLabel}</span>
+                                                        <span className="truncate">{displayConditionLabel}</span>
                                                         {actionObj?.label && (
                                                             <>
                                                                 <span>•</span>

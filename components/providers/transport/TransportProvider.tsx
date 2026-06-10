@@ -25,7 +25,7 @@ type TransportContextType = {
 
     // Trạng thái hệ thống mạng song song
     isConnected: boolean;
-    connectionStatuses: Record<TransportType, ConnectionStatus>;
+    connectionStatuses: Partial<Record<TransportType, ConnectionStatus>>;
     deviceStates: Record<string, any>;
     getDeviceStatus: (id: string) => boolean;
     lastMessage: any | null;
@@ -46,7 +46,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     });
     // Quản lý trạng thái online/offline của từng thiết bị phần cứng
     const [deviceStates, setDeviceStates] = useState<Record<string, any>>({});
-
+    // console.log(deviceStates)
     const initializedRef = useRef(false);
     const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
     const listTopicFeature = useMemo(() => [{ init: "init" }, { pair: "pair" }], []);
@@ -112,6 +112,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
                 MQTT: {
                     // clientId: `app_${Math.random().toString(36).substring(7)}`,
                     topicsToSubscribe: [
+                        { topic: "device/+/sensor/info", qos: 0 },
                         { topic: "device/+/status", qos: 0 },
                         { topic: "device/init", qos: 0 },
                     ]
@@ -138,11 +139,11 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
 
             // Đăng ký topic đón đầu dữ liệu chung cho hệ thống
             transportManager.subscribe("device/+/status");
+            transportManager.subscribe("device/+/sensor/info");
         };
 
         bootstrap();
     }, [connectDual]);
-
     // ==========================================
     // 3. CORE LẮNG NGHE & CẬP NHẬT TRẠNG THÁI TẬP TRUNG
     // ==========================================
@@ -150,7 +151,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         scan();
         // Lắng nghe dữ liệu đổ về từ cả 2 kênh mạng (MQTT và BLE)
         transportManager.onNormalizedReceive((data: any) => {
-            console.log(data)
+            console.log(data);
             if (!data || !data.channel) return;
 
             setLastMessage(data);
@@ -163,16 +164,38 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             if (deviceName) {
                 const isPing = data.payload === "ping" || data.payload === "online";
 
+                // Xử lý parse payload để lấy giá trị temp nếu có
+                let extractedTemp: number | undefined = undefined;
+                if (data.payload) {
+                    try {
+                        // Nếu payload gửi về dạng Object sẵn hoặc dạng chuỗi JSON cần parse
+                        const parsedPayload = typeof data.payload === "string"
+                            ? JSON.parse(data.payload)
+                            : data.payload;
+                        // console.log(parsedPayload.temp)
+                        if (parsedPayload && typeof parsedPayload.temp !== "undefined") {
+                            extractedTemp = Number(parsedPayload.temp);
+                        }
+                    } catch (e) {
+                        // Tránh crash app nếu payload không phải là chuỗi JSON hợp lệ (ví dụ chuỗi "ping" thông thường)
+                    }
+                }
+
                 // Nhận được dữ liệu hoặc gói tin ping hoạt động từ thiết bị -> Đánh dấu là ONLINE
                 if (isPing || data.payload) {
-                    setDeviceStates((prev) => ({
-                        ...prev,
-                        [deviceName]: {
-                            id: deviceName,
-                            isOnline: true,
-                            updatedAt: new Date().toISOString()
-                        },
-                    }));
+                    setDeviceStates((prev) => {
+                        const oldDeviceState = prev[deviceName] || {};
+                        return {
+                            ...prev,
+                            [deviceName]: {
+                                id: deviceName,
+                                isOnline: true,
+                                // Nếu gói tin này có kèm temp thì cập nhật temp mới, ngược lại giữ nguyên giá trị temp cũ
+                                temp: extractedTemp !== undefined ? extractedTemp : oldDeviceState.temp,
+                                updatedAt: new Date().toISOString()
+                            },
+                        };
+                    });
 
                     // Xóa bộ đếm thời gian sập cũ nếu có
                     if (timeoutsRef.current[deviceName]) {

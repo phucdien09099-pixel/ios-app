@@ -25,6 +25,7 @@ export type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 export type DayOfWeek = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
 
 export interface TimerAction {
+    deviceType: string[]
     type: string;
     value: any;
     label: string;
@@ -45,24 +46,24 @@ export const DAYS_LABELS: Record<DayOfWeek, string> = {
     Monday: "T2", Tuesday: "T3", Wednesday: "T4", Thursday: "T5", Friday: "T6", Saturday: "T7", Sunday: "CN"
 };
 
-const DEVICE_ACTIONS: Record<DeviceType, TimerAction[]> = {
-    LIGHT: [
-        { type: "power", value: "ON", label: "Bật đèn" },
-        { type: "power", value: "OFF", label: "Tắt đèn" },
-    ],
-    AC: [
-        { type: "power", value: "ON", label: "Bật máy lạnh" },
-        { type: "power", value: "OFF", label: "Tắt máy lạnh" },
-    ],
-    TV: [
-        { type: "power", value: "ON", label: "Bật TV" },
-        { type: "power", value: "OFF", label: "Tắt TV" },
-    ],
-    SWITCH: [
-        { type: "power", value: "ON", label: "Bật công tắc" },
-        { type: "power", value: "OFF", label: "Tắt công tắc" },
-    ],
-};
+// const DEVICE_ACTIONS: Record<DeviceType, TimerAction[]> = {
+//     LIGHT: [
+//         { type: "power", value: "ON", label: "Bật đèn" },
+//         { type: "power", value: "OFF", label: "Tắt đèn" },
+//     ],
+//     AC: [
+//         { type: "power", value: "ON", label: "Bật máy lạnh" },
+//         { type: "power", value: "OFF", label: "Tắt máy lạnh" },
+//     ],
+//     TV: [
+//         { type: "power", value: "ON", label: "Bật TV" },
+//         { type: "power", value: "OFF", label: "Tắt TV" },
+//     ],
+//     SWITCH: [
+//         { type: "power", value: "ON", label: "Bật công tắc" },
+//         { type: "power", value: "OFF", label: "Tắt công tắc" },
+//     ],
+// };
 
 export default function CreateTimerDrawer({
     devices,

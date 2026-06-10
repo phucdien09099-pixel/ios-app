@@ -46,9 +46,9 @@ class RoomRepository extends SQLiteBase<Room> {
             FROM rooms
             LEFT JOIN devices
                 ON devices.room_id = rooms.id
+                AND (devices.type IS NULL OR devices.type != 'hub')
             ORDER BY rooms.id
         `);
-
         const map = new Map<string, any>();
 
         for (const row of rows) {

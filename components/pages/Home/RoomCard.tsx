@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import {
     DashboardCircleAddIcon,
     Setting06Icon,
-    Delete02Icon, // hoặc icon delete bạn đang dùng trong bộ icon
+    Delete02Icon,
+    TemperatureIcon, // hoặc icon delete bạn đang dùng trong bộ icon
 } from "@hugeicons/core-free-icons";
 import HubSettings from "../HubSettings";
 import AddDeviceForm from "../AdditionalDevice";
@@ -15,11 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { roomRepo } from "@/db/repository/RoomRepository";
 import { toast } from "sonner";
-import { useEffect } from "react";
 
 export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Promise<void>; }) {
     const { open } = useNavDrawer();
     const { deviceStates, getDeviceStatus } = useTransport();
+    const currentRoomState = deviceStates[room.name];
+    const currentTemp = currentRoomState?.temp;
+
 
     const handleDeleteRoom = async (idRoom: any) => {
         try {
@@ -31,7 +34,7 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
         }
     }
 
-    // console.log(room.name)
+    // console.log(deviceStates)
     return (
         <Card className="hover:shadow-md transition cursor-pointer"   >
             {/* HEADER */}
@@ -58,7 +61,7 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
             </CardHeader>
 
             {/* BODY */}
-            <CardContent className="flex flex-col gap-2 pt-0">
+            <CardContent className="gap-2 pt-0 grid grid-cols-2">
                 <Badge
                     variant="outline"
                     className={`w-fit flex items-center gap-1 ${getDeviceStatus(room.name)
@@ -67,57 +70,69 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                         }`}>
                     {getDeviceStatus(room.name) ? "online" : "offline"}
                 </Badge>
-                <div className="text-sm font-medium">
-                    {room?.devices?.length || 0} devices
-                </div>
-                <Button onClick={() => {
-                    console.log(room);
-                    open({
-                        id: room.id,
-                        title: room.name,
-                        component: DevicesRoom,
-                        props: {
-                            onload: onDeleted
-                            , roomId: room.id
-                            , roomName: room.name
-                        },
-                        direction: "right",
-                        renderRightButtonHeader: (
-                            <>
-                                <Button
-                                    onClick={() =>
-                                        open({
-                                            id: "addition_device",
-                                            title: "Thêm thiết bị",
-                                            direction: "right",
-                                            component: AddDeviceForm,
-                                            props: {
-                                                roomId: room.id,
-                                                roomName: room.name
-                                            }
-                                        })
-                                    }>
-                                    <HugeiconsIcon icon={DashboardCircleAddIcon} />
-                                </Button>
+                {typeof currentTemp === "number" && currentTemp > 0 && (
+                    <Badge
+                        variant="outline"
+                        className="flex items-center gap-1 border-orange-200 bg-orange-50 text-orange-700 font-semibold w-fit">
+                        <HugeiconsIcon icon={TemperatureIcon} className="text-orange-600" />
+                        {currentTemp} °C
+                    </Badge>
+                )}
 
-                                <Button
-                                    onClick={() =>
-                                        open({
-                                            id: room.id + "setting",
-                                            title: room.name,
-                                            direction: "right",
-                                            component: HubSettings,
-                                        })
-                                    }
-                                >
-                                    <HugeiconsIcon icon={Setting06Icon} />
-                                </Button>
-                            </>
-                        ),
-                    })
-                }} size="sm" variant="outline">
-                    Detail
-                </Button>
+
+                <div className="col-span-2">
+                    <div className="text-sm font-medium">
+                        {room?.devices?.length || 0} devices
+                    </div>
+                    <Button className={`w-full!`} onClick={() => {
+                        console.log(room);
+                        open({
+                            id: room.id,
+                            title: room.name,
+                            component: DevicesRoom,
+                            props: {
+                                onload: onDeleted
+                                , roomId: room.id
+                                , roomName: room.name
+                            },
+                            direction: "right",
+                            renderRightButtonHeader: (
+                                <>
+                                    <Button
+                                        onClick={() =>
+                                            open({
+                                                id: "addition_device",
+                                                title: "Thêm thiết bị",
+                                                direction: "right",
+                                                component: AddDeviceForm,
+                                                props: {
+                                                    roomId: room.id,
+                                                    roomName: room.name
+                                                }
+                                            })
+                                        }>
+                                        <HugeiconsIcon icon={DashboardCircleAddIcon} />
+                                    </Button>
+
+                                    <Button
+                                        onClick={() =>
+                                            open({
+                                                id: room.id + "setting",
+                                                title: room.name,
+                                                direction: "right",
+                                                component: HubSettings,
+                                            })
+                                        }
+                                    >
+                                        <HugeiconsIcon icon={Setting06Icon} />
+                                    </Button>
+                                </>
+                            ),
+                        })
+                    }} size="sm" variant="outline">
+                        Detail
+                    </Button>
+                </div>
             </CardContent>
         </Card >
     );
