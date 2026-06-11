@@ -26,6 +26,11 @@ class RoomRepository extends SQLiteBase<Room> {
 
         return true;
     }
+    async getById(id: string | number) {
+        return await this.findById(id); // Hoặc return await this.findById(id);
+    }
+
+
     async getRooms() {
         return await this.findAll();
     }

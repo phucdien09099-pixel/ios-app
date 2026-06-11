@@ -324,12 +324,12 @@ export async function initDB() {
             room_id TEXT NOT NULL,
             name TEXT NOT NULL,
             trigger_config TEXT NOT NULL,
-            device_id TEXT NOT NULL,
+            deviceId TEXT NOT NULL,
             action TEXT NOT NULL,
             is_active INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
-            FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+            FOREIGN KEY (deviceId) REFERENCES devices(id) ON DELETE CASCADE
         )
     `);
 }

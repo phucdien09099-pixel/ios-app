@@ -23,6 +23,7 @@ import { useForm } from "react-hook-form";
 import ActionSelectionDrawer from "./ActionSelectionDrawer";
 import { TimerAction } from "./CreateTimer";
 import { cn } from "@/libs/utils";
+import { useTransport } from "@/components/providers/transport/TransportProvider";
 
 export type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 export type AutomationMode = "sleep" | "custom";
@@ -36,11 +37,13 @@ export interface AutomationFormValues {
     comfortTemperature: string;
     operator: string;
     conditionValue: string;
-    actionDeviceId: string;
     action: TimerAction | undefined;
+    deviceId: any;    // 💾 Vẫn giữ nguyên để lưu Database
+    deviceName: string; // 🏷️ Thêm vào để lấy dữ liệu đồng bộ ra ngoài phần cứng/giao diện
 }
 
 export interface CreateAutomationDrawerProps {
+    roomName: string;
     devices: Device[];
     onCreateAutomation: (finalData: any) => void;
     onCancel: () => void;
@@ -57,11 +60,13 @@ const DEFAULT_VALUES: AutomationFormValues = {
     comfortTemperature: "26",
     operator: ">",
     conditionValue: "28",
-    actionDeviceId: "",
     action: undefined,
+    deviceId: "",
+    deviceName: "",
 };
 
 export default function CreateAutomation({
+    roomName,
     devices = [],
     onCreateAutomation,
     onCancel,
@@ -75,6 +80,9 @@ export default function CreateAutomation({
             automationMode: initialData?.automationMode || DEFAULT_VALUES.automationMode,
         },
     });
+    const { deviceStates } = useTransport();
+    const currentRoomState = deviceStates[roomName];
+    const currentTemp = currentRoomState?.temp;
 
     const { register, watch, setValue, handleSubmit } = form;
 
@@ -82,16 +90,15 @@ export default function CreateAutomation({
     const [selectedActionDevice, setSelectedActionDevice] = useState<Device | null>(null);
 
     const automationMode = watch("automationMode");
-    const watchActionDeviceId = watch("actionDeviceId");
+    const watchActionDeviceId = watch("deviceId"); // 🔍 Vẫn theo dõi DeviceId để xử lý logic canSubmit
     const watchAction = watch("action");
-    const watchConditionValue = watch("conditionValue") || "28";
-    const currentTemperature = watch("currentTemperature") || "28";
+    const watchConditionValue = currentTemp;
     const comfortTemperature = watch("comfortTemperature") || "26";
 
     useEffect(() => {
-        if (!initialData?.actionDeviceId) return;
+        if (!initialData?.deviceId) return;
 
-        const device = devices.find((item) => item.id === initialData.actionDeviceId);
+        const device = devices.find((item) => item.id === initialData.deviceId);
         if (device) setSelectedActionDevice(device);
     }, [initialData, devices]);
 
@@ -106,7 +113,10 @@ export default function CreateAutomation({
     };
 
     const handleActionDeviceClick = (device: Device) => {
-        setValue("actionDeviceId", device.id);
+        // ✨ Lưu song song cả ID và Name vào biểu mẫu Form State
+        setValue("deviceId", device.id);
+        setValue("deviceName", device.name || "");
+
         setSelectedActionDevice(device);
         setShowActionDrawer(true);
     };
@@ -183,8 +193,7 @@ export default function CreateAutomation({
                     <div className="grid grid-cols-2 gap-3">
                         <TemperatureStepper
                             label="Nhiệt độ hiện tại"
-                            value={currentTemperature}
-                            inputProps={register("currentTemperature")}
+                            value={currentTemp}
                             onMinus={() => handleDecrement("currentTemperature")}
                             onPlus={() => handleIncrement("currentTemperature")}
                             icon={TemperatureIcon}
@@ -238,6 +247,7 @@ export default function CreateAutomation({
                 <div className="text-sm font-medium">Chọn thiết bị và hành động</div>
                 <div className="grid gap-2">
                     {devices.map((device) => {
+                        // 🟢 UI nút bấm bên ngoài giao diện vẫn kích hoạt Active mượt mà dựa trên deviceId
                         const isActive = watchActionDeviceId === device.id;
 
                         return (
@@ -308,7 +318,7 @@ function TemperatureStepper({
     label: string;
     description?: string;
     value: string;
-    inputProps: ReturnType<typeof useForm<AutomationFormValues>>["register"] extends (...args: any[]) => infer R ? R : never;
+    inputProps?: any;
     onMinus: () => void;
     onPlus: () => void;
     icon: any;
@@ -327,7 +337,7 @@ function TemperatureStepper({
             </div>
 
             <div className="flex h-full! items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 p-1">
-                {!readOnly ? (
+                {!readOnly && (
                     <button
                         type="button"
                         onClick={onMinus}
@@ -335,21 +345,23 @@ function TemperatureStepper({
                     >
                         -
                     </button>
-                ) : null}
+                )}
                 <div className="flex min-w-0 flex-1 items-center justify-center">
                     <input
                         type="number"
-                        readOnly={readOnly}
-                        tabIndex={readOnly ? -1 : undefined}
                         className={cn(
                             "w-10 bg-transparent text-center text-sm font-bold outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                             readOnly && "pointer-events-none"
                         )}
                         {...inputProps}
+                        value={value || ""}
+                        readOnly={readOnly}
+                        onChange={readOnly ? undefined : inputProps?.onChange}
+                        tabIndex={readOnly ? -1 : undefined}
                     />
                     <span className="text-sm font-bold">°C</span>
                 </div>
-                {!readOnly ? (
+                {!readOnly && (
                     <button
                         type="button"
                         onClick={onPlus}
@@ -357,10 +369,8 @@ function TemperatureStepper({
                     >
                         +
                     </button>
-                ) : null}
+                )}
             </div>
-
-            {/* <div className="text-center text-xs text-muted-foreground">{value}°C</div> */}
         </div>
     );
 }

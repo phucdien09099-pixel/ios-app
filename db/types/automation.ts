@@ -5,7 +5,7 @@ export interface AutomationDB {
     room_id: string;
     name: string;
     trigger_config: string;
-    device_id: string;      
+    deviceId: string;
     action: string;
     is_active: number;
     created_at?: string;

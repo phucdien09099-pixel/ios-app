@@ -71,7 +71,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
     const createDynamicPayload = (data: FormData, msgType: "SCAN" | "CONFIRM") => {
         return {
             type: msgType,
-            ir_devices: deviceName,
+            deviceName: deviceName,
             // Nếu là IOT_SUB thì lấy mã cứng, nếu là IR_RF thì giả lập ID là 1 để mạch test sóng
             id: data.connectionType === "IOT_SUB" ? data.iotDeviceId : 1,
             brand: data.connectionType === "IR_RF" ? (data.brand || "MITSUBISHI") : "GENERIC_IOT",

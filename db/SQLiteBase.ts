@@ -55,7 +55,7 @@ export class SQLiteBase<T> {
 
     // ================= FIND BY ID =================
 
-    async findById(id: number): Promise<T | null> {
+    async findById(id: any): Promise<T | null> {
         const db = await getDB();
         const rows = await db.select<T[]>(
             `

@@ -47,7 +47,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
 
         const payload = {
             type: data.type,
-            ir_devices: data.name,
+            deviceName: data.name,
             brand: data.brand || "UNKNOWN",
             action: {
                 power: nextPower ? "ON" : "OFF",

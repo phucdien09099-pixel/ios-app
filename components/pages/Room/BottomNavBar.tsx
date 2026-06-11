@@ -38,7 +38,7 @@ const navItems: NavItem[] = [
     },
 ];
 
-export default function BottomNavBar({ deviceId, }: { deviceId: any; }) {
+export default function BottomNavBar({ roomId, }: { roomId: any; }) {
     const { open } = useNavDrawer();
     return (
         <>
@@ -56,7 +56,7 @@ export default function BottomNavBar({ deviceId, }: { deviceId: any; }) {
                                     component: BottomDrawer,
                                     props: {
                                         type: item.key,
-                                        roomId: deviceId 
+                                        roomId: roomId
                                     },
                                     renderRightButtonHeader: <></>,
                                     direction: "bottom",
@@ -166,7 +166,7 @@ function SmartSceneUI({ roomId }: { roomId: string }) {
                     title: "Kịch bản thông minh",
                     component: CreateSmartSceneDrawer,
                     renderRightButtonHeader: <></>,
-                    direction: 'bottom', 
+                    direction: 'bottom',
                     className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
                     props: { roomId }
                 })}>

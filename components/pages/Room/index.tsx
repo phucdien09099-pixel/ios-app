@@ -31,7 +31,7 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
                                 <DeviceCard roomName={roomName} onDeleted={load} key={d.id} device={d as any} />
                             ))}
                         </div>
-                        <BottomNavBar deviceId={roomId} />
+                        <BottomNavBar roomId={roomId} />
                     </>
                 )
                 : (<EmptyDevices roomId={roomId} roomName={roomName} />)

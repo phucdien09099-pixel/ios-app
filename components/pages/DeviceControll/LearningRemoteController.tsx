@@ -167,7 +167,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     const sendRemotePayload = async (action: Record<string, any>) => {
         const payload = {
             type: "LEARNING_REMOTE",
-            ir_devices: data.name,
+            deviceName: data.name,
             brand: data.brand || "CUSTOM",
             action,
         };

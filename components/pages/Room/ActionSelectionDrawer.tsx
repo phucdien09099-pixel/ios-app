@@ -26,7 +26,7 @@ export default function ActionSelectionDrawer({ open, onOpenChange, device, curr
     const availableActions: TimerAction[] = [
         { deviceType: ["all"], type: "power", value: "ON", label: `Bật ${device.name.toLowerCase()}` },
         { deviceType: ["all"], type: "power", value: "OFF", label: `Tắt ${device.name.toLowerCase()}` },
-        { deviceType: ["ac"], type: "autoTemp", value: "Auto Temp", label: `Tự động tăng/giảm nhiệt độ` }
+        { deviceType: ["ac"], type: "autoTemp", value: "autoTemp", label: `Tự động tăng/giảm nhiệt độ` }
     ];
 
     return (

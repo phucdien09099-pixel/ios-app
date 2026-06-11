@@ -9,13 +9,9 @@ import { IcoIcon, AddCircleIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/libs/utils";
 import CreateAutomation from "./CreateAutomation";
 import { SceneTypeSelector } from "./SceneTypeSelector";
-import { useTransport } from "@/components/providers/transport/TransportProvider";
-import { roomRepo } from "@/db/repository/RoomRepository";
-import { Room } from "@/db/types/room";
 
 interface CreateSmartSceneDrawerProps {
     roomId: string;
@@ -26,36 +22,28 @@ const buildEsp32TaskPayload = (finalData: any, existingId?: string) => {
 
     return {
         id: existingId || `task_${Math.floor(Date.now() / 1000)}`,
-        time: isSleepMode ? finalData.sleepTime : (finalData.time || "22:00"),
-        endTime: isSleepMode ? finalData.wakeTime : (finalData.endTime || "06:00"),
+        time: isSleepMode ? (finalData.sleepTime || "22:00") : (finalData.time || "22:00"),
+        endTime: isSleepMode ? (finalData.wakeTime || "06:00") : (finalData.endTime || "06:00"),
         repeat: finalData.repeat ?? true,
-        days: [],
-        deviceName: finalData.deviceName, // Thường ID từ Form/Select là String, ép sang số nguyên (Number) giống mẫu của bạn
+        days: finalData.days || [2, 3, 4, 5, 6],
+        deviceId: Number(finalData.deviceId), // Thường ID từ Form/Select là String, ép sang số nguyên (Number) giống mẫu của bạn
         actions: [
             {
                 type: isSleepMode ? "autoTemp" : (finalData.type || "autoTemp"),
                 condition: finalData.operator || ">",
-                temp: finalData.comfortTemperature,
+                temp: parseFloat(finalData.conditionValue || finalData.comfortTemperature || "28.5"),
                 value: finalData.action?.value || "ON"
             }
         ]
     };
 };
 
-
 const getAutomationConditionLabel = (triggerConfig: any, fallbackLabel: string) => {
     if (triggerConfig.automationMode === "sleep") {
         return `Ngủ ${triggerConfig.sleepTime || "22:30"} - thức ${triggerConfig.wakeTime || "06:30"} · ${triggerConfig.comfortTemperature || "26"}°C`;
     }
-
-    if (triggerConfig.operator === ">") {
-        return `Nhiệt độ trên ${triggerConfig.conditionValue}°C`;
-    }
-
-    if (triggerConfig.operator === "<") {
-        return `Nhiệt độ dưới ${triggerConfig.conditionValue}°C`;
-    }
-
+    if (triggerConfig.operator === ">") return `Nhiệt độ trên ${triggerConfig.conditionValue}°C`;
+    if (triggerConfig.operator === "<") return `Nhiệt độ dưới ${triggerConfig.conditionValue}°C`;
     return fallbackLabel;
 };
 
@@ -64,41 +52,23 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     const [devices, setDevices] = useState<Device[]>([]);
     const [automations, setAutomations] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
-    const [room, setRoom] = useState<Room | null>();
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-
-    const { send } = useTransport();
 
     const getDeviceIcon = (type: string) => IcoIcon;
 
     const loadData = async () => {
         if (!roomId) return;
-
-        // Sử dụng Destructuring để hứng thêm kết quả từ roomRepo
-        const [roomDevices, roomAutomations, roomInfo] = await Promise.all([
+        const [roomDevices, roomAutomations] = await Promise.all([
             deviceRepo.getByRoom(roomId),
             automationRepo.getByRoom(roomId),
-            roomRepo.getById(roomId), // 🔥 Thêm lệnh gọi repo lấy thông tin Room ở đây
         ]);
-
-        // console.log("Devices:", roomDevices);
-        // console.log("Room Info:", roomInfo);
-
-        // Cập nhật các State
         setDevices(roomDevices);
         setAutomations(roomAutomations);
-        setRoom(roomInfo); // 🔥 Mở comment và set dữ liệu vào state
     };
 
-    useEffect(() => {
-        loadData();
-    }, [roomId]);
+    useEffect(() => { loadData(); }, [roomId]);
 
-    const handleSelectAutomation = async () => {
-        // 1. Đóng cái Menu "Chọn kịch bản" lại luôn
-        await back();
-
-        // 2. Chờ 0.25s cho Menu trượt xuống mượt mà, rồi đẩy Form lên thay thế
+    const handleSelectAutomation = () => {
+        back();
         setTimeout(() => {
             open({
                 id: "createAutomationForm",
@@ -107,7 +77,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
                 component: CreateAutomation,
                 props: {
-                    roomName: room?.name,
                     devices,
                     getDeviceIcon,
                     onCancel: back,
@@ -119,15 +88,13 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             room_id: roomId,
                             name: finalData.name || "Tự động hóa thông minh",
                             trigger_config: JSON.stringify(triggerConfigObj),
-                            deviceId: finalData.deviceId,
+                            device_id: finalData.actionDeviceId,
                             action: JSON.stringify(finalData.action || { value: "ON" }),
                             is_active: 1,
                         });
 
-                        await send(triggerConfigObj, `device/${room?.name}/auto/set`);
-
                         await loadData();
-                        await back();
+                        back();
                     }
                 }
             });
@@ -137,6 +104,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     const handleOpenEdit = (automation: any) => {
         const triggerConfig = automation.trigger_config ? JSON.parse(automation.trigger_config) : {};
         const actionObj = automation.action ? JSON.parse(automation.action) : {};
+        const firstAction = triggerConfig.actions?.[0] || {};
 
         open({
             id: "editAutomationForm",
@@ -149,14 +117,17 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 getDeviceIcon,
                 initialData: {
                     name: automation.name,
-                    automationMode: triggerConfig.automationMode || "custom",
-                    sleepTime: triggerConfig.sleepTime || "22:30",
-                    wakeTime: triggerConfig.wakeTime || "06:30",
-                    currentTemperature: triggerConfig.currentTemperature || "28",
-                    comfortTemperature: triggerConfig.comfortTemperature || "26",
-                    operator: triggerConfig.operator || "",
-                    conditionValue: triggerConfig.conditionValue || "28",
-                    actionDeviceId: automation.deviceId,
+                    automationMode: triggerConfig.endTime ? "sleep" : "custom",
+                    sleepTime: triggerConfig.time || "22:30",
+                    wakeTime: triggerConfig.endTime || "06:30",
+                    time: triggerConfig.time || "22:30",
+                    endTime: triggerConfig.endTime || "",
+                    repeat: triggerConfig.repeat ?? true,
+                    days: triggerConfig.days || [2, 3, 4, 5, 6],
+                    conditionValue: firstAction.temp?.toString() || "28",
+                    comfortTemperature: firstAction.temp?.toString() || "26",
+                    operator: firstAction.condition || ">",
+                    actionDeviceId: automation.device_id || triggerConfig.deviceId,
                     action: actionObj,
                 },
                 onCancel: back,
@@ -167,7 +138,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     await automationRepo.update(automation.id, {
                         name: finalData.name || "Tự động hóa",
                         trigger_config: JSON.stringify(triggerConfigObj),
-                        deviceId: finalData.actionDeviceId,
+                        device_id: finalData.actionDeviceId,
                         action: JSON.stringify(finalData.action || { value: "ON" }),
                     });
 
@@ -178,14 +149,13 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
         });
     };
 
-    // Màn hình danh sách kịch bản
     return (
         <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
             <div className="flex items-center justify-between px-4 pt-2 pb-1 flex-shrink-0">
                 <Button
                     variant="ghost"
                     className="text-foreground hover:text-foreground font-medium p-0 h-auto hover:bg-transparent text-base transition-colors"
-                    onClick={() => { setIsEditing(!isEditing); setDeleteConfirmId(null); }}
+                    onClick={() => { setIsEditing(!isEditing); }}
                 >
                     {isEditing ? "Xong" : "Xoá"}
                 </Button>
@@ -206,9 +176,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 </Button>
             </div>
 
-            {/* Vùng danh sách: Cho phép cuộn (flex-1 overflow-y-auto) */}
             <div className="flex-1 overflow-y-auto px-4 pt-2">
-                {/* Thêm pb-6 ở đây để khi cuộn xuống dưới cùng, phần tử cuối không bị dính vào viền */}
                 <div className="w-full space-y-3 pb-6">
                     {automations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -217,43 +185,22 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             </div>
                             <div className="text-center">
                                 <div className="font-semibold text-base">Chưa có kịch bản nào</div>
-                                <div className="text-sm text-muted-foreground mt-1">
-                                    Hãy bắt đầu bằng cách tạo kịch bản đầu tiên của bạn.
-                                </div>
                             </div>
-                            <Button
-                                variant="default"
-                                className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-6"
-                                onClick={() => open({
-                                    id: "sceneTypeSelector",
-                                    title: "Kịch bản thông minh",
-                                    direction: "bottom",
-                                    className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
-                                    component: SceneTypeSelector,
-                                    props: { onSelectAutomation: handleSelectAutomation }
-                                })}
-                            >
-                                <HugeiconsIcon icon={AddCircleIcon} size={18} />
-                                Tạo kịch bản
-                            </Button>
                         </div>
                     ) : (
                         automations.map((automation) => {
-                            const device = devices.find(d => d.id === automation.deviceId);
+                            const device = devices.find(d => d.id === automation.device_id);
                             const triggerConfig = automation.trigger_config ? JSON.parse(automation.trigger_config) : {};
                             const actionObj = automation.action ? JSON.parse(automation.action) : {};
+
                             const conditionLabel = triggerConfig.operator === ">"
                                 ? `Nhiệt độ trên ${triggerConfig.conditionValue}°C`
-                                : triggerConfig.operator === "<"
-                                    ? `Nhiệt độ dưới ${triggerConfig.conditionValue}°C`
-                                    : "Điều kiện chưa đặt";
+                                : `Nhiệt độ dưới ${triggerConfig.conditionValue}°C`;
 
                             const displayConditionLabel = getAutomationConditionLabel(triggerConfig, conditionLabel);
 
                             return (
                                 <div key={automation.id} className="relative w-full overflow-hidden rounded-3xl border border-border/50 bg-card">
-
-                                    {/* 1. Nút Xóa nền đỏ ẩn ở dưới */}
                                     <div className={cn(
                                         "absolute right-0 top-0 bottom-0 z-0 flex w-24 items-center justify-end transition-opacity duration-300",
                                         isEditing ? "opacity-100" : "opacity-0"
@@ -263,7 +210,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                             className="h-full w-full rounded-none rounded-r-3xl bg-red-500 hover:bg-red-600 text-white font-medium text-sm"
                                             onClick={async (e) => {
                                                 e.stopPropagation();
-                                                // Gọi hàm xóa trong DB (Giả sử bạn có hàm delete trong automationRepo)
                                                 await automationRepo.delete(automation.id);
                                                 setAutomations((prev) => prev.filter((a) => a.id !== automation.id));
                                             }}
@@ -272,13 +218,10 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                         </Button>
                                     </div>
 
-                                    {/* 2. Nội dung chính trượt sang trái khi bấm Sửa/Xóa */}
                                     <div className={cn(
                                         "relative z-10 flex w-full items-center transition-transform duration-300 ease-in-out bg-card",
                                         isEditing ? "-translate-x-24" : "translate-x-0"
                                     )}>
-
-                                        {/* 3. Phần thông tin thiết bị (Bỏ Card, dùng div) */}
                                         <div
                                             className="flex-1 min-w-0 p-4 transition-colors duration-200 active:bg-muted/60 cursor-pointer"
                                             onClick={() => handleOpenEdit(automation)}
@@ -305,13 +248,10 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                             </div>
                                         </div>
 
-                                        {/* 4. Nút Switch (Ẩn đi khi isEditing = true) */}
                                         <div className={cn(
                                             "flex items-center transition-all duration-200 origin-right pr-4 flex-shrink-0",
                                             isEditing ? "opacity-0 scale-50 pointer-events-none hidden" : "opacity-100 scale-100"
-                                        )}
-                                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                                            onPointerDown={(e) => e.stopPropagation()}>
+                                        )}>
                                             <Switch
                                                 checked={automation.is_active === 1}
                                                 onCheckedChange={async (checked) => {
@@ -322,7 +262,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                                 }}
                                             />
                                         </div>
-
                                     </div>
                                 </div>
                             );
