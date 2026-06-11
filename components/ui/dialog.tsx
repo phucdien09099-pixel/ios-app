@@ -17,7 +17,7 @@ function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
 }
 
 function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+  return <DialogPrimitive.Portal className={`z-999`} data-slot="dialog-portal" {...props} />
 }
 
 function DialogClose({ ...props }: DialogPrimitive.Close.Props) {

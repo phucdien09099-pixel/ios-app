@@ -7,6 +7,9 @@ import { useEffect, useState } from "react";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { Device } from "@/db/types/devive";
 import BottomNavBar from "./BottomNavBar";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: string, roomId: string, onLoad: any }) {
 
@@ -31,6 +34,7 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
                                 <DeviceCard roomName={roomName} onDeleted={load} key={d.id} device={d as any} />
                             ))}
                         </div>
+
                         <BottomNavBar roomId={roomId} />
                     </>
                 )

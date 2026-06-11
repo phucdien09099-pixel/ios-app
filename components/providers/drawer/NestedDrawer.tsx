@@ -117,7 +117,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                 </DrawerHeader>
                             )}
 
-                            <div 
+                            <div
                                 className={cn(
                                     "flex-1 overflow-auto",
                                     page.direction !== "bottom" ? "p-4 pt-2!" : ""

@@ -129,7 +129,7 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                                 </>
                             ),
                         })
-                    }} size="sm" variant="outline">
+                    }} size="sm">
                         Detail
                     </Button>
                 </div>

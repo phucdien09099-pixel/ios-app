@@ -30,7 +30,21 @@ export default function RootLayout({
               <DrawerProvider>
                 {children}
               </DrawerProvider>
-              <Toaster richColors position="top-right" />
+              <Toaster
+                position="bottom-center"
+                richColors={true}
+                closeButton={false}
+                expand={false}
+                visibleToasts={1}
+                offset={40}
+                toastOptions={{
+                  duration: 2000,
+                  classNames: {
+                    toast: `mx-auto w-fit min-w-[150px] max-w-[250px] h-11 px-6 py-0 rounded-full! justify-center`,
+                    description: `hidden`,
+                  },
+                }}
+              />
             </TransportProvider>
           </DatabaseProvider>
         </ThemeProvider>

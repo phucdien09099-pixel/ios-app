@@ -332,4 +332,16 @@ export async function initDB() {
             FOREIGN KEY (deviceId) REFERENCES devices(id) ON DELETE CASCADE
         )
     `);
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS deviceRemoteButtons (
+            id VARCHAR(50) PRIMARY KEY,
+            device_id VARCHAR(50) NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            code_key VARCHAR(100) NOT NULL,
+            icon_key VARCHAR(50) NOT NULL,
+            learned BOOLEAN DEFAULT FALSE,
+            data_base64 TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
 }

@@ -11,6 +11,8 @@ import { RoomCard } from "./RoomCard";
 import AppPullToRefresh from "@/components/common/AppPull2Refresh";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import UserPage from "../User";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export function RoomPage() {
     const { open } = useNavDrawer();
@@ -35,6 +37,35 @@ export function RoomPage() {
                         Smart IR
                     </h3>
 
+                    <Dialog>
+                        <DialogContent
+                            className="z-[9999]! pointer-events-auto!"
+                        >
+                            <DialogTrigger>
+                                <Button size="icon-lg" variant="outline" title="Thêm nút" aria-label="Thêm nút" >
+                                    {/* <HugeiconsIcon icon={Add01Icon} /> */}
+                                    hello
+                                </Button>
+                            </DialogTrigger>
+                            {/* <DialogHeader>
+                        <DialogTitle>{editingId ? "Sửa nút remote" : "Thêm nút remote"}</DialogTitle>
+                        <DialogDescription>Chọn icon và đặt mã nút để học hoặc gửi lại tín hiệu.</DialogDescription>
+                    </DialogHeader>
+                    
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                            <HugeiconsIcon icon={Cancel01Icon} data-icon="inline-start" />
+                            Hủy
+                        </Button>
+                        <Button onClick={saveButton}>
+                            <HugeiconsIcon icon={editingId ? SaveIcon : Add01Icon} data-icon="inline-start" />
+                            {editingId ? "Lưu thay đổi" : "Thêm nút"}
+                        </Button>
+                    </DialogFooter>
+                 */}
+                        </DialogContent>
+                    </Dialog >
                     <p className="leading-7 text-muted-foreground">
                         HUB điều khiển hồng ngoại
                     </p>
@@ -105,6 +136,7 @@ export function RoomPage() {
                         />
                     ))}
                 </div>
+
             </AppPullToRefresh>
 
         </div >
