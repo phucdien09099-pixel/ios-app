@@ -12,6 +12,7 @@ import { TimerUI } from "./TimerDrawer";
 import { usePreventExit } from "@/hooks/usePreventExit";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import CreateSmartSceneDrawer from "./CreateSmartSceneDrawer";
+import { UpCommingFeature } from "@/components/upcomming-feature";
 
 
 type NavItem = {
@@ -22,7 +23,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
     {
-        key: "controll",
+        key: "feature",
         label: "Feature",
         icon: HomeIcon,
     },
@@ -93,8 +94,8 @@ export default function BottomNavBar({ roomId, }: { roomId: any; }) {
 
 function BottomDrawer({ type, roomId }: { type: string | null; roomId: string }) {
     if (type === "smart") return <CreateSmartSceneDrawer roomId={roomId} />;
-    if (type === "timer") return <TimerUI roomId={roomId} />;
-    return null;
+    else if (type === "timer") return <TimerUI roomId={roomId} />;
+    else return <UpCommingFeature />;
 }
 
 function SmartSceneUI({ roomId }: { roomId: string }) {
