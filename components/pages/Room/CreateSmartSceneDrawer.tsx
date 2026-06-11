@@ -181,7 +181,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     // Màn hình danh sách kịch bản
     return (
         <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
-            <div className="flex items-center justify-between px-4 pt-2 pb-1 flex-shrink-0">
+            <div className="flex items-center justify-between px-4 pt-2 pb-1 shrink-0">
                 <Button
                     variant="ghost"
                     className="text-foreground hover:text-foreground font-medium p-0 h-auto hover:bg-transparent text-base transition-colors"
@@ -285,7 +285,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                    <div className="flex size-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+                                                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
                                                         <HugeiconsIcon icon={getDeviceIcon(device?.type || "")} size={22} />
                                                     </div>
                                                     <div className="min-w-0 flex-1">
@@ -296,7 +296,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                                             {actionObj?.label && (
                                                                 <>
                                                                     <span>•</span>
-                                                                    <span className="truncate max-w-[100px]">{actionObj.label}</span>
+                                                                    <span className="truncate max-w-25">{actionObj.label}</span>
                                                                 </>
                                                             )}
                                                         </div>
@@ -307,7 +307,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
 
                                         {/* 4. Nút Switch (Ẩn đi khi isEditing = true) */}
                                         <div className={cn(
-                                            "flex items-center transition-all duration-200 origin-right pr-4 flex-shrink-0",
+                                            "flex items-center transition-all duration-200 origin-right pr-4 shrink-0",
                                             isEditing ? "opacity-0 scale-50 pointer-events-none hidden" : "opacity-100 scale-100"
                                         )}
                                             onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}

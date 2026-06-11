@@ -31,10 +31,10 @@ export default function ActionSelectionDrawer({ open, onOpenChange, device, curr
 
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
-            <DrawerContent className="w-full bg-background rounded-t-2xl mt-[8vh]! max-h-[100dvh] flex flex-col z-[9999] [&>div:first-child]:hidden">
+            <DrawerContent className="w-full bg-background rounded-t-2xl mt-[8vh]! max-h-dvh flex flex-col z-9999 [&>div:first-child]:hidden">
 
                 {/* Thanh gạch ngang nhỏ ở trên cùng */}
-                <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-muted-foreground/20 flex-shrink-0" />
+                <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-muted-foreground/20 shrink-0" />
 
                 <DrawerHeader className="text-center sm:text-left pb-2">
                     <DrawerTitle className="text-xl font-bold">Chọn hành động</DrawerTitle>
