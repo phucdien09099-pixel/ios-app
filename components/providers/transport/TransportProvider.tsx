@@ -113,6 +113,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
                     // clientId: `app_${Math.random().toString(36).substring(7)}`,
                     topicsToSubscribe: [
                         { topic: "device/+/sensor/info", qos: 0 },
+                        { topic: "device/+/control/set", qos: 0 },
                         { topic: "device/+/status", qos: 0 },
                         { topic: "device/init", qos: 0 },
                     ]
@@ -140,6 +141,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             // Đăng ký topic đón đầu dữ liệu chung cho hệ thống
             transportManager.subscribe("device/+/status");
             transportManager.subscribe("device/+/sensor/info");
+            transportManager.subscribe("device/+/control/set");
         };
 
         bootstrap();
@@ -151,8 +153,8 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         scan();
         // Lắng nghe dữ liệu đổ về từ cả 2 kênh mạng (MQTT và BLE)
         transportManager.onNormalizedReceive((data: any) => {
-            console.log(data);
-            if (!data || !data.channel) return;
+            // console.log(data);
+            // if (!data || !data.channel) return;
 
             setLastMessage(data);
             syncConnectionMetadata();

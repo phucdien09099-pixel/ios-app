@@ -80,6 +80,7 @@ type LearnedButton = {
     iconKey: RemoteIconKey;
     learned: boolean;
     updatedAt: string;
+    dataBase64?: string;
 };
 
 const DEFAULT_BUTTONS: LearnedButton[] = [
@@ -111,6 +112,7 @@ const migrateButtons = (value: unknown): LearnedButton[] | null => {
             codeKey: normalizeCodeKey(String(item.codeKey || item.name || "BUTTON")),
             iconKey: ICON_OPTIONS.some((option) => option.key === item.iconKey) ? item.iconKey : "remote",
             learned: Boolean(item.learned),
+            dataBase64: item.dataBase64 ? String(item.dataBase64) : undefined, // 👈 Đảm bảo migrate cả chuỗi base64
             updatedAt: String(item.updatedAt || ""),
         }));
 };
@@ -126,7 +128,68 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     const [editMode, setEditMode] = useState(false);
     const [learnMode, setLearnMode] = useState(false);
     const [learningId, setLearningId] = useState<string | null>(null);
-    const { send } = useTransport();
+    const { send, lastMessage } = useTransport();
+
+    useEffect(() => {
+        // Chỉ xử lý nếu đang bật chế độ học lệnh VÀ có nút đang chờ học
+        if (!learnMode || !learningId || !lastMessage) return;
+
+        console.log("📨 [LearningRemote] Nhận được gói tin mới từ Transport:", lastMessage);
+
+        try {
+            // 1. Nhận diện và bóc tách payload (Chống lỗi Crash nếu payload đã là object)
+            let messagePayload: any = null;
+            if (typeof lastMessage.payload === "string") {
+                messagePayload = JSON.parse(lastMessage.payload);
+            } else if (lastMessage.payload && typeof lastMessage.payload === "object") {
+                messagePayload = lastMessage.payload;
+            }
+
+            // Nếu bóc tách ra bên trong vẫn là một chuỗi payload bọc tiếp (Trường hợp lồng nhau)
+            if (messagePayload && typeof messagePayload.payload === "string") {
+                messagePayload = JSON.parse(messagePayload.payload);
+            } else if (messagePayload && typeof messagePayload.payload === "object") {
+                messagePayload = messagePayload.payload;
+            }
+
+            console.log("📦 [LearningRemote] Dữ liệu Payload sau khi parse:", messagePayload);
+
+            // 2. Kiểm tra xem có đúng type hệ thống cần không
+            if (messagePayload && messagePayload.type === "SEND_LEARNING") {
+                const incomingBase64 = messagePayload.action?.dataBase64;
+                console.log("🔑 [LearningRemote] Tìm thấy chuỗi mã hóa base64:", incomingBase64);
+
+                if (incomingBase64) {
+                    // 3. Tiến hành cập nhật dữ liệu vào State nút bấm
+                    setButtons((current) => {
+                        const updated = current.map((item) =>
+                            item.id === learningId
+                                ? {
+                                    ...item,
+                                    learned: true,
+                                    dataBase64: incomingBase64,
+                                    updatedAt: new Date().toISOString()
+                                }
+                                : item
+                        );
+                        console.log("💾 [LearningRemote] Cập nhật State danh sách nút mới thành công!");
+                        return updated;
+                    });
+
+                    toast.success("🎉 Đã học thành công mã IR cho nút bấm!");
+
+                    // 4. Giải phóng trạng thái chờ học lệnh của nút hiện tại
+                    setLearningId(null);
+                } else {
+                    console.warn("⚠️ [LearningRemote] Gói tin đúng cấu trúc nhưng không tìm thấy dữ liệu 'dataBase64' trong 'action'");
+                }
+            } else {
+                console.log(`⏭️ [LearningRemote] Bỏ qua gói tin vì type '${messagePayload?.type}' không khớp với 'SEND_LEARNING'`);
+            }
+        } catch (error) {
+            console.error("❌ [LearningRemote] Lỗi nghiêm trọng khi bóc tách gói tin IR:", error);
+        }
+    }, [lastMessage, learnMode, learningId]); // Giữ Dependency cực tối giản để không bị hụt gói tin
 
     useEffect(() => {
         const saved = window.localStorage.getItem(storageKey);
@@ -245,13 +308,18 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     };
 
     const runButton = async (button: LearnedButton) => {
+        // Nếu nút chưa được học lệnh, cảnh báo người dùng ngay
+        if (!button.learned || !button.dataBase64) {
+            toast.error(`Nút ${button.name} chưa được học lệnh hồng ngoại!`);
+            return;
+        }
+
         try {
+            // Gửi payload kèm chuỗi dữ liệu base64 đã lưu xuống phần cứng
             await sendRemotePayload({
-                command: "SEND",
-                key: button.codeKey,
-                name: button.name,
+                dataBase64: button.dataBase64 // 👈 Bắn chuỗi này xuống để ESP32 giải mã ra mảng xung thô và phát
             });
-            toast.success(`Đã gửi nút ${button.name}`);
+            toast.success(`Đã phát lệnh nút ${button.name}`);
         } catch (error) {
             console.error(error);
             toast.error("Không thể gửi lệnh remote");
@@ -272,6 +340,36 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
         runButton(button);
     };
 
+    const toggleLearnMode = async () => {
+        const nextState = !learnMode;
+        setLearnMode(nextState);
+        setEditMode(false);
+        const learningPayload = {
+            type: nextState ? "START_LEARNING" : "STOP_LEARNING",
+            id: data.id || 1,
+            deviceName: data.name || "HUB1",
+            brand: data.brand || "MITSUBISHI",
+            action: {},
+        };
+
+        try {
+            // 2. Luôn gửi tín hiệu xuống thiết bị bất kể là Bật hay Tắt để phần cứng đồng bộ trạng thái
+            await send(learningPayload, `device/${roomName}/control/set`);
+
+            if (nextState) {
+                toast.info("Đã kích hoạt chế độ học lệnh trên thiết bị");
+            } else {
+                toast.warning("Đã tắt chế độ học lệnh");
+                setLearningId(null); // Giải phóng luôn nút đang chờ học nếu có
+            }
+        } catch (error) {
+            console.error("❌ Lỗi thay đổi trạng thái học lệnh tổng thể:", error);
+            toast.error("Không thể đồng bộ chế độ học lệnh với thiết bị");
+
+            // Hoàn tác (Rollback) lại trạng thái giao diện nếu gửi qua mạng thất bại
+            setLearnMode(learnMode);
+        }
+    };
     return (
         <CardContent className="flex flex-col gap-4 p-4 md:p-6">
             <div className="flex items-start justify-between gap-3">
@@ -304,11 +402,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                         variant={learnMode ? "default" : "outline"}
                         title="Học nút"
                         aria-label="Học nút"
-                        onClick={() => {
-                            setLearnMode((value) => !value);
-                            setEditMode(false);
-                        }}
-                    >
+                        onClick={toggleLearnMode}>
                         <HugeiconsIcon icon={AiLearningIcon} className={cn(learnMode && "animate-pulse")} />
                     </Button>
                 </div>
