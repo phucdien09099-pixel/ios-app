@@ -47,21 +47,22 @@ const SEND_DELAY_MS = 500;
 const brightnessToPercent = (value: number) => Math.round(((value - 1) * 99) / 254 + 1);
 const speedToPayload = (value: number) => 256 - value;
 const toPayloadMode = (value: ColorMode) => value.replace("LED_", "");
+const getSliderNumber = (value: number | readonly number[]) => Array.isArray(value) ? value[0] ?? 0 : value;
 
-export default function HubSettings() {
+export default function HubSettings({ roomName }: { roomName: string }) {
     const [currentValue, setCurrentValue] = useState(parseColor("#00ffcc"));
     const [mode, setMode] = useState<ColorMode>("LED_STATIC");
-    const [brightness, setBrightness] = useState<number[]>([191]);
-    const [speed, setSpeed] = useState<number[]>([100]);
-    const [notificationVolume, setNotificationVolume] = useState<number[]>([70]);
+    const [brightness, setBrightness] = useState(191);
+    const [speed, setSpeed] = useState(100);
+    const [notificationVolume, setNotificationVolume] = useState(70);
 
     const { send } = useTransport();
     const ledSendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const alarmSendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const colorHex = currentValue.toString("hex").split("#")[1];
-    const brightnessValue = brightness[0] ?? 191;
-    const speedValue = speed[0] ?? 100;
+    const brightnessValue = brightness;
+    const speedValue = speed;
     const brightnessPercent = brightnessToPercent(brightnessValue);
     const payloadSpeed = speedToPayload(speedValue);
 
@@ -93,7 +94,7 @@ export default function HubSettings() {
                     brightness: nextBrightness,
                     color: nextColor,
                 },
-                "led/set"
+                `device/${roomName}/led/set`
             );
         }, SEND_DELAY_MS);
     };
@@ -107,7 +108,7 @@ export default function HubSettings() {
                     volume: nextVolume,
                     mode: "OFF",
                 },
-                "alarm/set"
+                `device/${roomName}/alarm/set`
             );
         }, SEND_DELAY_MS);
     };
@@ -124,15 +125,15 @@ export default function HubSettings() {
         scheduleLedSet({ nextMode: "LED_STATIC", nextColor: `#${hex}` });
     };
 
-    const onBrightnessChange = (value: number[]) => {
-        const nextBrightness = value[0] ?? 1;
-        setBrightness([nextBrightness]);
+    const onBrightnessChange = (value: number | readonly number[]) => {
+        const nextBrightness = getSliderNumber(value);
+        setBrightness(nextBrightness);
         scheduleLedSet({ nextBrightness });
     };
 
-    const onSpeedChange = (value: number[]) => {
-        const nextSpeed = value[0] ?? 1;
-        setSpeed([nextSpeed]);
+    const onSpeedChange = (value: number | readonly number[]) => {
+        const nextSpeed = getSliderNumber(value);
+        setSpeed(nextSpeed);
         scheduleLedSet({ nextSpeed: speedToPayload(nextSpeed) });
     };
 
@@ -142,9 +143,9 @@ export default function HubSettings() {
         scheduleLedSet({ nextMode: value });
     };
 
-    const onNotificationVolumeChange = (value: number[]) => {
-        const nextVolume = value[0] ?? 0;
-        setNotificationVolume([nextVolume]);
+    const onNotificationVolumeChange = (value: number | readonly number[]) => {
+        const nextVolume = getSliderNumber(value);
+        setNotificationVolume(nextVolume);
         scheduleAlarmSet(nextVolume);
     };
 
@@ -231,7 +232,7 @@ export default function HubSettings() {
                                             min={1}
                                             max={255}
                                             step={1}
-                                            onValueChange={(value) => onBrightnessChange(value as number[])}
+                                            onValueChange={onBrightnessChange}
                                         />
                                         <HugeiconsIcon icon={Sun03Icon} className="text-muted-foreground" />
                                     </div>
@@ -250,7 +251,7 @@ export default function HubSettings() {
                                             min={1}
                                             max={255}
                                             step={1}
-                                            onValueChange={(value) => onSpeedChange(value as number[])}
+                                            onValueChange={onSpeedChange}
                                         />
                                         <HugeiconsIcon icon={DashboardSpeed01Icon} className="text-muted-foreground" />
                                     </div>
@@ -304,7 +305,7 @@ export default function HubSettings() {
                                 <div className="flex size-20 items-center justify-center rounded-full bg-muted">
                                     <HugeiconsIcon icon={Notification03Icon} />
                                 </div>
-                                <div className="text-5xl font-semibold">{notificationVolume[0]}%</div>
+                                <div className="text-5xl font-semibold">{notificationVolume}%</div>
                             </div>
 
                             <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
@@ -314,7 +315,7 @@ export default function HubSettings() {
                                     min={0}
                                     max={100}
                                     step={1}
-                                    onValueChange={(value) => onNotificationVolumeChange(value as number[])}
+                                    onValueChange={onNotificationVolumeChange}
                                 />
                                 <HugeiconsIcon icon={VolumeHighIcon} className="text-muted-foreground" />
                             </div>

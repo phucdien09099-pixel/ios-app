@@ -121,6 +121,9 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                                                 title: room.name,
                                                 direction: "right",
                                                 component: HubSettings,
+                                                props: {
+                                                    roomName: room.name
+                                                }
                                             })
                                         }
                                     >
