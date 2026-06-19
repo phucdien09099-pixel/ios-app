@@ -5,6 +5,8 @@ import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import AddDeviceForm from "../AdditionalDevice";
+import HelpButton from "@/components/common/HelpButton";
+import { startAddDeviceTour } from "@/components/onboarding/tours/addDeviceTour";
 
 export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: string }) {
     const { open } = useNavDrawer();
@@ -26,15 +28,20 @@ export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: s
                     onClick={() => open({
                         id: "addition_device",
                         title: "Thêm thiết bị",
+                        
+                        // 🟢 ĐÃ SỬA CHỖ NÀY THÀNH HELP BUTTON
+                        renderRightButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
+                        
                         props: {
-                            roomId: roomId
-                            , roomName: roomName
+                            roomId: roomId,
+                            roomName: roomName
                         },
                         component: AddDeviceForm,
-                    })}><HugeiconsIcon icon={PlusSignIcon} />Tạo thiết bị</Button>
-                {/* <Button variant="outline">Nhập khu vực</Button> */}
+                    })}>
+                    <HugeiconsIcon icon={PlusSignIcon} />
+                    Tạo thiết bị
+                </Button>
             </EmptyContent>
-            {/* <Button variant="link" className="text-muted-foreground" size="sm" nativeButton={false} render={<a href="#">Tìm hiểu thêm</a>} /> */}
-        </Empty >
+        </Empty>
     )
 }

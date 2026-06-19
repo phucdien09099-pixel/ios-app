@@ -12,6 +12,8 @@ import { Controller, useForm, UseFormReturn } from "react-hook-form";
 import { TimerFormValues } from "./TimerDrawer";
 import { Slider } from "@/components/ui/slider";
 import ActionSelectionDrawer from "./ActionSelectionDrawer";
+import HelpButton from "@/components/common/HelpButton";
+import { startTimerTour } from "@/components/onboarding/tours/timerTour";
 import {
     Drawer,
     DrawerContent,
@@ -88,7 +90,16 @@ export default function CreateTimerDrawer({
 
     const [showActionDrawer, setShowActionDrawer] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-
+    
+    useEffect(() => {
+            if (sessionStorage.getItem("timer_tour_active") === "true") {
+                const delayTimer = setTimeout(() => {
+                    startTimerTour(true); // force chạy kịch bản bên trong
+                }, 400); // Đợi 400ms cho Drawer của giao diện cuộn lên hoàn tất
+                
+                return () => clearTimeout(delayTimer);
+            }
+        }, []);
     useEffect(() => {
         if (initialData?.deviceId) {
             const dev = devices.find(d => d.id === initialData.deviceId);
@@ -117,7 +128,7 @@ export default function CreateTimerDrawer({
     return (
         <div className="px-4 pb-40 space-y-4 max-h-[80vh] overflow-y-auto select-text">
             {/* Tên hẹn giờ */}
-            <div>
+            <div data-tour="timer-name">
                 <div className="mb-2 text-sm font-medium">Tên hẹn giờ</div>
                 <Input
                     placeholder="Ví dụ: Tắt TV"
@@ -126,7 +137,7 @@ export default function CreateTimerDrawer({
             </div>
 
             {/* Chọn thời gian */}
-            <div>
+            <div data-tour="timer-time">
                 <div className="mb-2 text-sm font-medium">Chọn thời gian</div>
                 <Input
                     type="time"
@@ -135,7 +146,7 @@ export default function CreateTimerDrawer({
             </div>
 
             {/* Chọn ngày */}
-            <div>
+            <div data-tour="timer-days">
                 <div className="mb-2 text-sm font-medium">Chọn ngày</div>
                 <div className="flex flex-wrap gap-2">
                     {DAYS_OF_WEEK.map((day) => {
@@ -162,7 +173,7 @@ export default function CreateTimerDrawer({
             </div>
 
             {/* Chọn thiết bị */}
-            <div>
+            <div data-tour="timer-device">
                 <div className="mb-2 text-sm font-medium">Chọn thiết bị</div>
                 <div className="grid gap-2">
                     {devices.map((device) => {
@@ -221,15 +232,23 @@ export default function CreateTimerDrawer({
                     <HugeiconsIcon icon={Cancel01Icon} size={18} />
                     Hủy
                 </Button>
-                <Button
-                    type="button"
-                    className="flex-1 gap-2 rounded-2xl"
-                    disabled={!deviceId}
-                    onClick={handleSubmit(onCreateTimer)}
-                >
-                    <HugeiconsIcon icon={PlayIcon} size={18} />
-                    Lưu timer
-                </Button>
+                <div data-tour="timer-save" className="flex-1">
+                    <Button
+                        type="button"
+                        className="w-full gap-2 rounded-2xl"
+                        disabled={!deviceId}
+                        onClick={(e) => {
+                            sessionStorage.removeItem("timer_tour_active");
+                            import('@/components/onboarding/tours/timerTour').then(m => {
+                                if (m.timerDriverObj) m.timerDriverObj.destroy();
+                            });
+                            handleSubmit(onCreateTimer)(e);
+                        }}
+                    >
+                        <HugeiconsIcon icon={PlayIcon} size={18} />
+                        Lưu timer
+                    </Button>
+                </div>
             </div>
 
             {/* Drawer chọn hành động */}

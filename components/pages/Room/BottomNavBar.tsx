@@ -13,6 +13,9 @@ import { usePreventExit } from "@/hooks/usePreventExit";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import CreateSmartSceneDrawer from "./CreateSmartSceneDrawer";
 import { UpCommingFeature } from "@/components/upcomming-feature";
+import { startTimerTour } from "@/components/onboarding/tours/timerTour";
+import HelpButton from "@/components/common/HelpButton";
+import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 
 
 type NavItem = {
@@ -50,6 +53,7 @@ export default function BottomNavBar({ roomId, }: { roomId: any; }) {
                         return (
                             <Button
                                 key={item.key}
+                                data-tour={`nav-${item.key}`}
                                 variant="ghost"
                                 onClick={() => open({
                                     id: item.key,
@@ -59,7 +63,11 @@ export default function BottomNavBar({ roomId, }: { roomId: any; }) {
                                         type: item.key,
                                         roomId: roomId
                                     },
-                                    renderRightButtonHeader: <></>,
+                                    renderRightButtonHeader: item.key === "timer" 
+                                    ? <HelpButton onClick={() => startTimerTour(true)} /> 
+                                    : item.key === "smart"
+                                    ? <HelpButton onClick={() => startAutomationTour(true)} />
+                                    : <></>,
                                     direction: "bottom",
 
                                     className: "mt-[8vh]! w-screen bg-background rounded-t-2xl"
@@ -166,7 +174,7 @@ function SmartSceneUI({ roomId }: { roomId: string }) {
                     id: "create",
                     title: "Kịch bản thông minh",
                     component: CreateSmartSceneDrawer,
-                    renderRightButtonHeader: <></>,
+                    renderRightButtonHeader: <HelpButton onClick={() => startTimerTour(false)} />,
                     direction: 'bottom',
                     className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
                     props: { roomId }

@@ -11,6 +11,8 @@ import HubSettings from "../HubSettings";
 import { SettingSwitchController } from "../DeviceControll/SmartSwitchController";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { toast } from "sonner";
+import { startACTour, startTVTour } from "@/components/onboarding/tours/devicecontrolTour";
+import HelpButton from "@/components/common/HelpButton";
 
 export type Device = {
     id: string;
@@ -40,7 +42,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
         }
     }
     return (
-        <Card className="hover:shadow-lg transition cursor-pointer">
+        <Card data-tour={`device-card-${device.id}`} className="hover:shadow-lg transition cursor-pointer">
             <CardHeader className="space-y-1 relative">
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-base">
@@ -59,6 +61,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                     {device.type} • {device.brand}
                 </p>
                 <Button
+                    data-tour="device-delete-btn"
                     variant="ghost"
                     size="icon"
                     className="absolute right-2 bottom-8 text-red-500 hover:text-red-600"
@@ -86,7 +89,9 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                 </div>
 
                 <div className="flex gap-2 pt-2">
-                    <Button onClick={() => open({
+                    <Button 
+                        data-tour="device-control-btn"
+                        onClick={() => open({
                         id: device.id,
                         title: device.name,
                         component: DeviceControll,
@@ -94,23 +99,39 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                             device,
                             roomName
                         },
-                        renderRightButtonHeader:
-                            device.type === "RELAY" ? (
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        open({
-                                            id: device.id + device.name + "setting",
-                                            title: device.name + " setting",
-                                            component: SettingSwitchController,
-                                        });
-                                    }}
-                                >
-                                    <HugeiconsIcon icon={Setting06Icon} />
-                                </Button>
-                            ) : undefined,
+                        // 🟢 ĐÃ SỬA: Bọc tất cả vào 1 div flex để hiển thị nhiều nút cùng lúc
+                        renderRightButtonHeader: (
+                            <div className="flex items-center gap-1">
+                                {/* 1. Nút Setting dành riêng cho RELAY */}
+                                {device.type === "RELAY" && (
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            open({
+                                                id: device.id + device.name + "setting",
+                                                title: device.name + " setting",
+                                                component: SettingSwitchController,
+                                            });
+                                        }}
+                                    >
+                                        <HugeiconsIcon icon={Setting06Icon} />
+                                    </Button>
+                                )}
+
+                                {/* 2. Nút ? dành cho Tivi */}
+                                {device.type === "TV" && (
+                                    <HelpButton onClick={() => startTVTour(true)} />
+                                )}
+
+                                {/* 3. Nút ? dành cho Điều hòa (hoặc thiết bị mặc định chưa có type) */}
+                                {(device.type === "AC" || !["TV", "RELAY", "LIGHT", "SMART_SCHEDULE", "LEARNING_REMOTE"].includes(device.type)) && (
+                                    <HelpButton onClick={() => startACTour(true)} />
+                                )}
+                            </div>
+                        )
                     })} size="sm" className="flex-1">
                         Control
                     </Button>

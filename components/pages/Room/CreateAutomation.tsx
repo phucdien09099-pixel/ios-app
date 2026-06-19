@@ -7,6 +7,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 import {
     Cancel01Icon,
     Clock01Icon,
@@ -94,7 +95,13 @@ export default function CreateAutomation({
     const watchAction = watch("action");
     const watchConditionValue = currentTemp;
     const comfortTemperature = watch("comfortTemperature") || "26";
-
+    
+    useEffect(() => {
+    if (sessionStorage.getItem("automation_tour_active") === "true") {
+        const delayTimer = setTimeout(() => startAutomationTour(true), 400);
+        return () => clearTimeout(delayTimer);
+    }
+}, []);
     useEffect(() => {
         if (!initialData?.deviceId) return;
 
@@ -133,7 +140,7 @@ export default function CreateAutomation({
 
     return (
         <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-4 pb-40 select-text">
-            <FieldGroup>
+            <FieldGroup data-tour="scene-name">
                 <Field>
                     <FieldLabel htmlFor="automation-name">Tên tự động hóa</FieldLabel>
                     <Input
@@ -153,7 +160,7 @@ export default function CreateAutomation({
             </FieldGroup>
 
             {automationMode === "sleep" ? (
-                <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4">
+                <div  className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4" data-tour="scene-condition">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
                             <HugeiconsIcon icon={SleepingIcon} />
@@ -210,7 +217,7 @@ export default function CreateAutomation({
                     </div>
                 </div>
             ) : (
-                <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4">
+                <div  className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4" data-tour="scene-condition">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
                             <HugeiconsIcon icon={Settings02Icon} />
@@ -243,7 +250,7 @@ export default function CreateAutomation({
                 </div>
             )}
 
-            <div className="flex flex-col gap-2">
+            <div  className="flex flex-col gap-2" data-tour="scene-action">
                 <div className="text-sm font-medium">Chọn thiết bị và hành động</div>
                 <div className="grid gap-2">
                     {devices.map((device) => {
@@ -283,15 +290,24 @@ export default function CreateAutomation({
                     <HugeiconsIcon icon={Cancel01Icon} data-icon="inline-start" />
                     Hủy
                 </Button>
-                <Button
-                    type="button"
-                    className="flex-1 rounded-2xl"
-                    disabled={!canSubmit}
-                    onClick={handleSubmit(onCreateAutomation)}
-                >
-                    <HugeiconsIcon icon={PlayIcon} data-icon="inline-start" />
-                    Lưu kịch bản
-                </Button>
+                <div data-tour="scene-save" className="flex-1">
+                    <Button
+                        type="button"
+                        className="w-full rounded-2xl" 
+                        disabled={!canSubmit}
+                        onClick={(e) => {
+                            sessionStorage.removeItem("automation_tour_active");
+                            import('@/components/onboarding/tours/automationTour').then(m => {
+                                if (m.automationDriverObj) m.automationDriverObj.destroy();
+                            });
+
+                            handleSubmit(onCreateAutomation)(e);
+                        }}
+                    >
+                        <HugeiconsIcon icon={PlayIcon} data-icon="inline-start" />
+                        Lưu kịch bản
+                    </Button>
+                </div>
             </div>
 
             <ActionSelectionDrawer

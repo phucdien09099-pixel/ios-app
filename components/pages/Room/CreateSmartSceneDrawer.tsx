@@ -15,7 +15,8 @@ import CreateAutomation from "./CreateAutomation";
 import { SceneTypeSelector } from "./SceneTypeSelector";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { roomRepo } from "@/db/repository/RoomRepository";
-import { Room } from "@/db/types/room";
+import { Room } from "@/db/types/room";import HelpButton from "@/components/common/HelpButton";
+import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 
 interface CreateSmartSceneDrawerProps {
     roomId: string;
@@ -106,6 +107,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 direction: "bottom",
                 className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
                 component: CreateAutomation,
+                renderRightButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
                 props: {
                     roomName: room?.name,
                     devices,
@@ -190,16 +192,28 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     {isEditing ? "Xong" : "Xoá"}
                 </Button>
                 <Button
+                    data-tour="scene-add-btn" // 🟢 Thêm Data Tour
                     variant="default"
-                    className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium"
-                    onClick={() => open({
-                        id: "sceneTypeSelector",
-                        title: "Kịch bản thông minh",
-                        direction: "bottom",
-                        className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
-                        component: SceneTypeSelector,
-                        props: { onSelectAutomation: handleSelectAutomation }
-                    })}
+                    className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium relative z-[60]" // 🟢 Thêm relative z-[60]
+                    onClick={() => {
+                        // 🟢 NỐI CẦU 1: Bấm thêm thì lưu cờ
+                        const isTourRunning = document.querySelector('.driver-active-element') !== null;
+                        if (isTourRunning) {
+                            sessionStorage.setItem("automation_tour_active", "true");
+                            import('@/components/onboarding/tours/automationTour').then(m => m.automationDriverObj?.destroy());
+                        }
+
+                        open({
+                            id: "sceneTypeSelector",
+                            title: "Kịch bản thông minh",
+                            direction: "bottom",
+                            className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
+                            component: SceneTypeSelector,
+                            // 🟢 NÚT ? CHO MÀN HÌNH TIẾP THEO
+                            renderRightButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
+                            props: { onSelectAutomation: handleSelectAutomation }
+                        })
+                    }}
                 >
                     <HugeiconsIcon icon={AddCircleIcon} size={18} />
                     Thêm kịch bản

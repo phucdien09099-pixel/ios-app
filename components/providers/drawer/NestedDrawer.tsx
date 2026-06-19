@@ -25,6 +25,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
             setTimeout(() => {
                 pop();
                 setClosingId(null);
+                window.dispatchEvent(new Event("drawer-closed"));
             }, 220);
         });
     };
@@ -46,7 +47,6 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                 const isTop = index === stack.length - 1;
                 const isClosing = closingId === page.id;
 
-                // Tất cả drawer đều mở, nhưng chỉ có top mới có thể đóng
                 const isOpen = !isClosing;
                 const Component = page.component;
 
@@ -84,6 +84,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                     <div className="mx-auto mt-3 mb-1 h-1.5 w-12 rounded-full bg-muted-foreground/20 flex-shrink-0" />
                                     <DrawerHeader className="relative flex flex-row items-center px-4">
                                         <Button
+                                            data-tour={isTop ? "drawer-back-button" : undefined}
                                             onClick={() => handleClose(page.id, isTop)}
                                             variant="ghost"
                                             size="icon"
@@ -95,11 +96,16 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                         <DrawerTitle className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none max-w-[60%] truncate">
                                             {page.title ?? "Menu"}
                                         </DrawerTitle>
+                                        <div className="ml-auto flex items-center gap-2 min-w-9 justify-end z-[60]">
+                                            {/* 🟢 Ưu tiên render nút từ page (nếu có), nếu không mới dùng rightButton mặc định */}
+                                            {(page as any).renderRightButtonHeader || rightButton}
+                                        </div>
                                     </DrawerHeader>
                                 </>
                             ) : (
                                 <DrawerHeader className="relative flex flex-row items-center px-4">
                                     <Button
+                                        data-tour={isTop ? "drawer-back-button" : undefined}
                                         onClick={() => handleClose(page.id, isTop)}
                                         variant="outline"
                                         size="icon"

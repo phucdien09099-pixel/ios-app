@@ -16,8 +16,21 @@ import { Badge } from "@/components/ui/badge";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { roomRepo } from "@/db/repository/RoomRepository";
 import { toast } from "sonner";
+import { detailTourObj } from "@/components/onboarding/tours/afterAddRoomTour";
+import HelpButton from "@/components/common/HelpButton";
+import { startAfterAddDeviceTour } from "@/components/onboarding/tours/afterAddDeviceTour";
+import { startAddDeviceTour } from "@/components/onboarding/tours/addDeviceTour";
+import { startHubSettingTour } from "@/components/onboarding/tours/hubSettingTour";
 
-export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Promise<void>; }) {
+export function RoomCard({ 
+    room, 
+    onDeleted, 
+    dataTour 
+}: { 
+    room: Room, 
+    onDeleted: () => Promise<void>; 
+    dataTour?: string; 
+}) {
     const { open } = useNavDrawer();
     const { deviceStates, getDeviceStatus } = useTransport();
     const currentRoomState = deviceStates[room.name];
@@ -34,9 +47,8 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
         }
     }
 
-    // console.log(deviceStates)
     return (
-        <Card className="hover:shadow-md transition cursor-pointer"   >
+        <Card className="hover:shadow-md transition cursor-pointer" data-tour={dataTour}>
             {/* HEADER */}
             <CardHeader className="flex flex-row items-start justify-between space-y-0">
                 <div className="flex flex-col gap-1">
@@ -84,8 +96,15 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                     <div className="text-sm font-medium">
                         {room?.devices?.length || 0} devices
                     </div>
-                    <Button className={`w-full!`} onClick={() => {
-                        console.log(room);
+                    <Button 
+                        data-tour={`detail-btn-${room.id}`}
+                        className={`w-full!`} onClick={() => {
+                        if (typeof detailTourObj !== "undefined" && detailTourObj !== null) {
+                            detailTourObj.destroy();
+                        }
+                        const pointer = document.getElementById('tour-finger-pointer');
+                        if (pointer) pointer.remove();
+                        // console.log(room);
                         open({
                             id: room.id,
                             title: room.name,
@@ -97,39 +116,51 @@ export function RoomCard({ room, onDeleted }: { room: Room, onDeleted: () => Pro
                             },
                             direction: "right",
                             renderRightButtonHeader: (
-                                <>
+                                <div className="flex items-center gap-2">
+                                    <HelpButton onClick={() => startAfterAddDeviceTour(true)} />
+                                    
+                                    {/* NÚT 2: Nút Thêm Thiết bị */}
                                     <Button
+                                        data-tour="header-add-device-btn"
+                                        size="icon" 
+                                        className="w-8 h-8 shrink-0 rounded-md"
                                         onClick={() =>
                                             open({
                                                 id: "addition_device",
                                                 title: "Thêm thiết bị",
                                                 direction: "right",
                                                 component: AddDeviceForm,
+                                                renderRightButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
                                                 props: {
                                                     roomId: room.id,
                                                     roomName: room.name
                                                 }
                                             })
                                         }>
-                                        <HugeiconsIcon icon={DashboardCircleAddIcon} />
+                                        <HugeiconsIcon icon={DashboardCircleAddIcon} size={18} />
                                     </Button>
 
+                                    {/* NÚT 3: Nút Hub Setting */}
                                     <Button
+                                        data-tour="detail-btn-inside"
+                                        size="icon" 
+                                        className="w-8 h-8 shrink-0 rounded-md transition-all duration-300" 
                                         onClick={() =>
                                             open({
                                                 id: room.id + "setting",
-                                                title: room.name,
+                                                title: "Cài đặt Hub", // (Có thể đổi tiêu đề ở đây cho đẹp)
                                                 direction: "right",
                                                 component: HubSettings,
                                                 props: {
                                                     roomName: room.name
-                                                }
+                                                },
+                                                renderRightButtonHeader: <HelpButton onClick={() => startHubSettingTour(true)} />
                                             })
                                         }
                                     >
-                                        <HugeiconsIcon icon={Setting06Icon} />
+                                        <HugeiconsIcon icon={Setting06Icon} size={18} />
                                     </Button>
-                                </>
+                                </div>
                             ),
                         })
                     }} size="sm">

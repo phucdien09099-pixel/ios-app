@@ -15,6 +15,8 @@ import { Device } from "@/db/types/devive";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { configRepo } from "@/db/repository/ConfigRepository";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
+import HelpButton from "@/components/common/HelpButton";
+import { startTimerTour } from "@/components/onboarding/tours/timerTour";
 
 type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 
@@ -143,6 +145,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
             direction: 'bottom',
             className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
             component: CreateTimerDrawer,
+            renderRightButtonHeader: <HelpButton onClick={() => startTimerTour(true)} />,
             props: {
                 devices,
                 ...(timer && { initialData: timer }),
@@ -169,10 +172,12 @@ export function TimerUI({ roomId }: { roomId: string }) {
         // 1. Khung tổng: Cố định chiều cao, không cuộn
         <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
 
-            <div className="flex items-center justify-between px-4 pt-2 pb-1 flex-shrink-0">
+            <div className="flex items-start justify-between px-4 pt-2 pb-1 flex-shrink-0">
+                
+                {/* Góc trái: Nút Xóa/Xong (Đẩy xuống 1 chút cho cân bằng với nút Thêm) */}
                 <Button
                     variant="ghost"
-                    className="text-foreground hover:text-foreground font-medium p-0 h-auto hover:bg-transparent text-base transition-colors"
+                    className="text-foreground hover:text-foreground font-medium p-0 h-auto mt-8 hover:bg-transparent text-base transition-colors"
                     onClick={() => {
                         setIsEditing(!isEditing);
                         setDeleteConfirmId(null);
@@ -180,18 +185,35 @@ export function TimerUI({ roomId }: { roomId: string }) {
                 >
                     {isEditing ? "Xong" : "Xoá"}
                 </Button>
-                <Button
-                    variant="default"
-                    className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium transition-colors flex items-center justify-center"
-                    onClick={() => openTimerDrawer()}
-                >
-                    <HugeiconsIcon icon={AddCircleIcon} size={28} />
-                    Thêm hẹn giờ
-                </Button>
+
+                {/* Góc phải: Đổi thành flex-col để nút ? nằm TRÊN nút Thêm */}
+                <div className="flex flex-col items-end gap-3">
+                    
+
+                    <Button
+                        data-tour="timer-add-btn"
+                        variant="default"
+                        className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium transition-colors flex items-center justify-center relative z-[60]"
+                        onClick={() => {
+                            // 🟢 KIỂM TRA: Nếu Tour đang chạy mà bấm nút này, thì lưu cờ chuyển tiếp
+                            const isTourRunning = document.querySelector('.driver-active-element') !== null;
+                            if (isTourRunning) {
+                                sessionStorage.setItem("timer_tour_active", "true");
+                                // Tắt tour cũ ở ngoài đi
+                                import('@/components/onboarding/tours/timerTour').then(m => m.timerDriverObj?.destroy());
+                            }
+                            
+                            openTimerDrawer(); // Mở drawer bình thường
+                        }}
+                    >
+                        <HugeiconsIcon icon={AddCircleIcon} size={28} />
+                        Thêm hẹn giờ
+                    </Button>
+                </div>
             </div>
 
             {/* 2. Vùng danh sách: Cho phép cuộn */}
-            <div className="flex-1 overflow-y-auto px-4 pt-1">
+            <div className="flex-1 overflow-y-auto px-4 pt-1" data-tour="timer-list-area">
                 <div className="w-full space-y-3 pb-6">
                     {timers.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">

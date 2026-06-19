@@ -2,17 +2,32 @@
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Sun01Icon, Clock01Icon, LightbulbOffIcon } from "@hugeicons/core-free-icons";
+import { useEffect } from "react";
+import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 
 interface SceneTypeSelectorProps {
   onSelectAutomation: () => void;
 }
 
 export function SceneTypeSelector({ onSelectAutomation }: SceneTypeSelectorProps) {
+  useEffect(() => {
+        if (sessionStorage.getItem("automation_tour_active") === "true") {
+            const delayTimer = setTimeout(() => startAutomationTour(true), 400);
+            return () => clearTimeout(delayTimer);
+        }
+    }, []);
   return (
     <div className="space-y-3">
       {/* Tự động (Cảm biến) */}
       <div 
-        onClick={onSelectAutomation}
+        data-tour="scene-type-auto"
+        onClick={() => {
+                    if (document.querySelector('.driver-active-element') !== null) {
+                        sessionStorage.setItem("automation_tour_active", "true");
+                        import('@/components/onboarding/tours/automationTour').then(m => m.automationDriverObj?.destroy());
+                    }
+                    onSelectAutomation();
+                }}
         className="flex items-center justify-between p-4 bg-muted/40 hover:bg-muted/80 rounded-2xl cursor-pointer transition-colors active:scale-[0.98]"
       >
         <div className="flex items-start gap-4">

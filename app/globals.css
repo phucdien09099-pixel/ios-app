@@ -135,3 +135,7 @@ html body[data-scroll-locked] {
   overflow-y: auto !important;
   margin-right: 0 !important;
 }
+.driver-active-element {
+    pointer-events: auto !important;
+    z-index: 999999 !important;
+}

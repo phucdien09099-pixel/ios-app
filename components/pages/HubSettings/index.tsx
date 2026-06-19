@@ -49,7 +49,7 @@ const speedToPayload = (value: number) => 256 - value;
 const toPayloadMode = (value: ColorMode) => value.replace("LED_", "");
 const getSliderNumber = (value: number | readonly number[]) => Array.isArray(value) ? value[0] ?? 0 : value;
 
-export default function HubSettings({ roomName }: { roomName: string }) {
+export default function HubSettings({ roomName }: { roomName: any }) {
     const [currentValue, setCurrentValue] = useState(parseColor("#00ffcc"));
     const [mode, setMode] = useState<ColorMode>("LED_STATIC");
     const [brightness, setBrightness] = useState(191);
@@ -65,7 +65,7 @@ export default function HubSettings({ roomName }: { roomName: string }) {
     const speedValue = speed;
     const brightnessPercent = brightnessToPercent(brightnessValue);
     const payloadSpeed = speedToPayload(speedValue);
-
+    // console.log(roomName)
     useEffect(() => {
         return () => {
             if (ledSendTimerRef.current) clearTimeout(ledSendTimerRef.current);
@@ -157,12 +157,12 @@ export default function HubSettings({ roomName }: { roomName: string }) {
             </div>
 
             <Tabs defaultValue="lighting" className="flex flex-col gap-4">
-                <TabsList className="w-full">
-                    <TabsTrigger value="lighting" className="flex-1">
+                <TabsList className="w-full" data-tour="hub-tabs" >
+                    <TabsTrigger value="lighting" className="flex-1" data-tour="hub-tab-light">
                         <HugeiconsIcon icon={ColorsIcon} data-icon="inline-start" />
                         Điều chỉnh đèn
                     </TabsTrigger>
-                    <TabsTrigger value="notification-volume" className="flex-1">
+                    <TabsTrigger value="notification-volume" className="flex-1" data-tour="hub-tab-volume">
                         <HugeiconsIcon icon={Notification03Icon} data-icon="inline-start" />
                         Âm lượng thông báo
                     </TabsTrigger>
@@ -176,7 +176,7 @@ export default function HubSettings({ roomName }: { roomName: string }) {
                                 <CardDescription>Chọn màu, độ sáng, tốc độ và hiệu ứng LED</CardDescription>
                             </CardHeader>
                             <CardContent className="flex flex-col gap-6">
-                                <div className="flex flex-col items-center gap-4">
+                                <div className="flex flex-col items-center gap-4" data-tour="hub-color-wheel">
                                     <div className="flex items-center gap-2">
                                         <HugeiconsIcon icon={ColorsIcon} />
                                         <p className="font-medium">RGB Color</p>
@@ -185,7 +185,7 @@ export default function HubSettings({ roomName }: { roomName: string }) {
                                     <ColorWheel value={currentValue} onChange={onColorChange} />
                                 </div>
 
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-3" data-tour="hub-presets">
                                     <div className="flex items-center justify-between gap-3">
                                         <p className="font-medium">Static presets</p>
                                         <span className="text-xs text-muted-foreground">
@@ -217,7 +217,7 @@ export default function HubSettings({ roomName }: { roomName: string }) {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-3" data-tour="hub-brightness">
                                     <div className="flex items-center justify-between gap-3">
                                         <p className="font-medium">Brightness</p>
                                         <span className="text-xs text-muted-foreground">
@@ -238,7 +238,7 @@ export default function HubSettings({ roomName }: { roomName: string }) {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-3" data-tour="hub-speed">
                                     <div className="flex items-center justify-between gap-3">
                                         <p className="font-medium">Speed</p>
                                         <span className="text-xs text-muted-foreground">{payloadSpeed}/255</span>
@@ -257,7 +257,7 @@ export default function HubSettings({ roomName }: { roomName: string }) {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-3" data-tour="hub-mode">
                                     <div className="flex items-center gap-2">
                                         <HugeiconsIcon icon={PaintBoardIcon} />
                                         <p className="font-medium">Lighting Mode</p>
@@ -300,7 +300,7 @@ export default function HubSettings({ roomName }: { roomName: string }) {
                             <CardTitle>Âm lượng thông báo</CardTitle>
                             <CardDescription>Điều chỉnh mức âm lượng chuông và cảnh báo của hub</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex min-h-80 flex-col justify-center gap-8">
+                        <CardContent className="flex min-h-80 flex-col justify-center gap-8" data-tour="hub-volume-slider">
                             <div className="flex flex-col items-center gap-3 text-center">
                                 <div className="flex size-20 items-center justify-center rounded-full bg-muted">
                                     <HugeiconsIcon icon={Notification03Icon} />

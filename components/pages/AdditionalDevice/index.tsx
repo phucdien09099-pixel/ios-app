@@ -1,3 +1,4 @@
+// components/pages/AdditionalDevice/index.tsx
 "use client";
 
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -7,13 +8,14 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react"; 
 import { toast } from "sonner";
 import { z } from "zod";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 
-// 1. Cấu hình Zod Schema với đầy đủ 2 chế độ kết nối
+import { startAddDeviceTour, startBackToRoomTour } from "@/components/onboarding/tours/addDeviceTour";
+
 const schema = z.object({
     name: z.string().min(1, "Vui lòng nhập tên thiết bị"),
     connectionType: z.enum(["IR_RF", "IOT_SUB"]),
@@ -51,7 +53,13 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
     const connectionType = form.watch("connectionType");
     const deviceName = form.watch("name");
 
-    // Giả lập quét mã thiết bị IoT phần cứng
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            startAddDeviceTour(false);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
+
     const handleScanIotDevice = async () => {
         setScanningIot(true);
         try {
@@ -67,12 +75,10 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
         }
     };
 
-    // 🔥 HÀM TẠO PAYLOAD ĐỘNG: Phục vụ gửi MQTT theo trạng thái Tab đang chọn
     const createDynamicPayload = (data: FormData, msgType: "SCAN" | "CONFIRM") => {
         return {
             type: msgType,
             deviceName: deviceName,
-            // Nếu là IOT_SUB thì lấy mã cứng, nếu là IR_RF thì giả lập ID là 1 để mạch test sóng
             id: data.connectionType === "IOT_SUB" ? data.iotDeviceId : 1,
             brand: data.connectionType === "IR_RF" ? (data.brand || "MITSUBISHI") : "GENERIC_IOT",
             action: {
@@ -84,7 +90,6 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
         };
     };
 
-    // CHỨC NĂNG 1: Bắn lệnh Test thử (Dùng type: "SCAN")
     const handlePairDevice = async (data: FormData) => {
         setLoading(true);
         try {
@@ -104,7 +109,6 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
         }
     };
 
-    // ================= XỬ LÝ CHÍNH: LOẠI BỎ LOGIC HUB KHI LƯU DB =================
     const onSaveDevice = async () => {
         const isValid = await form.trigger();
         if (!isValid) return;
@@ -113,11 +117,9 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
         try {
             const data = form.getValues();
 
-            // 🔥 ĐÃ LOẠI BỎ hoàn toàn việc kiểm tra getByHubDevice.
-            // Tất cả thiết bị (kể cả IR hay IoT) đều được lưu phẳng dạng độc lập tự trị.
             await deviceRepo.createDevice({
                 room_id: roomId,
-                parent_id: null, // Không phụ thuộc cấu hình cây phân cấp Hub cha nữa
+                parent_id: null,
                 name: data.name,
                 type: data.type as any,
                 serial: data.connectionType === "IOT_SUB" ? data.iotDeviceId : null,
@@ -125,7 +127,6 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                 status: "online",
             });
 
-            // Gửi lệnh xác nhận cấu hình xuống phần cứng
             const topic = `device/${roomName}/pair/set`;
             const dynamicPayload = createDynamicPayload(data, "CONFIRM");
 
@@ -134,7 +135,6 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
 
             toast.success("Lưu thiết bị và cấu hình thành công (CONFIRM) 🎉");
 
-            // Reset trạng thái form, giữ lại Tab hiện tại cho người dùng nhập tiếp thiết bị sau
             form.reset({
                 name: "",
                 connectionType: data.connectionType,
@@ -142,6 +142,12 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                 brand: "DAIKIN",
                 iotDeviceId: ""
             });
+
+            localStorage.setItem("JUST_ADDED_DEVICE", "true");
+            setTimeout(() => {
+                startBackToRoomTour();
+            }, 300);
+
         } catch (err) {
             console.error(err);
             toast.error("Không thể lưu thiết bị vào cơ sở dữ liệu");
@@ -152,8 +158,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
 
     return (
         <div className="max-w-md mx-auto mt-10 space-y-5 px-4">
-            {/* TAB CHỌN 2 LOẠI THIẾT BỊ (ĐÃ GIỮ LẠI) */}
-            <div className="grid grid-cols-2 gap-2 bg-muted p-1.5 rounded-2xl">
+            <div className="grid grid-cols-2 gap-2 bg-muted p-1.5 rounded-2xl" data-tour="device-connection-tabs">
                 <button
                     type="button"
                     onClick={() => {
@@ -185,8 +190,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
             </div>
 
             <form onSubmit={form.handleSubmit(handlePairDevice)} className="space-y-4">
-                {/* TÊN THIẾT BỊ */}
-                <div className="space-y-1">
+                <div className="space-y-1" data-tour="device-name">
                     <label className="text-xs font-medium text-muted-foreground">Tên thiết bị:</label>
                     <Input
                         placeholder="Ví dụ: Điều hòa phòng khách, Công tắc âm tường"
@@ -196,8 +200,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                     {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
 
-                {/* LOẠI THIẾT BỊ */}
-                <div className="space-y-1">
+                <div className="space-y-1" data-tour="device-type">
                     <label className="text-xs font-medium text-muted-foreground">Loại thiết bị:</label>
                     <NativeSelect
                         className="w-full"
@@ -215,9 +218,8 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                     </NativeSelect>
                 </div>
 
-                {/* HIỂN THỊ ĐỘNG KHU VỰC THUỘC TÍNH THEO TAB CHỌN */}
                 {connectionType === "IR_RF" ? (
-                    <div className="space-y-1">
+                    <div className="space-y-1" data-tour="device-attributes">
                         <label className="text-xs font-medium text-muted-foreground">Hãng sản xuất (Brand):</label>
                         <NativeSelect
                             className="w-full"
@@ -233,7 +235,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                         </NativeSelect>
                     </div>
                 ) : (
-                    <div className="space-y-2 border p-4 rounded-2xl bg-stone-50 dark:bg-stone-900/30 border-dashed">
+                    <div className="space-y-2 border p-4 rounded-2xl bg-stone-50 dark:bg-stone-900/30 border-dashed" data-tour="device-attributes">
                         <label className="text-xs font-medium text-muted-foreground block">Đồng bộ mã cứng IoT (ID/Serial):</label>
 
                         <div className="flex gap-2">
@@ -260,13 +262,13 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                     </div>
                 )}
 
-                {/* HÀNG NÚT BẤM CHỨC NĂNG */}
                 <div className="pt-2 space-y-2">
                     <Button
                         type="submit"
                         disabled={loading || scanningIot}
                         variant="secondary"
                         className="w-full h-11 rounded-xl"
+                        data-tour="device-test-btn"
                     >
                         {loading ? (
                             <span className="flex items-center gap-2">
@@ -286,6 +288,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                         onClick={onSaveDevice}
                         disabled={loading || scanningIot}
                         className="w-full h-11 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                        data-tour="device-save-btn"
                     >
                         Lưu Thiết Bị Vào Phòng (CONFIRM)
                     </Button>

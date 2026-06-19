@@ -9,6 +9,8 @@ import { ChevronDown, ChevronUp, PowerIcon } from "@hugeicons/core-free-icons";
 import { Device } from "../Room/DeviceCard";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
+import { startACTour } from "@/components/onboarding/tours/devicecontrolTour";
+import HelpButton from "@/components/common/HelpButton";
 
 const MODES = [
     { key: "COOL", label: "Cool" },
@@ -31,8 +33,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
         if (currentMode === "DRY") return 2;
         return 0; // FAN / AUTO
     };
-
-    // Hàm tạo và gửi payload chứa toàn bộ State hiện tại
+    
     const sendFullState = async (overrideStates?: {
         power?: boolean;
         temperature?: number;
@@ -66,7 +67,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
             <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
                     {/* HEADER & POWER BUTTON */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between" data-tour="ac-power">
                         <div>
                             <h1 className="text-xl font-semibold">{data.name}</h1>
                             <p className="text-sm text-muted-foreground">Air Conditioner</p>
@@ -90,7 +91,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                     </div>
 
                     {/* TEMPERATURE CONTROLLER */}
-                    <div className="rounded-3xl border bg-muted/30 p-6">
+                    <div className="rounded-3xl border bg-muted/30 p-6" data-tour="ac-temp">
                         <div className="flex items-center justify-between">
                             <Button
                                 size="icon"
@@ -130,7 +131,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
 
                 <div className="space-y-6">
                     {/* WORK MODES */}
-                    <div className="space-y-3">
+                    <div className="space-y-3" data-tour="ac-mode">
                         <div className="text-sm font-medium">Mode</div>
                         <div className="grid grid-cols-3 gap-3">
                             {MODES.map((item) => {
@@ -155,7 +156,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                     </div>
 
                     {/* FAN SPEED LEVEL */}
-                    <div className="space-y-3">
+                    <div className="space-y-3" data-tour="ac-fan">
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-medium">Fan Speed</span>
                             <span className="text-xs text-muted-foreground">Level {fanSpeed}</span>
@@ -181,7 +182,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                     </div>
 
                     {/* QUICK INTERACTIONS */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3" data-tour="ac-quick">
                         <Button
                             variant="outline"
                             className="h-14 rounded-2xl"

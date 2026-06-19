@@ -27,9 +27,9 @@ export default function RootLayout({
         <ThemeProvider>
           <DatabaseProvider>
             <TransportProvider>
-              <DrawerProvider>
+                <DrawerProvider>
                 {children}
-              </DrawerProvider>
+                </DrawerProvider>
               <Toaster
                 position="bottom-center"
                 richColors={true}
