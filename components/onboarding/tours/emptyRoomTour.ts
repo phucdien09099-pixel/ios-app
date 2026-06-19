@@ -1,6 +1,10 @@
 // components/onboarding/tours/emptyRoomTour.ts
 
-export const startEmptyRoomTour = () => {
+export const startEmptyRoomTour = (force = false) => { 
+    if (!force && typeof window !== 'undefined' && localStorage.getItem("tour:afterAddDevice") === "1") {
+        return;
+    }
+
     const targetElement = document.querySelector('[data-tour="header-add-device-btn"]');
     
     if (!targetElement) {
@@ -22,7 +26,10 @@ export const startEmptyRoomTour = () => {
 
     const handleRemoveFinger = () => {
         finger.remove();
-        targetElement.removeEventListener('click', handleRemoveFinger);
+        document.removeEventListener('click', handleRemoveFinger);
     };
-    targetElement.addEventListener('click', handleRemoveFinger);
+
+    setTimeout(() => {
+        document.addEventListener('click', handleRemoveFinger);
+    }, 50);
 };

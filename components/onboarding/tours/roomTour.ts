@@ -10,7 +10,6 @@ export function startRoomTour(force = false) { // 🟢 Thêm tham số force
     
     if (roomDriverObj) roomDriverObj.destroy();
     
-    // Khởi tạo mảng steps của form tạo phòng
     const dynamicSteps: any[] = [
         { element: '[data-tour="room-name"]', popover: { title: "Tên khu vực", description: "Ví dụ: Phòng khách..." } },
         { element: '[data-tour="room-note"]', popover: { title: "Ghi chú", description: "Thông tin mô tả thêm..." } },
@@ -23,10 +22,14 @@ export function startRoomTour(force = false) { // 🟢 Thêm tham số force
 
     roomDriverObj = driver({
         showProgress: true,
-        allowClose: false, // Cho phép bấm ra ngoài để thoát
+        allowClose: false, 
         nextBtnText: "Tiếp theo",
         prevBtnText: "Bỏ qua", 
         onPrevClick: () => {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem("tour:room", "1");
+                localStorage.setItem("tour:backToHome", "1");
+            }
             if (roomDriverObj) roomDriverObj.destroy();
         },
         doneBtnText: "Hoàn tất",
@@ -75,7 +78,6 @@ export const startBackToHomeTour = () => {
             if (typeof window !== 'undefined') {
                 localStorage.setItem("tour:backToHome", "1");
             }
-            // 🟢 Đảm bảo tắt sạch sẽ hoàn toàn
             if (roomDriverObj) roomDriverObj.destroy();
         }
     });

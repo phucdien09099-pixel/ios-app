@@ -42,6 +42,10 @@ export function startAddDeviceTour(force = false) {
         doneBtnText: "Hoàn tất",
 
         onPrevClick: () => {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem("tour:addDevice", "1");
+                localStorage.setItem("tour:backToRoom", "1"); // Bỏ qua phát ngắt luôn tour chỉ nút quay lại phòng
+            }
             if (addDeviceDriverObj) addDeviceDriverObj.destroy();
         },
 

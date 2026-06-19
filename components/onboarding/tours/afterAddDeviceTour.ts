@@ -36,9 +36,12 @@ export const startAfterAddDeviceTour = (force = false) => {
                     ],
                     onNextClick: () => {
                         if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
-                        startEmptyRoomTour(); // Chạy hướng dẫn bàn tay
+                        startEmptyRoomTour();
                     },
                     onPrevClick: () => {
+                        if (typeof window !== 'undefined') {
+                            localStorage.setItem("tour:afterAddDevice", "1");
+                        }
                         if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
                     }
                 });
@@ -90,6 +93,9 @@ export const startAfterAddDeviceTour = (force = false) => {
             prevBtnText: "Bỏ qua",
             doneBtnText: "Hoàn tất",
             onPrevClick: () => {
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem("tour:afterAddDevice", "1");
+                }
                 if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
             },
             steps: dynamicSteps,
