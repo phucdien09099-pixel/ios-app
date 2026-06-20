@@ -15,7 +15,7 @@ import WelcomeModal from "@/components/onboarding/WelcomeModal";
 import { useWelcomeModal } from "@/components/onboarding/useWelcomeModal";
 import PullDownGuide from "@/components/onboarding/PullDownGuide";
 import { startDetailTour } from "@/components/onboarding/tours/afterAddRoomTour";
-import { homeDriverObj,startHomeTour } from "@/components/onboarding/tours/homeTour";
+import { homeDriverObj, startHomeTour } from "@/components/onboarding/tours/homeTour";
 import HelpButton from "@/components/common/HelpButton";
 import { startRoomTour } from "@/components/onboarding/tours/roomTour";
 
@@ -42,22 +42,22 @@ export function RoomPage() {
     }
 
     async function handleRefresh() {
-        await load(); 
+        await load();
 
         if (!guideType) return;
 
         if (guideType === "room" && newRoomId) {
-            localStorage.removeItem("JUST_CREATED_ROOM_ID"); 
-            setGuideType(null); 
+            localStorage.removeItem("JUST_CREATED_ROOM_ID");
+            setGuideType(null);
 
             setTimeout(() => {
-                startDetailTour(newRoomId); 
+                startDetailTour(newRoomId);
             }, 600);
         } else if (guideType === "device") {
             // Dọn dẹp cờ lưu trữ thiết bị
             localStorage.removeItem("JUST_ADDED_DEVICE");
             setGuideType(null);
-            
+
             // Nếu sau này bạn có Tour phụ giới thiệu tính năng của thiết bị, bạn kích hoạt ở đây nhé:
             // setTimeout(() => { startDeviceTour(); }, 600);
         }
@@ -69,7 +69,7 @@ export function RoomPage() {
         const checkTargetCreated = () => {
             const justCreatedId = localStorage.getItem("JUST_CREATED_ROOM_ID");
             const isDetailTourSkipped = localStorage.getItem("tour:detail") === "1";
-            if (justCreatedId && !isDetailTourSkipped) { 
+            if (justCreatedId && !isDetailTourSkipped) {
                 setGuideType("room");
                 setNewRoomId(justCreatedId);
                 return;
@@ -86,7 +86,7 @@ export function RoomPage() {
             }
         };
 
-        checkTargetCreated(); 
+        checkTargetCreated();
         window.addEventListener("focus", checkTargetCreated);
         window.addEventListener("room-created", checkTargetCreated);
         window.addEventListener("device-created", checkTargetCreated);
@@ -99,7 +99,7 @@ export function RoomPage() {
                 homeDriverObj.destroy();
             }
         };
-        
+
     }, []);
 
     return (
@@ -152,7 +152,7 @@ export function RoomPage() {
                                         onClick={() => open({
                                             id: "qr_pair",
                                             title: "",
-                                            component: () => { },
+                                            component: () => <></>,
                                         })}>
                                         <HugeiconsIcon icon={ScanBarcode} />
                                     </Button>
@@ -162,7 +162,7 @@ export function RoomPage() {
                                         onClick={() => open({
                                             id: "qr_pair",
                                             title: "",
-                                            component: () => { },
+                                            component: () => <></>,
                                         })}>
                                         <HugeiconsIcon icon={Setting06FreeIcons} />
                                     </Button>
@@ -180,7 +180,7 @@ export function RoomPage() {
                 {rooms.length === 0 && <EmptyRoom />}
                 {/* ROOMS */}
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 m-1">
-                    {rooms.map((room) => ( 
+                    {rooms.map((room) => (
                         <div key={room.id} data-tour={`room-card-${room.id}`}>
                             <RoomCard
                                 room={room}

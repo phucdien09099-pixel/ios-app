@@ -10,7 +10,7 @@ export function DeviceSettings() {
                     open({
                         id: "advanced",
                         title: "Advanced",
-                        component: () => { },
+                        component: () => <></>,
                     })
                 }
             >

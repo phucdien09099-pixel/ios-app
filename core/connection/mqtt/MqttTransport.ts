@@ -1,111 +1,126 @@
-import { connect, disconnect, publish, subscribe, unsubscribe, listen } from "@kuyoonjo/tauri-plugin-mqtt";
-import { invoke } from "@tauri-apps/api/core"; // Thêm invoke để gọi xuống Rust
+import mqtt, { type IClientOptions, type MqttClient } from "mqtt";
 import { TransportMessage, TransportsInterface } from "../TransportsInterface";
 
 export interface MqttConfig {
-    brokerUrl?: string; // Chuyển thành optional vì ta sẽ lấy từ Rust nếu không truyền
-    username?: string;  // Nhận tài khoản từ UI nhập vào
-    password?: string;  // Nhận mật khẩu từ UI nhập vào
+    /** MQTT over WebSocket URL, for example ws://192.168.1.7:9001. */
+    brokerUrl?: string;
+    username?: string;
+    password?: string;
+    clientId?: string;
     topicsToSubscribe?: { topic: string; qos: 0 | 1 | 2 }[];
 }
 
 export class MqttTransport implements TransportsInterface<MqttConfig, string> {
-    private connectionId: string;
-    private connected: boolean = false;
-    private unlistenFn: (() => void) | null = null;
-
+    private client: MqttClient | null = null;
+    private connected = false;
+    private connecting: Promise<void> | null = null;
     private receiveCallback: ((msg: TransportMessage) => void) | null = null;
     private errorCallback: ((err: Error) => void) | null = null;
     private savedConfig: MqttConfig | null = null;
 
-    constructor(connectionId: string = "default-mqtt-client") {
-        this.connectionId = connectionId;
-    }
+    constructor(private readonly connectionId: string = "default-mqtt-client") {}
 
-    async connect(config?: MqttConfig): Promise<any> {
-        if (!config) {
-            throw new Error("MqttConfig is required to connect.");
+    async connect(config?: MqttConfig): Promise<{ status: "success"; id: string }> {
+        if (!config) throw new Error("MqttConfig is required to connect.");
+        if (this.connected && this.client?.connected) {
+            return { status: "success", id: this.connectionId };
         }
+        if (this.connecting) {
+            await this.connecting;
+            return { status: "success", id: this.connectionId };
+        }
+
+        const brokerUrl = config.brokerUrl ?? process.env.NEXT_PUBLIC_MQTT_URL;
+        if (!brokerUrl) {
+            throw new Error(
+                "Missing MQTT WebSocket URL. Set NEXT_PUBLIC_MQTT_URL (for example ws://192.168.1.7:9001)."
+            );
+        }
+        if (!/^wss?:\/\//i.test(brokerUrl)) {
+            throw new Error("Frontend MQTT requires a ws:// or wss:// broker URL.");
+        }
+
         this.savedConfig = config;
+        const options: IClientOptions = {
+            clientId: config.clientId ?? `${this.connectionId}-${crypto.randomUUID()}`,
+            username: config.username || undefined,
+            password: config.password || undefined,
+            clean: true,
+            // TransportManager owns the retry loop, so MQTT.js must not create a second one.
+            reconnectPeriod: 0,
+            connectTimeout: 10_000,
+        };
+
+        const client = mqtt.connect(brokerUrl, options);
+        this.client = client;
+        this.bindClientEvents(client);
+
+        this.connecting = new Promise<void>((resolve, reject) => {
+            const cleanup = () => {
+                client.off("connect", handleConnect);
+                client.off("error", handleError);
+            };
+            const handleConnect = () => {
+                cleanup();
+                resolve();
+            };
+            const handleError = (error: Error) => {
+                cleanup();
+                reject(error);
+            };
+            client.once("connect", handleConnect);
+            client.once("error", handleError);
+        });
 
         try {
-            let finalBrokerUrl = config.brokerUrl;
-
-            // Nếu không truyền cứng brokerUrl, tiến hành gọi lệnh Rust để sinh URL bảo mật từ file .env
-            if (!finalBrokerUrl) {
-                finalBrokerUrl = await invoke<string>("get_mqtt_config", {
-                    username: config.username || null,
-                    password: config.password || null
-                });
-            }
-
-            // 1. Kết nối sử dụng Broker URL bảo mật vừa lấy được
-            await connect(this.connectionId, finalBrokerUrl, undefined);
-            this.connected = true;
-
-            // 2. Lắng nghe event toàn cục từ Tauri MQTT Plugin nếu chưa khởi tạo
-            if (!this.unlistenFn) {
-                this.unlistenFn = await listen((event: any) => {
-                    this.handleIncomingEvent(event);
-                });
-            }
-
-            // 3. Tự động subscribe các topic đã khai báo sẵn trong config
-            if (config.topicsToSubscribe && config.topicsToSubscribe.length > 0) {
-                for (const item of config.topicsToSubscribe) {
-                    await subscribe(this.connectionId, item.topic, item.qos);
-                }
-            }
-
+            await this.connecting;
+            await this.subscribeConfiguredTopics(config);
             return { status: "success", id: this.connectionId };
-        } catch (error: any) {
+        } catch (error) {
             this.connected = false;
-            if (this.errorCallback) this.errorCallback(new Error(error));
-            throw error;
+            client.end(true);
+            if (this.client === client) this.client = null;
+            throw this.toError(error);
+        } finally {
+            this.connecting = null;
         }
     }
 
     async disconnect(): Promise<void> {
-        try {
-            if (this.savedConfig?.topicsToSubscribe) {
-                for (const item of this.savedConfig.topicsToSubscribe) {
-                    await unsubscribe(this.connectionId, item.topic);
-                }
-            }
-
-            await disconnect(this.connectionId);
-            this.connected = false;
-
-            if (this.unlistenFn) {
-                this.unlistenFn();
-                this.unlistenFn = null;
-            }
-        } catch (error) {
-            console.error("MQTT disconnect error:", error);
-        }
+        const client = this.client;
+        this.client = null;
+        this.connected = false;
+        this.connecting = null;
+        if (!client) return;
+        client.removeAllListeners();
+        await new Promise<void>((resolve, reject) => {
+            client.end(false, {}, (error) => error ? reject(error) : resolve());
+        });
     }
 
     async subscribe(topic: string): Promise<void> {
-        if (!this.connected) throw new Error("MQTT client is not connected.");
-        await subscribe(this.connectionId, topic, 0);
+        const client = this.requireConnectedClient();
+        await new Promise<void>((resolve, reject) => {
+            client.subscribe(topic, { qos: 0 }, (error) => error ? reject(error) : resolve());
+        });
     }
 
     isConnected(): boolean {
-        return this.connected;
+        return this.connected && Boolean(this.client?.connected);
     }
 
-    async send(message: TransportMessage): Promise<any> {
-        if (!this.connected) throw new Error("MQTT client is not connected.");
+    async send(message: TransportMessage): Promise<void> {
         if (!message.channel) throw new Error("MQTT message requires a topic (channel).");
-
-        const qos = 0;
-        const retain = false;
-
-        const stringPayload = typeof message.payload === 'object'
+        const client = this.requireConnectedClient();
+        const payload = typeof message.payload === "object"
             ? JSON.stringify(message.payload)
             : String(message.payload);
 
-        return await publish(this.connectionId, message.channel, qos, retain, stringPayload);
+        await new Promise<void>((resolve, reject) => {
+            client.publish(message.channel!, payload, { qos: 0, retain: false }, (error) =>
+                error ? reject(error) : resolve()
+            );
+        });
     }
 
     onReceive(cb: (msg: TransportMessage) => void): void {
@@ -117,36 +132,46 @@ export class MqttTransport implements TransportsInterface<MqttConfig, string> {
     }
 
     async scan(): Promise<string[]> {
-        return this.savedConfig?.topicsToSubscribe?.map(t => t.topic) || [];
+        return this.savedConfig?.topicsToSubscribe?.map(({ topic }) => topic) ?? [];
     }
 
-    private handleIncomingEvent(rawEvent: any) {
-        if (!rawEvent || rawEvent.payload?.id !== this.connectionId) return;
-
-        const eventData = rawEvent.payload?.event;
-        if (!eventData) return;
-
-        if (eventData.message && this.receiveCallback) {
-            const { topic, payload } = eventData.message;
-            let parsedPayload = payload;
+    private bindClientEvents(client: MqttClient): void {
+        client.on("connect", () => { this.connected = true; });
+        client.on("message", (topic, buffer) => {
+            const rawPayload = buffer.toString();
+            let payload: unknown = rawPayload;
             try {
-                if (Array.isArray(payload)) {
-                    parsedPayload = new TextDecoder().decode(new Uint8Array(payload));
-                }
-                parsedPayload = JSON.parse(parsedPayload);
+                payload = JSON.parse(rawPayload);
             } catch {
-                // Giữ nguyên chuỗi thô nếu không phải JSON
+                // Keep non-JSON payloads as text.
             }
-
-            this.receiveCallback({
-                channel: topic,
-                payload: parsedPayload
-            });
-        }
-
-        if (eventData.disconnect && this.errorCallback) {
+            this.receiveCallback?.({ channel: topic, payload });
+        });
+        client.on("close", () => { this.connected = false; });
+        client.on("offline", () => { this.connected = false; });
+        client.on("error", (error) => {
             this.connected = false;
-            this.errorCallback(new Error("MQTT disconnected from broker unexpectedly."));
+            this.errorCallback?.(error);
+        });
+    }
+
+    private async subscribeConfiguredTopics(config: MqttConfig): Promise<void> {
+        const client = this.requireConnectedClient();
+        await Promise.all((config.topicsToSubscribe ?? []).map(({ topic, qos }) =>
+            new Promise<void>((resolve, reject) => {
+                client.subscribe(topic, { qos }, (error) => error ? reject(error) : resolve());
+            })
+        ));
+    }
+
+    private requireConnectedClient(): MqttClient {
+        if (!this.connected || !this.client?.connected) {
+            throw new Error("MQTT client is not connected.");
         }
+        return this.client;
+    }
+
+    private toError(error: unknown): Error {
+        return error instanceof Error ? error : new Error(String(error));
     }
 }

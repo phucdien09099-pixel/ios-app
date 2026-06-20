@@ -181,7 +181,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
         <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
 
             <div className="flex items-start justify-between px-4 pt-2 pb-1 flex-shrink-0">
-                
+
                 {/* Góc trái: Nút Xóa/Xong (Đẩy xuống 1 chút cho cân bằng với nút Thêm) */}
                 <Button
                     variant="ghost"
@@ -196,7 +196,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
 
                 {/* Góc phải: Đổi thành flex-col để nút ? nằm TRÊN nút Thêm */}
                 <div className="flex flex-col items-end gap-3">
-                    
+
 
                     <Button
                         data-tour="timer-add-btn"
@@ -210,7 +210,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
                                 // Tắt tour cũ ở ngoài đi
                                 import('@/components/onboarding/tours/timerTour').then(m => m.timerDriverObj?.destroy());
                             }
-                            
+
                             openTimerDrawer(); // Mở drawer bình thường
                         }}
                     >
