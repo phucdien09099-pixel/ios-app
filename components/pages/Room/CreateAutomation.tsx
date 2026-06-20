@@ -93,7 +93,7 @@ export default function CreateAutomation({
     const automationMode = watch("automationMode");
     const watchActionDeviceId = watch("deviceId"); // 🔍 Vẫn theo dõi DeviceId để xử lý logic canSubmit
     const watchAction = watch("action");
-    const watchConditionValue = currentTemp;
+    const watchConditionValue = watch("conditionValue");
     const comfortTemperature = watch("comfortTemperature") || "26";
     
     useEffect(() => {

@@ -14,6 +14,8 @@ import CreateTimerDrawer from "./CreateTimer";
 import { Device } from "@/db/types/devive";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { configRepo } from "@/db/repository/ConfigRepository";
+import { roomRepo } from "@/db/repository/RoomRepository";
+import { Room } from "@/db/types/room";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import HelpButton from "@/components/common/HelpButton";
 import { startTimerTour } from "@/components/onboarding/tours/timerTour";
@@ -66,11 +68,12 @@ export const DAYS_LABELS: Record<DayOfWeek, string> = {
     Sunday: "CN",
 };
 
-function buildConfigAndPayload(data: any, devices: Device[], existingId?: string) {
+function buildConfigAndPayload(data: any, devices: Device[], roomId: string, existingId?: string) {
     const id = existingId ?? crypto.randomUUID();
     const deviceType = devices.find(d => d.id === data.deviceId)?.type ?? "LIGHT";
     const config = {
         id,
+        room_id: roomId,
         name: data.name || data.action?.label || "Hẹn giờ",
         config_type: data.repeat ? "SCHEDULE" : "TIMER",
         device_id: data.deviceId,
@@ -83,6 +86,7 @@ function buildConfigAndPayload(data: any, devices: Device[], existingId?: string
     };
     const payload = {
         id,
+        roomId: roomId,
         time: data.time,
         repeat: data.repeat,
         days: data.days || [],
@@ -96,7 +100,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const { open, back } = useNavDrawer();
     const { send } = useTransport();
-
+    const [room, setRoom] = useState<Room | null>(null);
     const [devices, setDevices] = useState<Device[]>([]);
     const [timers, setTimers] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
@@ -104,8 +108,12 @@ export function TimerUI({ roomId }: { roomId: string }) {
     const loadData = async () => {
         if (!roomId) return;
 
-        const roomDevices = await deviceRepo.getByRoom(roomId);
+        const [roomDevices, roomInfo] = await Promise.all([
+            deviceRepo.getByRoom(roomId),
+            roomRepo.getById(roomId)
+        ]);
         setDevices(roomDevices);
+        setRoom(roomInfo);
 
         const allConfigs = await configRepo.findAll();
         const roomDeviceIds = roomDevices.map(d => d.id);
@@ -154,10 +162,10 @@ export function TimerUI({ roomId }: { roomId: string }) {
                     console.log(config);
                     if (timer) {
                         const { id: _id, is_active: _ia, ...updateData } = config;
-                        await send({ ...payload, id: data.deviceId }, "auto/set");
+                        await send({ ...payload, id: data.deviceId }, `device/${room?.name}/auto/set`);
                         await configRepo.update(timer.id, updateData);
                     } else {
-                        await send(payload, "auto/set");
+                        await send(payload, `device/${room?.name}/auto/set`);
                         await configRepo.create(config);
                     }
                     await loadData();
@@ -261,11 +269,8 @@ export function TimerUI({ roomId }: { roomId: string }) {
                                             onClick={async (e) => {
                                                 e.stopPropagation();
                                                 await configRepo.delete(timer.id);
-                                                const payload = {
-                                                    id: timer.id
-                                                }
-                                                await send(payload, "auto/delete");
-
+                                                const payload = { id: timer.id };
+                                                await send(payload, `device/${room?.name}/auto/delete`);
                                                 setTimers((prev) => prev.filter((t) => t.id !== timer.id));
                                             }}>
                                             Xóa

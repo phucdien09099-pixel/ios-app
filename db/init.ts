@@ -303,6 +303,7 @@ export async function initDB() {
         CREATE TABLE IF NOT EXISTS configs (
             id TEXT PRIMARY KEY,
             name TEXT,
+            room_id TEXT NOT NULL,
             config_type TEXT NOT NULL,
             device_id TEXT NOT NULL,
             device_type TEXT NOT NULL,
@@ -313,6 +314,7 @@ export async function initDB() {
             action TEXT,
             is_active INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
             FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
         )
     `);

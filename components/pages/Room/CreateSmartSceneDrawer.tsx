@@ -15,7 +15,8 @@ import CreateAutomation from "./CreateAutomation";
 import { SceneTypeSelector } from "./SceneTypeSelector";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { roomRepo } from "@/db/repository/RoomRepository";
-import { Room } from "@/db/types/room";import HelpButton from "@/components/common/HelpButton";
+import { Room } from "@/db/types/room";
+import HelpButton from "@/components/common/HelpButton";
 import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 
 interface CreateSmartSceneDrawerProps {
