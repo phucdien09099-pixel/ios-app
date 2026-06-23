@@ -17,7 +17,7 @@ android {
     compileSdk = 36
     namespace = "com.tauri.testbuild"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "com.tauri.testbuild"
         minSdk = 26
         targetSdk = 36

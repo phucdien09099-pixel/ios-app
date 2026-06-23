@@ -1,14 +1,6 @@
 "use client";
 
-import React, {
-    createContext,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
-    useCallback,
-    useRef,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef, } from "react";
 
 import { transportManager } from "@/core/connection/TransportManager";
 import { TransportType, TransportConfigMap } from "@/core/connection/TransportConfigMap";
@@ -111,6 +103,8 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             await connectDual({
                 MQTT: {
                     // clientId: `app_${Math.random().toString(36).substring(7)}`,
+                    // user
+                    // password
                     topicsToSubscribe: [
                         { topic: "device/+/sensor/info", qos: 0 },
                         { topic: "device/+/control/set", qos: 0 },

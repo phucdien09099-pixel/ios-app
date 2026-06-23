@@ -1,7 +1,11 @@
 import { invoke } from "@tauri-apps/api/core"; // Dùng '@tauri-apps/api/tauri' nếu là Tauri v1
 
 // Cấu hình URL gốc của Server API bên thứ 3 của bạn
-const BASE_URL = "http://192.168.1.7:8081";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+
+if (!BASE_URL) {
+    throw new Error("Missing environment variable: NEXT_PUBLIC_API_BASE_URL");
+}
 
 class HttpClient {
     private accessToken: string | null = null;

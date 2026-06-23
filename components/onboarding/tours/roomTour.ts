@@ -11,12 +11,11 @@ export function startRoomTour(force = false) { // 🟢 Thêm tham số force
     if (roomDriverObj) roomDriverObj.destroy();
     
     const dynamicSteps: any[] = [
+        { element: '[data-tour="scan-hub-qr"]', popover: { title: "Quét QR Hub", description: "Mở camera sau và quét mã QR trên Hub để tự động chọn thiết bị." } },
         { element: '[data-tour="room-name"]', popover: { title: "Tên khu vực", description: "Ví dụ: Phòng khách..." } },
         { element: '[data-tour="room-note"]', popover: { title: "Ghi chú", description: "Thông tin mô tả thêm..." } },
         { element: '[data-tour="wifi-ssid"]', popover: { title: "Tên WiFi", description: "Hub sẽ kết nối vào mạng WiFi này." } },
         { element: '[data-tour="wifi-password"]', popover: { title: "Mật khẩu WiFi", description: "Mật khẩu mạng WiFi 2.4Ghz." } },
-        { element: '[data-tour="find-hub-btn"]', popover: { title: 'Tìm thiết bị', description: 'Nhấn vào nút này để tìm Hub 👇', side: 'top', align: 'start'} },
-        { element: '[data-tour="hub-list-container"]', popover: { title: 'Tuyệt vời! 🎉', description: 'Chọn đúng Hub của bạn.', side: 'top', align: 'start'} },
         { element: '[data-tour="submit-room"]', popover: { title: 'Hoàn tất', description: 'Nhấn vào đây để lưu phòng.', side: 'top', align: 'start'} }
     ];
 

@@ -114,7 +114,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                     >
                                         <HugeiconsIcon icon={ArrowLeftIcon} />
                                     </Button>
-                                    <DrawerTitle className="absolute left-1/2 -translate-x-1/2 mt-[max(env(safe-area-inset-top),0.5rem)] text-center pointer-events-none max-w-[60%] truncate">
+                                    <DrawerTitle className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none max-w-[60%] truncate">
                                         {page.title ?? "Menu"}
                                     </DrawerTitle>
                                     <div className="ml-auto flex items-center gap-2 min-w-9 justify-end">

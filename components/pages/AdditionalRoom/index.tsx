@@ -1,6 +1,6 @@
 "use client";
 import { v4 as uuid } from "uuid";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons";
+import { Camera01Icon, CheckmarkCircle02Icon, QrCodeIcon } from "@hugeicons/core-free-icons";
 import { roomRepo } from "@/db/repository/RoomRepository";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { BleDevice } from "@mnlphlp/plugin-blec";
 import { bleService } from "@/utils/Tauri/BluetoothSerial";
-import { getSignalDetails } from "@/components/common/GetSignal";
+import QrScanner from "qr-scanner";
 
 import { startBackToHomeTour, startRoomTour, roomDriverObj, showHubNotFoundTour } from "@/components/onboarding/tours/roomTour";
 
@@ -29,7 +29,7 @@ type DataInit = {
 const schema = z.object({
     mode: z.enum(["with_hub", "empty_room"]),
     name: z.string().min(1, "Vui lòng nhập tên phòng"),
-    note: z.string().min(1, "Vui lòng nhập ghi chú"),
+    note: z.string().optional(),
     ssid: z.string().optional(),
     pass: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -48,8 +48,14 @@ type FormData = z.infer<typeof schema>;
 export default function AddRoom() {
     const [loading, setLoading] = useState(false);
     const [searchingHub, setSearchingHub] = useState(false);
-    const [hubs, setHubs] = useState<BleDevice[]>([]);
     const [selectedHub, setSelectedHub] = useState<BleDevice | null>(null);
+    const [scannerOpen, setScannerOpen] = useState(false);
+    const [cameraReady, setCameraReady] = useState(false);
+    const [qrVerified, setQrVerified] = useState(false);
+    const [cameraError, setCameraError] = useState("");
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const scannerRef = useRef<QrScanner | null>(null);
+    const qrHandledRef = useRef(false);
 
     const form = useForm<FormData>({
         resolver: zodResolver(schema),
@@ -57,6 +63,7 @@ export default function AddRoom() {
     });
 
     const currentMode = form.watch("mode");
+    const hubSetupLocked = currentMode === "with_hub" && !selectedHub;
     const txCharacteristic = process.env.NEXT_PUBLIC_CHAR_UUID_TX!;
 
     useEffect(() => {
@@ -69,7 +76,7 @@ export default function AddRoom() {
                     console.error("Lỗi khi khởi chạy Room Tour:", error);
                 }
             }
-        }, 700); 
+        }, 700);
 
         return () => {
             clearTimeout(timer);
@@ -89,9 +96,65 @@ export default function AddRoom() {
                 document.body.classList.remove('driver-active');
                 document.body.style.overflow = '';
                 document.body.style.pointerEvents = '';
-            } catch (e) {}
+            } catch (e) { }
         };
     }, []);
+
+    useEffect(() => {
+        if (!scannerOpen || !videoRef.current) return;
+
+        qrHandledRef.current = false;
+        setCameraReady(false);
+        setCameraError("");
+
+        const scanner = new QrScanner(
+            videoRef.current,
+            async (result) => {
+                if (qrHandledRef.current) return;
+
+                const expectedUuid = process.env.NEXT_PUBLIC_SERVICE_UUID?.trim().toLowerCase();
+                const scannedValue = result.data.trim().toLowerCase();
+
+                if (!expectedUuid || scannedValue !== expectedUuid) {
+                    setCameraError("QR không hợp lệ hoặc không thuộc Hub này");
+                    return;
+                }
+
+                qrHandledRef.current = true;
+                setQrVerified(true);
+                setScannerOpen(false);
+                toast.success("QR hợp lệ, đang tự động tìm Hub...");
+                await searchHub(true);
+            },
+            {
+                preferredCamera: "environment",
+                highlightScanRegion: true,
+                highlightCodeOutline: true,
+                maxScansPerSecond: 8,
+                returnDetailedScanResult: true,
+            }
+        );
+
+        scannerRef.current = scanner;
+        scanner.start().catch((error) => {
+            console.error("Không thể mở camera sau:", error);
+            setCameraError("Không thể mở camera. Vui lòng cấp quyền camera cho ứng dụng.");
+        });
+
+        return () => {
+            scanner.stop();
+            scanner.destroy();
+            scannerRef.current = null;
+        };
+    }, [scannerOpen]);
+
+    const startQrScanner = () => {
+        setSelectedHub(null);
+        setQrVerified(false);
+        setCameraReady(false);
+        setCameraError("");
+        setScannerOpen(true);
+    };
 
     const pairDevice = async (device: BleDevice, networkConfig: DataInit) => {
         await bleService.ensurePermissions();
@@ -127,7 +190,12 @@ export default function AddRoom() {
                         await bleService.unsubscribe(txCharacteristic).catch(console.error);
 
                         if (payloadRaw.includes("OK")) {
-                            resolve();
+                            try {
+                                await bleService.sendString(txCharacteristic, "device/restart", "withResponse");
+                                resolve();
+                            } catch (error) {
+                                reject(error);
+                            }
                         } else {
                             setLoading(false);
                             reject(new Error(`Hub báo lỗi cấu hình: ${payloadRaw}`));
@@ -151,10 +219,9 @@ export default function AddRoom() {
         });
     };
 
-    const searchHub = async () => {
+    const searchHub = async (autoSelect = false) => {
         try {
             setSearchingHub(true);
-            setHubs([]);
             setSelectedHub(null);
 
             try {
@@ -171,7 +238,12 @@ export default function AddRoom() {
                 const matchingDevices = devices.filter((d) =>
                     d.services?.some(s => s.toLowerCase() === targetService?.toLowerCase())
                 );
-                setHubs(matchingDevices);
+                if (autoSelect && matchingDevices.length > 0) {
+                    const strongestHub = [...matchingDevices].sort(
+                        (a, b) => (b.rssi ?? -999) - (a.rssi ?? -999)
+                    )[0];
+                    setSelectedHub(strongestHub);
+                }
                 if (matchingDevices.length > 0) foundAny = true; // Ghi nhận là có tìm thấy
             });
 
@@ -184,10 +256,10 @@ export default function AddRoom() {
                     console.error("Lỗi khi dừng quét:", err);
                 } finally {
                     setSearchingHub(false);
-                    
+
                     if (!foundAny) {
                         // Nếu không có, hiện popup thông báo ảnh lỗi độc lập
-                        showHubNotFoundTour(); 
+                        showHubNotFoundTour();
                     } else {
                         // Nếu CÓ thiết bị:
                         if (roomDriverObj) {
@@ -230,18 +302,20 @@ export default function AddRoom() {
                 name: data.name,
                 ssid: data.ssid || "",
                 ssid_pass: data.pass || "",
-                user: "",                    
-                user_pass: "",              
-                time_zone: "Asia/Ho_Chi_Minh"       
+                user: "",
+                user_pass: "",
+                time_zone: "Asia/Ho_Chi_Minh"
             };
 
             await pairDevice(selectedHub, hubConfigPayload);
         }
 
+        const roomNote = data.note?.trim();
+
         await roomRepo.create({
             id: newRoomId,
             name: data.name,
-            note: data.note,
+            ...(roomNote ? { note: roomNote } : {}),
         });
 
         if (data.mode === "with_hub" && selectedHub) {
@@ -257,9 +331,7 @@ export default function AddRoom() {
         }
 
         toast.success("Tạo phòng và thiết lập Hub thành công");
-        await bleService.sendString(txCharacteristic, "device/restart", "withResponse");
-
-        localStorage.setItem("JUST_CREATED_ROOM_ID", newRoomId); 
+        localStorage.setItem("JUST_CREATED_ROOM_ID", newRoomId);
         setTimeout(() => startBackToHomeTour(), 500);
 
         // form.reset({ mode: data.mode, name: "", note: "", ssid: "", pass: "" });
@@ -289,8 +361,10 @@ export default function AddRoom() {
                     onClick={() => {
                         form.setValue("mode", "empty_room");
                         form.clearErrors();
+                        setScannerOpen(false);
+                        setQrVerified(false);
+                        setCameraError("");
                         setSelectedHub(null);
-                        setHubs([]);
                         bleService.stopScan().catch(console.error);
                     }}
                     className={`py-2.5 text-sm font-medium rounded-xl transition-all ${currentMode === "empty_room"
@@ -303,14 +377,75 @@ export default function AddRoom() {
             </div>
 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                {currentMode === "with_hub" && (
+                    <div data-tour="scan-hub-qr" className="flex flex-col gap-3 rounded-2xl border bg-card p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
+                                <HugeiconsIcon icon={QrCodeIcon} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-medium">Quét QR trên Hub</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Dùng camera sau để xác thực và tự động chọn thiết bị.
+                                </p>
+                            </div>
+                            {qrVerified ? <HugeiconsIcon icon={CheckmarkCircle02Icon} className="text-green-600" /> : null}
+                        </div>
+
+                        {scannerOpen ? (
+                            <div className="relative aspect-square overflow-hidden rounded-xl bg-black">
+                                <video
+                                    ref={videoRef}
+                                    className="size-full object-cover"
+                                    muted
+                                    playsInline
+                                    onCanPlay={() => setCameraReady(true)}
+                                />
+                                {!cameraReady ? (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                                        <div className="flex size-20 items-center justify-center rounded-full bg-background ring-1 ring-border">
+                                            <HugeiconsIcon icon={Camera01Icon} className="size-9 animate-pulse text-muted-foreground" />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="pointer-events-none absolute inset-[15%] rounded-xl border-2 border-white/80" />
+                                )}
+                            </div>
+                        ) : null}
+
+                        {cameraError ? <p className="text-xs text-destructive">{cameraError}</p> : null}
+
+                        {selectedHub ? (
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-green-500 bg-green-50 p-3 dark:bg-green-900/20">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium">{selectedHub.name || "Smart Hub"}</p>
+                                    <p className="truncate font-mono text-xs text-muted-foreground">{selectedHub.address}</p>
+                                </div>
+                                <HugeiconsIcon icon={CheckmarkCircle02Icon} className="text-green-600" />
+                            </div>
+                        ) : (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-12 w-full rounded-xl"
+                                disabled={searchingHub || loading}
+                                onClick={scannerOpen ? () => setScannerOpen(false) : startQrScanner}
+                            >
+                                <HugeiconsIcon icon={scannerOpen ? Camera01Icon : QrCodeIcon} data-icon="inline-start" />
+                                {scannerOpen ? "Đóng camera" : searchingHub ? "Đang tìm Hub..." : "Mở camera quét QR"}
+                            </Button>
+                        )}
+                    </div>
+                )}
+
                 {/* ROOM INFO */}
                 <div className="space-y-2" data-tour="room-name">
                     <label className="text-sm font-medium">Room name:</label>
-                    <Input 
+                    <Input
                         id="input-room-name"
-                        placeholder="Tên phòng (A101...)" 
-                        disabled={loading} 
-                        {...form.register("name")} 
+                        placeholder="Tên phòng (A101...)"
+                        disabled={loading || hubSetupLocked}
+                        {...form.register("name")}
                         // 🟢 TỰ ĐỘNG CHUYỂN Ô KHI NHẤN ENTER
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -323,12 +458,12 @@ export default function AddRoom() {
                 </div>
 
                 <div className="space-y-2" data-tour="room-note">
-                    <label className="text-sm font-medium">Room note:</label>
-                    <Input 
+                    <label className="text-sm font-medium">Room note (optional):</label>
+                    <Input
                         id="input-room-note"
-                        placeholder="Ghi chú về phòng này" 
-                        disabled={loading} 
-                        {...form.register("note")} 
+                        placeholder="Ghi chú về phòng này"
+                        disabled={loading || hubSetupLocked}
+                        {...form.register("note")}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
@@ -338,7 +473,6 @@ export default function AddRoom() {
                             }
                         }}
                     />
-                    {form.formState.errors.note && <p className="text-xs text-destructive">{form.formState.errors.note.message}</p>}
                 </div>
 
                 {/* PHẦN CẤU HÌNH HUB & WIFI */}
@@ -346,11 +480,11 @@ export default function AddRoom() {
                     <div className="space-y-5 border-t pt-5 border-dashed">
                         <div className="space-y-2" data-tour="wifi-ssid">
                             <label className="text-sm font-medium">SSID (Wi-Fi Name):</label>
-                            <Input 
+                            <Input
                                 id="input-wifi-ssid"
-                                placeholder="Tên Wi-Fi nhà khách cấp cho Hub" 
-                                disabled={loading} 
-                                {...form.register("ssid")} 
+                                placeholder="Tên Wi-Fi nhà khách cấp cho Hub"
+                                disabled={loading || hubSetupLocked}
+                                {...form.register("ssid")}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
@@ -363,88 +497,30 @@ export default function AddRoom() {
 
                         <div className="space-y-2" data-tour="wifi-password">
                             <label className="text-sm font-medium">Password:</label>
-                            <Input 
+                            <Input
                                 id="input-wifi-pass"
-                                type="password" 
-                                placeholder="Mật khẩu băng tần 2.4Ghz" 
-                                disabled={loading} 
-                                {...form.register("pass")} 
+                                type="password"
+                                placeholder="Mật khẩu băng tần 2.4Ghz"
+                                disabled={loading || hubSetupLocked}
+                                {...form.register("pass")}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
                                         // 🟢 Gõ xong Wifi Pass, bấm Enter nó quét luôn!
-                                        searchHub();
+                                        document.getElementById("submit-room-button")?.focus();
                                     }
                                 }}
                             />
                             {form.formState.errors.pass && <p className="text-xs text-destructive">{form.formState.errors.pass.message}</p>}
                         </div>
 
-                        {/* FIND HUB */}
-                        <div className="space-y-3" data-tour="find-hub-area">
-                            <label className="text-sm font-medium">Hub Connection</label>
-
-                            <Button
-                                data-tour="find-hub-btn"
-                                type="button"
-                                variant="outline"
-                                className="w-full h-12 rounded-2xl gap-2"
-                                onClick={searchHub}
-                                disabled={searchingHub || loading}>
-                                <HugeiconsIcon icon={Search01Icon} size={18} className={searchingHub ? "animate-spin" : ""} />
-                                {searchingHub ? "Searching Hub..." : "Find Hub"}
-                            </Button>
-
-                            <div 
-                                data-tour="hub-list-container" 
-                                className={`space-y-2 max-h-48 overflow-y-auto pr-1 transition-all ${
-                                    hubs.length > 0 ? "block" : "hidden"
-                                }`}
-                            >
-                                {hubs.map((device) => {
-                                    const isSelected = selectedHub?.address === device.address;
-                                    const signal = getSignalDetails(device.rssi);
-                                    return (
-                                        <button
-                                            key={device.address}
-                                            type="button"
-                                            onClick={() => setSelectedHub(device)}
-                                            className={`w-full rounded-3xl border p-4 flex items-center justify-between transition-colors
-                                                ${isSelected
-                                                    ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                                                    : "hover:bg-muted"
-                                                }`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`size-12 rounded-2xl flex items-center justify-center transition-colors
-                                                        ${isSelected
-                                                            ? "bg-green-100 dark:bg-green-900/30"
-                                                            : "bg-stone-100 dark:bg-stone-800"
-                                                    }`}>
-                                                    <HugeiconsIcon
-                                                        icon={signal.icon}
-                                                        size={22}
-                                                        className={isSelected ? "text-green-600" : signal.color}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-left text-sm">{device.name || "Unknown Hub"}</p>
-                                                    <p className="text-xs text-muted-foreground text-left font-mono">{device.address}</p>
-                                                </div>
-                                            </div>
-                                            {isSelected && (
-                                                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={22} className="text-green-600" />
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
                     </div>
                 )}
 
                 {/* SUBMIT BUTTON */}
                 <div data-tour="submit-room">
                     <Button
+                        id="submit-room-button"
                         className="w-full h-12 rounded-2xl mt-4"
                         disabled={loading || (currentMode === "with_hub" && !selectedHub)}
                         type="submit">

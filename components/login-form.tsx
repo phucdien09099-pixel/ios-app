@@ -132,7 +132,7 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
 
   return (
     <div className={cn("flex flex-col gap-6 w-full max-w-md mx-auto p-4 sm:p-0", className)} {...props}>
-      <Card className="w-full ring-0 focus-visible:ring-0 border shadow-md rounded-2xl">
+      {/* <Card className="w-full ring-0 focus-visible:ring-0 border shadow-md rounded-2xl"> */}
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold tracking-tight">Login to your account</CardTitle>
           <CardDescription>Enter your email below to login to your account</CardDescription>
@@ -182,7 +182,7 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
             </FieldGroup>
           </form>
         </CardContent>
-      </Card>
+      {/* </Card> */}
     </div>
   );
 }
