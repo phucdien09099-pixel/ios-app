@@ -21,6 +21,8 @@ import HelpButton from "@/components/common/HelpButton";
 import { startAfterAddDeviceTour } from "@/components/onboarding/tours/afterAddDeviceTour";
 import { startAddDeviceTour } from "@/components/onboarding/tours/addDeviceTour";
 import { startHubSettingTour } from "@/components/onboarding/tours/hubSettingTour";
+import { useState } from "react";
+import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export function RoomCard({ 
     room, 
@@ -35,6 +37,7 @@ export function RoomCard({
     const { deviceStates, getDeviceStatus } = useTransport();
     const currentRoomState = deviceStates[room.name];
     const currentTemp = currentRoomState?.temp;
+    const [openDelete, setOpenDelete] = useState(false);
 
 
     const handleDeleteRoom = async (idRoom: any) => {
@@ -48,71 +51,116 @@ export function RoomCard({
     }
 
     return (
-        <Card className="hover:shadow-md transition cursor-pointer" data-tour={dataTour}>
-            {/* HEADER */}
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                <div className="flex flex-col gap-1">
-                    <CardTitle className="text-base leading-none">
-                        {room.name}
-                    </CardTitle>
-                    <div className="text-xs text-muted-foreground">
-                        {room.note || "No description"}
-                    </div>
-                    {/* STATUS */}
-
+    <Card className="hover:shadow-md transition cursor-pointer" data-tour={dataTour}>
+        {/* HEADER */}
+        <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <div className="flex flex-col gap-1">
+                <CardTitle className="text-base leading-none">
+                    {room.name}
+                </CardTitle>
+                <div className="text-xs text-muted-foreground">
+                    {room.note || "No description"}
                 </div>
+            </div>
 
-                {/* DELETE */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-red-500 hover:text-red-600 -mt-1"
-                    onClick={(e) => { handleDeleteRoom(room.id); }}>
-                    <HugeiconsIcon icon={Delete02Icon} />
-                </Button>
-            </CardHeader>
+            {/* DELETE */}
+            <Button
+                variant="ghost"
+                size="icon"
+                className="text-red-500 hover:text-red-600 -mt-1"
+                onClick={(e) => { 
+                    e.stopPropagation(); // Ngăn sự kiện click lan ra Card
+                    setOpenDelete(true); 
+                }}
+            >
+                <HugeiconsIcon icon={Delete02Icon} />
+            </Button>
 
-            {/* BODY */}
-            <CardContent className="gap-2 pt-0 grid grid-cols-2">
-                <Badge
-                    variant="outline"
-                    className={`w-fit flex items-center gap-1 ${getDeviceStatus(room.name)
+            <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+                <AlertDialogContent className="w-[280px] rounded-[24px] bg-white p-5 shadow-xl border-none gap-0">
+                    {/* Phần chữ trung tâm */}
+                    <div className="flex flex-col items-center text-center mt-1 mb-5 gap-1.5">
+                        <AlertDialogTitle className="text-[17px] font-semibold text-gray-900">
+                            Xoá phòng
+                        </AlertDialogTitle>
+                        <p className="text-[13px] text-gray-500 leading-relaxed px-2">
+                            Phòng sẽ bị xoá khỏi tài khoản. <br />
+                            Bạn có chắc chắn muốn xoá?
+                        </p>
+                    </div>
+                    
+                    {/* Hai nút chức năng bo góc tròn */}
+                    <div className="flex justify-center gap-3 w-full">
+                        <Button 
+                            variant="secondary" 
+                            className="flex-1 rounded-full h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm" 
+                            onClick={(e) => { e.stopPropagation(); setOpenDelete(false); }}
+                        >
+                            Huỷ
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            className="flex-1 rounded-full h-10 bg-[#f43f5e] hover:bg-[#e11d48] text-white font-medium text-sm shadow-none" 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDelete(false);
+                                handleDeleteRoom(room.id);
+                            }}
+                        >
+                            Xoá
+                        </Button>
+                    </div>
+                </AlertDialogContent>
+            </AlertDialog>
+        </CardHeader>
+
+        {/* BODY */}
+        <CardContent className="gap-2 pt-0 grid grid-cols-2">
+            <Badge
+                variant="outline"
+                className={`w-fit flex items-center gap-1 ${
+                    getDeviceStatus(room.name)
                         ? "text-green-600 border-green-200 bg-green-50"
                         : "text-red-600 border-red-200 bg-red-50"
-                        }`}>
-                    {getDeviceStatus(room.name) ? "online" : "offline"}
+                }`}
+            >
+                {getDeviceStatus(room.name) ? "online" : "offline"}
+            </Badge>
+
+            {typeof currentTemp === "number" && currentTemp > 0 && (
+                <Badge
+                    variant="outline"
+                    className="flex items-center gap-1 border-orange-200 bg-orange-50 text-orange-700 font-semibold w-fit"
+                >
+                    <HugeiconsIcon icon={TemperatureIcon} className="text-orange-600" />
+                    {currentTemp} °C
                 </Badge>
-                {typeof currentTemp === "number" && currentTemp > 0 && (
-                    <Badge
-                        variant="outline"
-                        className="flex items-center gap-1 border-orange-200 bg-orange-50 text-orange-700 font-semibold w-fit">
-                        <HugeiconsIcon icon={TemperatureIcon} className="text-orange-600" />
-                        {currentTemp} °C
-                    </Badge>
-                )}
+            )}
 
-
-                <div className="col-span-2">
-                    <div className="text-sm font-medium">
-                        {room?.devices?.length || 0} devices
-                    </div>
-                    <Button 
-                        data-tour={`detail-btn-${room.id}`}
-                        className={`w-full!`} onClick={() => {
+            <div className="col-span-2">
+                <div className="text-sm font-medium">
+                    {room?.devices?.length || 0} devices
+                </div>
+                
+                <Button 
+                    data-tour={`detail-btn-${room.id}`}
+                    className="w-full"
+                    size="sm"
+                    onClick={() => {
                         if (typeof detailTourObj !== "undefined" && detailTourObj !== null) {
                             detailTourObj.destroy();
                         }
                         const pointer = document.getElementById('tour-finger-pointer');
                         if (pointer) pointer.remove();
-                        // console.log(room);
+
                         open({
                             id: room.id,
                             title: room.name,
                             component: DevicesRoom,
                             props: {
-                                onload: onDeleted
-                                , roomId: room.id
-                                , roomName: room.name
+                                onload: onDeleted,
+                                roomId: room.id,
+                                roomName: room.name
                             },
                             direction: "right",
                             renderRightButtonHeader: (
@@ -136,7 +184,8 @@ export function RoomCard({
                                                     roomName: room.name
                                                 }
                                             })
-                                        }>
+                                        }
+                                    >
                                         <HugeiconsIcon icon={DashboardCircleAddIcon} size={18} />
                                     </Button>
 
@@ -148,7 +197,7 @@ export function RoomCard({
                                         onClick={() =>
                                             open({
                                                 id: room.id + "setting",
-                                                title: "Cài đặt Hub", // (Có thể đổi tiêu đề ở đây cho đẹp)
+                                                title: "Cài đặt Hub",
                                                 direction: "right",
                                                 component: HubSettings,
                                                 props: {
@@ -162,12 +211,13 @@ export function RoomCard({
                                     </Button>
                                 </div>
                             ),
-                        })
-                    }} size="sm">
-                        Detail
-                    </Button>
-                </div>
-            </CardContent>
-        </Card >
-    );
+                        });
+                    }} 
+                >
+                    Detail
+                </Button>
+            </div>
+        </CardContent>
+    </Card>
+);
 }
