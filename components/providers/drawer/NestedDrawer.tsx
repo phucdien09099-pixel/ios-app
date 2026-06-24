@@ -89,7 +89,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                             variant="ghost"
                                             size="icon"
                                             aria-label="Go Back"
-                                            className="shrink-0"
+                                            className="rounded-2xl! size-10! shrink-0"
                                         >
                                             <HugeiconsIcon icon={ArrowLeftIcon} />
                                         </Button>
@@ -110,7 +110,7 @@ export function NestedDrawers({ rightButton }: { rightButton: React.ReactNode })
                                         variant="outline"
                                         size="icon"
                                         aria-label="Go Back"
-                                        className="shrink-0"
+                                        className="rounded-2xl! size-10! shrink-0"
                                     >
                                         <HugeiconsIcon icon={ArrowLeftIcon} />
                                     </Button>

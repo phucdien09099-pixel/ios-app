@@ -1,5 +1,5 @@
 class ApiClient {
-    base = process.env.HOST_IP;
+    base = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     async request(
         url: string,

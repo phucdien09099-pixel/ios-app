@@ -228,7 +228,14 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     {automations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">
                             <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
-                                <HugeiconsIcon icon={AddCircleIcon} size={32} className="text-muted-foreground" />
+                                <HugeiconsIcon onClick={() => open({
+                                    id: "sceneTypeSelector",
+                                    title: "Kịch bản thông minh",
+                                    direction: "bottom",
+                                    className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
+                                    component: SceneTypeSelector,
+                                    props: { onSelectAutomation: handleSelectAutomation }
+                                })} icon={AddCircleIcon} size={32} className="text-muted-foreground" />
                             </div>
                             <div className="text-center">
                                 <div className="font-semibold text-base">Chưa có kịch bản nào</div>
@@ -236,21 +243,14 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                     Hãy bắt đầu bằng cách tạo kịch bản đầu tiên của bạn.
                                 </div>
                             </div>
-                            <Button
+                            {/* <Button
                                 variant="default"
                                 className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-6"
-                                onClick={() => open({
-                                    id: "sceneTypeSelector",
-                                    title: "Kịch bản thông minh",
-                                    direction: "bottom",
-                                    className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
-                                    component: SceneTypeSelector,
-                                    props: { onSelectAutomation: handleSelectAutomation }
-                                })}
+                                onClick={ }
                             >
                                 <HugeiconsIcon icon={AddCircleIcon} size={18} />
                                 Tạo kịch bản
-                            </Button>
+                            </Button> */}
                         </div>
                     ) : (
                         automations.map((automation) => {

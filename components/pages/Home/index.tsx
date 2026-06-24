@@ -114,7 +114,7 @@ export function RoomPage() {
                         <DialogContent className="z-[9999]! pointer-events-auto!">
                             <DialogTrigger>
                                 <Button size="icon-lg" variant="outline" title="Thêm nút" aria-label="Thêm nút">
-                                    hello
+                                    {/* hello */}
                                 </Button>
                             </DialogTrigger>
                         </DialogContent>
@@ -125,7 +125,7 @@ export function RoomPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <HelpButton onClick={() => startHomeTour(true)} />
+                    <HelpButton  onClick={() => startHomeTour(true)} />
                     <Button
                         data-tour="add-room-button"
                         className="rounded-2xl size-10!"

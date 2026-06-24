@@ -8,7 +8,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
-import { useState, useEffect } from "react"; 
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
@@ -52,7 +52,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
 
     const connectionType = form.watch("connectionType");
     const deviceName = form.watch("name");
-
+    const type = form.watch("type");
     useEffect(() => {
         const timer = setTimeout(() => {
             startAddDeviceTour(false);
@@ -209,28 +209,27 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                         disabled={loading}
                     >
                         <NativeSelectOption value="AC">Air Conditioner (Điều hòa)</NativeSelectOption>
-                        <NativeSelectOption value="TV">Television (Tivi)</NativeSelectOption>
-                        <NativeSelectOption value="FAN">Fan (Quạt)</NativeSelectOption>
-                        <NativeSelectOption value="LIGHT">Light (Đèn)</NativeSelectOption>
-                        <NativeSelectOption value="SMART_SCHEDULE">Schedule (Bộ hẹn giờ)</NativeSelectOption>
-                        <NativeSelectOption value="RELAY">Relay (Rơ-le điều khiển)</NativeSelectOption>
+                        {/* <NativeSelectOption value="TV">Television (Tivi)</NativeSelectOption> */}
+                        {/* <NativeSelectOption value="FAN">Fan (Quạt)</NativeSelectOption> */}
+                        {/* <NativeSelectOption value="LIGHT">Light (Đèn)</NativeSelectOption> */}
+                        {/* <NativeSelectOption value="SMART_SCHEDULE">Schedule (Bộ hẹn giờ)</NativeSelectOption> */}
+                        {/* <NativeSelectOption value="RELAY">Relay (Rơ-le điều khiển)</NativeSelectOption> */}
                         <NativeSelectOption value="LEARNING_REMOTE">Learning Remote (Remote học lệnh)</NativeSelectOption>
                     </NativeSelect>
                 </div>
 
                 {connectionType === "IR_RF" ? (
+                    type == "AC" &&
                     <div className="space-y-1" data-tour="device-attributes">
                         <label className="text-xs font-medium text-muted-foreground">Hãng sản xuất (Brand):</label>
                         <NativeSelect
                             className="w-full"
                             value={form.watch("brand")}
                             onChange={(e) => form.setValue("brand", e.target.value, { shouldValidate: true })}
-                            disabled={loading}
-                        >
+                            disabled={loading}>
                             <NativeSelectOption value="DAIKIN">Daikin</NativeSelectOption>
                             <NativeSelectOption value="SAMSUNG">Samsung</NativeSelectOption>
                             <NativeSelectOption value="LG">LG</NativeSelectOption>
-                            <NativeSelectOption value="XIAOMI">Xiaomi</NativeSelectOption>
                             <NativeSelectOption value="PANASONIC">PANASONIC</NativeSelectOption>
                         </NativeSelect>
                     </div>

@@ -1,6 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
-import { v4 as uuid } from "uuid";
+import { useEffect } from "react";
 import { userRepo } from "@/db/repository/UserRepository";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"; 
 import { apiClient } from "@/utils/Tauri/HttpClient"; 
@@ -10,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { TimezoneCombobox } from "@/components/timezone-combobox"; 
 
 type FormValues = {
@@ -21,9 +20,18 @@ type FormValues = {
   timezone: string;
 };
 
+type AccountResponse = {
+  id: number;
+  email: string;
+  status: string;
+  roles: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const { back } = useNavDrawer(); 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       name: "",
       email: "",
@@ -33,7 +41,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
     }
   });
 
-  const password = watch("password");
+  const password = useWatch({ control, name: "password" });
+  const timezone = useWatch({ control, name: "timezone" });
 
   // TỰ ĐỘNG NHẬN DIỆN MÚI GIỜ HỆ THỐNG
   useEffect(() => {
@@ -43,52 +52,46 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         tz = "Asia/Ho_Chi_Minh";
       }
       setValue("timezone", tz);
-    } catch (e) {
+    } catch {
       setValue("timezone", "Asia/Ho_Chi_Minh");
     }
   }, [setValue]);
 
   const onSubmit = async (data: FormValues) => {
     try {
-      // 1. KIỂM TRA TRÙNG EMAIL
-      const existingUser = await userRepo.findByEmail(data.email);
-      if (existingUser) {
-        toast.error("Email này đã được đăng ký. Vui lòng dùng email khác!"); // ✨ Đổi sang Toast
-        return; 
-      }
-
-      // 2. GỌI SERVER
-      try {
-        await apiClient.post("/api/v1/auth/signup", {
-          name: data.name,
-          email: data.email,
-          password: data.password,
-          // timezone: data.timezone, 
-        });
-      } catch (serverErr) {
-        console.warn("Chưa gọi được lên Server hoặc API chưa đúng:", serverErr);
-      }
-
-      // 3. LƯU VÀO SQLITE
-      const newUserId = uuid();
-      await userRepo.create({
-        id: newUserId,
-        name: data.name,
-        email: data.email,
+      const account = await apiClient.post<AccountResponse>("/api/auth/register", {
+        email: data.email.trim().toLowerCase(),
         password: data.password,
-        role: "user",
-        parent_id: null,
-        timezone: data.timezone,
-        created_at: new Date().toISOString(),
       });
+
+      const existingUser = await userRepo.findByEmail(account.email);
+      if (!existingUser) {
+        await userRepo.create({
+          id: String(account.id),
+          name: data.name,
+          email: account.email,
+          role: "owner",
+          parent_id: null,
+          is_owner: true,
+          timezone: data.timezone,
+          created_at: account.createdAt,
+        });
+      }
 
       // 4. THÔNG BÁO VÀ CHUYỂN HƯỚNG
       toast.success("Tạo tài khoản thành công! 🎉"); // ✨ Đổi sang Toast
       back(); // Quay lại trang trước an toàn
 
     } catch (error) {
-      console.error("Lỗi khi lưu DB:", error);
-      toast.error("Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại!"); // ✨ Đổi sang Toast
+      console.error("Lỗi khi tạo tài khoản:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("409") || message.includes("already exists")) {
+        toast.error("Email này đã được đăng ký!");
+      } else if (message.includes("400")) {
+        toast.error("Email hoặc mật khẩu không hợp lệ.");
+      } else {
+        toast.error("Không thể kết nối đến máy chủ. Vui lòng thử lại!");
+      }
     }
   };
 
@@ -164,7 +167,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
             <Field>
               <FieldLabel>Khu vực nhà (Múi giờ)</FieldLabel>
               <TimezoneCombobox
-                value={watch("timezone")}
+                value={timezone}
                 onChange={(val) => setValue("timezone", val)}
               />
             </Field>

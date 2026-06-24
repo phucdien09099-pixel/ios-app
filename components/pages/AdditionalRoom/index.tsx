@@ -191,7 +191,7 @@ export default function AddRoom() {
 
                         if (payloadRaw.includes("OK")) {
                             try {
-                                await bleService.sendString(txCharacteristic, "device/restart", "withResponse");
+                                await bleService.sendString(txCharacteristic, "device/restart|OK", "withResponse");
                                 resolve();
                             } catch (error) {
                                 reject(error);

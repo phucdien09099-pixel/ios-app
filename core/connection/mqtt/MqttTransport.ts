@@ -18,7 +18,7 @@ export class MqttTransport implements TransportsInterface<MqttConfig, string> {
     private errorCallback: ((err: Error) => void) | null = null;
     private savedConfig: MqttConfig | null = null;
 
-    constructor(private readonly connectionId: string = "default-mqtt-client") {}
+    constructor(private readonly connectionId: string = "default-mqtt-client") { }
 
     async connect(config?: MqttConfig): Promise<{ status: "success"; id: string }> {
         if (!config) throw new Error("MqttConfig is required to connect.");
@@ -43,8 +43,8 @@ export class MqttTransport implements TransportsInterface<MqttConfig, string> {
         this.savedConfig = config;
         const options: IClientOptions = {
             clientId: config.clientId ?? `${this.connectionId}-${crypto.randomUUID()}`,
-            username: config.username || undefined,
-            password: config.password || undefined,
+            username: "iot@gmail.com",
+            password: "vdtasoo12",
             clean: true,
             // TransportManager owns the retry loop, so MQTT.js must not create a second one.
             reconnectPeriod: 0,

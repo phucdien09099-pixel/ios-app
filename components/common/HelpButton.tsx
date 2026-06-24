@@ -32,6 +32,7 @@ export default function HelpButton({ onClick, className }: HelpButtonProps) {
                     setShowModal(true);
                 }}
                 className={cn(
+                    "rounded-2xl! size-10!",
                     "size-8 rounded-full border-primary/40 text-primary font-bold bg-primary/10 hover:bg-primary/20 p-0 transition-colors flex-shrink-0 z-50",
                     className
                 )}
@@ -45,14 +46,14 @@ export default function HelpButton({ onClick, className }: HelpButtonProps) {
                 <div className="fixed top-4 left-0 right-0 z-[999999] flex justify-center px-4 pointer-events-none">
                     {/* Thiết kế lại nhỏ gọn hơn cho Mobile */}
                     <div className="w-full max-w-[260px] bg-background border shadow-2xl rounded-xl p-2 pointer-events-auto animate-in slide-in-from-top-4 fade-in duration-300">
-                        
+
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-1.5">
                                 <span className="text-base">👋</span>
                                 <h3 className="font-semibold text-sm">Trợ giúp thao tác</h3>
                             </div>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setShowModal(false); }} 
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowModal(false); }}
                                 className="text-muted-foreground p-0.5 hover:text-foreground transition-colors"
                             >
                                 <HugeiconsIcon icon={Cancel01Icon} size={16} />
@@ -67,7 +68,7 @@ export default function HelpButton({ onClick, className }: HelpButtonProps) {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 text-xs px-3"
+                                className="h-7 text-xs px-3 "
                                 onClick={(e) => { e.stopPropagation(); setShowModal(false); }}
                             >
                                 Không
@@ -78,7 +79,7 @@ export default function HelpButton({ onClick, className }: HelpButtonProps) {
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setShowModal(false);
-                                    setTimeout(() => onClick(), 100); 
+                                    setTimeout(() => onClick(), 100);
                                 }}
                             >
                                 Có

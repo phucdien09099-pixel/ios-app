@@ -212,8 +212,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
                             }
 
                             openTimerDrawer(); // Mở drawer bình thường
-                        }}
-                    >
+                        }}>
                         <HugeiconsIcon icon={AddCircleIcon} size={28} />
                         Thêm hẹn giờ
                     </Button>
@@ -226,7 +225,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
                     {timers.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">
                             <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
-                                <HugeiconsIcon icon={Clock01Icon} size={32} className="text-muted-foreground" />
+                                <HugeiconsIcon onClick={() => openTimerDrawer()} icon={AddCircleIcon} size={32} className="text-muted-foreground" />
                             </div>
                             <div className="text-center">
                                 <div className="font-semibold text-base">Chưa có hẹn giờ nào</div>
@@ -234,14 +233,14 @@ export function TimerUI({ roomId }: { roomId: string }) {
                                     Hãy bắt đầu bằng cách tạo hẹn giờ đầu tiên của bạn.
                                 </div>
                             </div>
-                            <Button
+                            {/* <Button
                                 variant="default"
                                 className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-6"
                                 onClick={() => openTimerDrawer()}
                             >
                                 <HugeiconsIcon icon={AddCircleIcon} size={18} />
                                 Tạo hẹn giờ
-                            </Button>
+                            </Button> */}
                         </div>
                     ) : (
                         timers.map((timer) => {
