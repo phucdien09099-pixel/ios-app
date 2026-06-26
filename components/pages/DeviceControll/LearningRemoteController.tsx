@@ -122,6 +122,13 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     const [successId, setSuccessId] = useState<string | null>(null);
     const { send, lastMessage } = useTransport();
     const { open, back } = useNavDrawer();
+    const learnedCount = buttons.filter((button) => button.learned).length;
+    const activeModeLabel = learnMode ? "Đang học lệnh" : editMode ? "Đang chỉnh sửa" : "Sẵn sàng";
+    const activeModeDescription = learnMode
+        ? "Chọn một nút rồi bấm remote thật hướng vào mắt thu của Hub."
+        : editMode
+            ? "Chọn nút để đổi tên, đổi mã hoặc xoá khỏi remote."
+            : "Chạm vào nút đã học để phát lệnh điều khiển thiết bị.";
     // 🔄 Tải cấu trúc nút từ SQLite cục bộ khi mở màn hình thiết bị
     useEffect(() => {
         const loadButtonsFromDB = async () => {
@@ -412,8 +419,73 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
 
     return (
         <>
-            <CardContent className="flex flex-col gap-4 p-4 md:p-6">
-                <div className="flex items-start justify-between gap-3">
+            <CardContent className="flex flex-col gap-5 p-4 md:p-6">
+                <div className="rounded-3xl border bg-gradient-to-br from-card via-card to-muted/50 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                                <HugeiconsIcon icon={RemoteControlIcon} />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium text-muted-foreground">Smart remote</p>
+                                <h1 className="truncate text-2xl font-semibold tracking-tight">{data.name}</h1>
+                                <p className="mt-1 text-sm text-muted-foreground">{activeModeDescription}</p>
+                            </div>
+                        </div>
+                        <Badge variant={learnMode ? "default" : editMode ? "secondary" : "outline"} className="shrink-0">
+                            {activeModeLabel}
+                        </Badge>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                        <div className="rounded-2xl border bg-background/70 p-3">
+                            <p className="text-[11px] text-muted-foreground">Đã học</p>
+                            <p className="text-lg font-semibold">{learnedCount}/{buttons.length}</p>
+                        </div>
+                        <div className="rounded-2xl border bg-background/70 p-3">
+                            <p className="text-[11px] text-muted-foreground">Chế độ</p>
+                            <p className="truncate text-sm font-semibold">{learnMode ? "Học" : editMode ? "Sửa" : "Bấm"}</p>
+                        </div>
+                        <div className="rounded-2xl border bg-background/70 p-3">
+                            <p className="text-[11px] text-muted-foreground">Phòng</p>
+                            <p className="truncate text-sm font-semibold">{roomName}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button size="lg" variant="outline" className="flex-1 rounded-2xl sm:flex-none" onClick={openCreateDialog}>
+                        <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" />
+                        Thêm nút
+                    </Button>
+                    <Button
+                        size="lg"
+                        variant={editMode ? "default" : "outline"}
+                        className="flex-1 rounded-2xl sm:flex-none"
+                        onClick={() => {
+                            setEditMode((value) => !value);
+                            setLearnMode(false);
+                        }}
+                    >
+                        <HugeiconsIcon icon={Edit02Icon} data-icon="inline-start" />
+                        Sửa
+                    </Button>
+                    <Button size="lg" variant={learnMode ? "default" : "outline"} className="flex-1 rounded-2xl sm:flex-none" onClick={toggleLearnMode}>
+                        <HugeiconsIcon icon={AiLearningIcon} data-icon="inline-start" className={cn(learnMode && "animate-pulse")} />
+                        {learnMode ? "Tắt học" : "Học lệnh"}
+                    </Button>
+                </div>
+
+                {(learnMode || editMode) ? (
+                    <div className={cn(
+                        "rounded-2xl border p-3 text-sm",
+                        learnMode ? "border-primary/30 bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                        {activeModeDescription}
+                    </div>
+                ) : null}
+
+                <div className="hidden">
                     <div className="flex min-w-0 flex-col gap-1">
                         <h1 className="truncate text-xl font-semibold">{data.name}</h1>
                         <div className="flex flex-wrap items-center gap-2">
@@ -456,7 +528,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {buttons.map((button) => {
                         const iconOption = getIconOption(button.iconKey);
                         const isLearning = learningId === button.id;
@@ -468,27 +540,32 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                                 <Button
                                     variant={button.learned ? "secondary" : "outline"}
                                     className={cn(
-                                        "h-28 w-full flex-col gap-3 rounded-lg transition-all duration-300",
-                                        learnMode && "ring-2 ring-orange-500/30",
-                                        isLearning && "animate-pulse ring-2 ring-destructive bg-destructive/10 text-destructive",
-                                        isSending && "animate-pulse ring-2 ring-primary bg-primary/10 text-primary scale-95",
-                                        isSuccess && "ring-4 ring-emerald-500 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold scale-105"
+                                        "h-32 w-full cursor-pointer flex-col gap-2 rounded-3xl border transition-all duration-200 active:scale-[0.98]",
+                                        button.learned && "bg-muted/70",
+                                        !button.learned && "border-dashed text-muted-foreground",
+                                        learnMode && "ring-2 ring-primary/20",
+                                        isLearning && "animate-pulse border-primary bg-primary/10 text-primary",
+                                        isSending && "animate-pulse bg-primary/10 text-primary scale-95",
+                                        isSuccess && "border-green-500 bg-green-500/15 text-green-700 dark:text-green-400"
                                     )}
                                     disabled={isLearning}
                                     onClick={() => onRemoteButtonClick(button)}
                                 >
                                     <HugeiconsIcon
                                         icon={isSuccess ? CheckmarkCircle02Icon : iconOption.icon}
-                                        className={cn("size-8 transition-transform", isSuccess && "animate-bounce text-emerald-500", isSending && "scale-110 text-primary")}
+                                        className={cn("transition-transform", isSuccess && "animate-bounce text-green-600", isSending && "scale-110 text-primary")}
                                     />
-                                    <span className="max-w-full truncate text-sm font-medium">
+                                    <span className="max-w-full truncate text-base font-semibold">
                                         {isSuccess ? "ĐÃ NHẬN!" : button.name}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                        {isLearning ? "Đang chờ" : button.learned ? "Sẵn sàng" : "Chưa học"}
                                     </span>
                                 </Button>
 
                                 {button.learned && !isSuccess ? (
                                     <div className="absolute top-2 left-2 flex size-5 items-center justify-center rounded-full bg-background ring-1 ring-border">
-                                        <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-3 text-emerald-500" />
+                                        <HugeiconsIcon icon={CheckmarkCircle02Icon} className="text-green-600" />
                                     </div>
                                 ) : null}
 
