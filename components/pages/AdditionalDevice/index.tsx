@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
+import QrScannerCard from "@/components/common/QrScannerCard";
 
 import { startAddDeviceTour, startBackToRoomTour } from "@/components/onboarding/tours/addDeviceTour";
 
@@ -33,6 +34,20 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
+
+const extractIotSerialFromQr = (rawValue: string) => {
+    const value = rawValue.trim();
+
+    try {
+        const parsed = JSON.parse(value) as Record<string, unknown>;
+        const serial = parsed.serial ?? parsed.id ?? parsed.deviceId ?? parsed.device_id ?? parsed.mac;
+        if (typeof serial === "string" && serial.trim()) return serial.trim();
+    } catch {
+        // QR có thể chỉ là chuỗi serial thuần.
+    }
+
+    return value;
+};
 
 export default function AddDeviceForm({ roomId, roomName }: { roomId: string, roomName: string }) {
     const [loading, setLoading] = useState(false);
@@ -253,7 +268,35 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                         </NativeSelect>
                     </div>
                 ) : (
-                    <div className="space-y-2 border p-4 rounded-2xl bg-stone-50 dark:bg-stone-900/30 border-dashed" data-tour="device-attributes">
+                    <div data-tour="device-attributes" className="flex flex-col gap-2">
+                        <QrScannerCard
+                            title="Quét QR thiết bị IoT"
+                            description="Quét mã QR trên thiết bị để lấy ID/Serial phần cứng."
+                            value={form.watch("iotDeviceId")}
+                            valueLabel="Serial thiết bị"
+                            buttonLabel="Mở camera quét QR"
+                            rescanLabel="Quét lại QR"
+                            disabled={loading}
+                            validate={(value) => value.trim() ? null : "QR không có dữ liệu thiết bị"}
+                            onScan={(value) => {
+                                const serial = extractIotSerialFromQr(value);
+                                form.setValue("iotDeviceId", serial, { shouldDirty: true, shouldValidate: true });
+
+                                if (!form.getValues("name")?.trim()) {
+                                    form.setValue("name", `IoT ${serial.slice(-6)}`, { shouldDirty: true, shouldValidate: true });
+                                }
+
+                                toast.success("Đã quét QR thiết bị IoT");
+                            }}
+                        />
+                        {form.formState.errors.iotDeviceId ? (
+                            <p className="text-xs text-destructive">{form.formState.errors.iotDeviceId?.message}</p>
+                        ) : null}
+                    </div>
+                )}
+
+                {false && (
+                    <div className="space-y-2 border p-4 rounded-2xl bg-stone-50 dark:bg-stone-900/30 border-dashed">
                         <label className="text-xs font-medium text-muted-foreground block">Đồng bộ mã cứng IoT (ID/Serial):</label>
 
                         <div className="flex gap-2">
@@ -275,7 +318,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                             </Button>
                         </div>
                         {form.formState.errors.iotDeviceId && (
-                            <p className="text-xs text-destructive">{form.formState.errors.iotDeviceId.message}</p>
+                            <p className="text-xs text-destructive">{form.formState.errors.iotDeviceId?.message}</p>
                         )}
                     </div>
                 )}
