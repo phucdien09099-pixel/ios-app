@@ -26,6 +26,21 @@ type DataInit = {
     time_zone: string;
 }
 
+const getSavedAuthPayload = () => {
+    try {
+        const user = JSON.parse(localStorage.getItem("user") || "{}") as { email?: string };
+        return {
+            user: user.email || "",
+            user_pass: localStorage.getItem("auth_password") || "",
+        };
+    } catch {
+        return {
+            user: "",
+            user_pass: "",
+        };
+    }
+};
+
 const schema = z.object({
     mode: z.enum(["with_hub", "empty_room"]),
     name: z.string().min(1, "Vui lòng nhập tên phòng"),
@@ -292,51 +307,60 @@ export default function AddRoom() {
         }
 
         setLoading(true);
-        await bleService.stopScan();
-        const newRoomId = uuid();
+        try {
+            await bleService.stopScan();
+            const newRoomId = uuid();
 
-        if (data.mode === "with_hub" && selectedHub) {
-            toast.info("Đang nạp thông tin mạng xuống Hub...");
+            if (data.mode === "with_hub" && selectedHub) {
+                toast.info("Đang nạp thông tin mạng xuống Hub...");
+                const authPayload = getSavedAuthPayload();
 
-            const hubConfigPayload: DataInit = {
+                if (!authPayload.user || !authPayload.user_pass) {
+                    throw new Error("Chưa có thông tin tài khoản đăng nhập để cấu hình Hub");
+                }
+
+                const hubConfigPayload: DataInit = {
+                    name: data.name,
+                    ssid: data.ssid || "",
+                    ssid_pass: data.pass || "",
+                    user: authPayload.user,
+                    user_pass: authPayload.user_pass,
+                    time_zone: "Asia/Ho_Chi_Minh"
+                };
+
+                await pairDevice(selectedHub, hubConfigPayload);
+            }
+
+            const roomNote = data.note?.trim();
+
+            await roomRepo.create({
+                id: newRoomId,
                 name: data.name,
-                ssid: data.ssid || "",
-                ssid_pass: data.pass || "",
-                user: "",
-                user_pass: "",
-                time_zone: "Asia/Ho_Chi_Minh"
-            };
-
-            await pairDevice(selectedHub, hubConfigPayload);
-        }
-
-        const roomNote = data.note?.trim();
-
-        await roomRepo.create({
-            id: newRoomId,
-            name: data.name,
-            ...(roomNote ? { note: roomNote } : {}),
-        });
-
-        if (data.mode === "with_hub" && selectedHub) {
-            await deviceRepo.createDevice({
-                room_id: newRoomId,
-                parent_id: null,
-                name: `${data.name}`,
-                status: "online",
-                type: "HUB",
-                serial: selectedHub.address || selectedHub.name,
-                brand: "SmartHub",
+                ...(roomNote ? { note: roomNote } : {}),
             });
+
+            if (data.mode === "with_hub" && selectedHub) {
+                await deviceRepo.createDevice({
+                    room_id: newRoomId,
+                    parent_id: null,
+                    name: `${data.name}`,
+                    status: "online",
+                    type: "HUB",
+                    serial: selectedHub.address || selectedHub.name,
+                    brand: "SmartHub",
+                });
+            }
+
+            localStorage.setItem("JUST_CREATED_ROOM_ID", newRoomId);
+            window.dispatchEvent(new Event("room-created"));
+            toast.success("Tạo phòng và thiết lập Hub thành công");
+            setTimeout(() => startBackToHomeTour(), 500);
+        } catch (error) {
+            console.error("Không thể tạo phòng:", error);
+            toast.error(error instanceof Error ? error.message : "Không thể tạo phòng. Vui lòng thử lại!");
+        } finally {
+            setLoading(false);
         }
-
-        toast.success("Tạo phòng và thiết lập Hub thành công");
-        localStorage.setItem("JUST_CREATED_ROOM_ID", newRoomId);
-        setTimeout(() => startBackToHomeTour(), 500);
-
-        // form.reset({ mode: data.mode, name: "", note: "", ssid: "", pass: "" });
-        // setHubs([]);
-        // setSelectedHub(null);
     };
 
     return (

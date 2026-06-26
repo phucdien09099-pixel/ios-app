@@ -1,4 +1,4 @@
-package com.tauri.dev
+package com.tauri.testbuild
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -9,48 +9,39 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 class MainActivity : TauriActivity() {
-    
-    companion object {
-        private const val PERMISSION_REQUEST_CODE = 100
+  companion object {
+    private const val APP_PERMISSION_REQUEST_CODE = 100
+  }
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    enableEdgeToEdge()
+    super.onCreate(savedInstanceState)
+    requestStartupPermissions()
+  }
+
+  private fun requestStartupPermissions() {
+    val permissions = mutableListOf(Manifest.permission.CAMERA)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      permissions += Manifest.permission.BLUETOOTH_SCAN
+      permissions += Manifest.permission.BLUETOOTH_CONNECT
+      permissions += Manifest.permission.BLUETOOTH_ADVERTISE
+    } else {
+      permissions += Manifest.permission.BLUETOOTH
+      permissions += Manifest.permission.BLUETOOTH_ADMIN
+      permissions += Manifest.permission.ACCESS_FINE_LOCATION
     }
-    
-    // Danh sách permissions cần request
-    private val requiredPermissions = arrayOf(
-        Manifest.permission.BLUETOOTH,
-        Manifest.permission.BLUETOOTH_SCAN,
-        Manifest.permission.BLUETOOTH_CONNECT
-    )
-    
-    override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
-        
-        checkAndRequestPermissions()
+
+    val missingPermissions = permissions
+      .filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+      .toTypedArray()
+
+    if (missingPermissions.isNotEmpty()) {
+      ActivityCompat.requestPermissions(
+        this,
+        missingPermissions,
+        APP_PERMISSION_REQUEST_CODE
+      )
     }
-    
-    private fun checkAndRequestPermissions() {
-        val permissionsNeeded = requiredPermissions.filter { 
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED 
-        }.toTypedArray()
-        
-        if (permissionsNeeded.isNotEmpty()) {
-            ActivityCompat.requestPermissions(
-                this,
-                permissionsNeeded,
-                PERMISSION_REQUEST_CODE
-            )
-        }
-    }
-    
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            // Không xử lý gì thêm, chỉ cần request xong là được
-        }
-    }
+  }
 }

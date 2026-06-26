@@ -63,8 +63,8 @@ export default function BottomNavBar({ roomId, }: { roomId: any; }) {
                                         type: item.key,
                                         roomId: roomId
                                     },
-                                    renderRightButtonHeader: item.key === "timer" 
-                                    ? <HelpButton onClick={() => startTimerTour(true)} /> 
+                                    renderHelpButtonHeader: item.key === "timer"
+                                    ? <HelpButton onClick={() => startTimerTour(true)} />
                                     : item.key === "smart"
                                     ? <HelpButton onClick={() => startAutomationTour(true)} />
                                     : <></>,
@@ -174,7 +174,7 @@ function SmartSceneUI({ roomId }: { roomId: string }) {
                     id: "create",
                     title: "Kịch bản thông minh",
                     component: CreateSmartSceneDrawer,
-                    renderRightButtonHeader: <HelpButton onClick={() => startTimerTour(false)} />,
+                    renderHelpButtonHeader: <HelpButton onClick={() => startTimerTour(false)} />,
                     direction: 'bottom',
                     className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
                     props: { roomId }

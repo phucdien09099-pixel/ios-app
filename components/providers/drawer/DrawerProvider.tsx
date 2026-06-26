@@ -11,6 +11,7 @@ export type DrawerPage = {
     props?: any;
 
     renderRightButtonHeader?: React.ReactNode;
+    renderHelpButtonHeader?: React.ReactNode;
     direction?: "right" | "left" | "bottom" | "top";
     className?: string;
 };
@@ -26,8 +27,6 @@ const DrawerContext = createContext<DrawerContextType | null>(null);
 
 export function DrawerProvider({ children }: { children: React.ReactNode }) {
     const [stack, setStack] = useState<DrawerPage[]>([]);
-    const currentPage = stack[stack.length - 1];
-
     const push = (page: DrawerPage) => {
         setStack((prev) => [...prev, page]);
     };
@@ -40,7 +39,7 @@ export function DrawerProvider({ children }: { children: React.ReactNode }) {
     return (
         <DrawerContext.Provider value={{ stack, push, pop, reset }}>
             {children}
-            <NestedDrawers rightButton={currentPage?.renderRightButtonHeader} />
+            <NestedDrawers />
         </DrawerContext.Provider>
     );
 }

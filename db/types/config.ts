@@ -3,6 +3,7 @@
 export interface ConfigDB {
     id: string;
     name: string | null;
+    room_id: string;
     config_type: string;
     device_id: string;
     device_type: string;

@@ -29,12 +29,12 @@ class HttpClient {
         return /^https?:\/\//.test(path) ? path : `${BASE_URL}${path}`;
     }
 
-    async post<T>(path: string, body?: unknown): Promise<T> {
+    async post<T>(path: string, body?: unknown, options?: { auth?: boolean }): Promise<T> {
         try {
             return await invoke<T>("api_request", {
                 method: "POST",
                 url: this.buildUrl(path),
-                sessionToken: this.accessToken,
+                sessionToken: options?.auth === false ? null : this.accessToken,
                 body: body ?? null,
             });
         } catch (error: unknown) {

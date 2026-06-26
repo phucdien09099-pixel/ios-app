@@ -108,7 +108,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 direction: "bottom",
                 className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
                 component: CreateAutomation,
-                renderRightButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
+                renderHelpButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
                 props: {
                     roomName: room?.name,
                     devices,
@@ -211,7 +211,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
                             component: SceneTypeSelector,
                             // 🟢 NÚT ? CHO MÀN HÌNH TIẾP THEO
-                            renderRightButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
+                            renderHelpButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
                             props: { onSelectAutomation: handleSelectAutomation }
                         })
                     }}

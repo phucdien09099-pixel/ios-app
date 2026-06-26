@@ -119,7 +119,10 @@ export function TimerUI({ roomId }: { roomId: string }) {
         const roomDeviceIds = roomDevices.map(d => d.id);
 
         const roomTimers = allConfigs
-            .filter(config => roomDeviceIds.includes(config.device_id))
+            .filter(config =>
+                roomDeviceIds.includes(config.device_id) &&
+                ["TIMER", "SCHEDULE"].includes(config.config_type)
+            )
             .map(config => {
                 const actionObj = config.action ? JSON.parse(config.action) : { label: "Hành động" };
                 const daysArr = config.days_of_week ? JSON.parse(config.days_of_week) : [];
@@ -153,7 +156,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
             direction: 'bottom',
             className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
             component: CreateTimerDrawer,
-            renderRightButtonHeader: <HelpButton onClick={() => startTimerTour(true)} />,
+            renderHelpButtonHeader: <HelpButton onClick={() => startTimerTour(true)} />,
             props: {
                 devices,
                 ...(timer && { initialData: timer }),

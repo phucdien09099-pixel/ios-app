@@ -12,7 +12,7 @@ export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: s
     const { open } = useNavDrawer();
 
     return (
-        <Empty>
+        <Empty className="min-h-[calc(100dvh-9rem)]">
             <EmptyHeader>
                 <EmptyMedia variant="icon">
                     <HugeiconsIcon icon={MeetingRoomIcon} />
@@ -30,7 +30,7 @@ export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: s
                         title: "Thêm thiết bị",
                         
                         // 🟢 ĐÃ SỬA CHỖ NÀY THÀNH HELP BUTTON
-                        renderRightButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
+                        renderHelpButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
                         
                         props: {
                             roomId: roomId,
@@ -38,7 +38,7 @@ export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: s
                         },
                         component: AddDeviceForm,
                     })}>
-                    <HugeiconsIcon icon={PlusSignIcon} />
+                    <HugeiconsIcon data-icon="inline-start" icon={PlusSignIcon} />
                     Tạo thiết bị
                 </Button>
             </EmptyContent>

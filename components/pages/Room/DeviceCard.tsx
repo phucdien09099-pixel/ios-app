@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { startACTour, startTVTour } from "@/components/onboarding/tours/devicecontrolTour";
 import HelpButton from "@/components/common/HelpButton";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useTransport } from "@/components/providers/transport/TransportProvider";
 
 export type Device = {
     id: string;
@@ -33,7 +34,14 @@ const statusStyle = {
 
 export default function DeviceCard({ roomName, device, onDeleted }: { roomName: string, device: Device, onDeleted: () => Promise<void> }) {
     const { open } = useNavDrawer();
+    const { getDeviceStatus } = useTransport();
     const [openDelete, setOpenDelete] = useState(false);
+    const isLiveOnline =
+        getDeviceStatus(device.id) ||
+        getDeviceStatus(device.name) ||
+        Boolean(device.serial && getDeviceStatus(device.serial)) ||
+        getDeviceStatus(roomName);
+    const displayStatus: Device["status"] = isLiveOnline ? "ONLINE" : device.status;
 
     const hanldeDeleteDevice = async (deviceId: any) => {
         try {
@@ -55,7 +63,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                 <span
                     className={cn(
                         "h-2.5 w-2.5 rounded-full",
-                        statusStyle[device.status]
+                        statusStyle[displayStatus]
                     )}
                 />
             </div>
@@ -122,14 +130,14 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
             <div className="flex items-center justify-between">
                 <Badge
                     variant={
-                        device.status === "ONLINE"
+                        displayStatus === "ONLINE"
                             ? "default"
-                            : device.status === "ERROR"
+                            : displayStatus === "ERROR"
                                 ? "destructive"
                                 : "secondary"
                     }
                 >
-                    {device.status}
+                    {displayStatus}
                 </Badge>
 
                 <span className="text-xs text-muted-foreground">
@@ -150,39 +158,28 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                             device,
                             roomName
                         },
-                        // Bọc tất cả vào 1 div flex để hiển thị nhiều nút cùng lúc ở header panel mới mở
-                        renderRightButtonHeader: (
-                            <div className="flex items-center gap-1">
-                                {/* 1. Nút Setting dành riêng cho RELAY */}
-                                {device.type === "RELAY" && (
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            open({
-                                                id: device.id + device.name + "setting",
-                                                title: device.name + " setting",
-                                                component: SettingSwitchController,
-                                            });
-                                        }}
-                                    >
-                                        <HugeiconsIcon icon={Setting06Icon} />
-                                    </Button>
-                                )}
-
-                                {/* 2. Nút ? dành cho Tivi */}
-                                {device.type === "TV" && (
-                                    <HelpButton onClick={() => startTVTour(true)} />
-                                )}
-
-                                {/* 3. Nút ? dành cho Điều hòa (hoặc thiết bị mặc định chưa có type) */}
-                                {(device.type === "AC" || !["TV", "RELAY", "LIGHT", "SMART_SCHEDULE", "LEARNING_REMOTE"].includes(device.type)) && (
-                                    <HelpButton onClick={() => startACTour(true)} />
-                                )}
-                            </div>
-                        )
+                        renderHelpButtonHeader: device.type === "TV"
+                            ? <HelpButton onClick={() => startTVTour(true)} />
+                            : (device.type === "AC" || !["TV", "RELAY", "LIGHT", "SMART_SCHEDULE", "LEARNING_REMOTE"].includes(device.type))
+                                ? <HelpButton onClick={() => startACTour(true)} />
+                                : undefined,
+                        renderRightButtonHeader: device.type === "RELAY" ? (
+                            <Button
+                                size="lg"
+                                variant="ghost"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    open({
+                                        id: device.id + device.name + "setting",
+                                        title: device.name + " setting",
+                                        component: SettingSwitchController,
+                                    });
+                                }}
+                            >
+                                <HugeiconsIcon data-icon="inline-start" icon={Setting06Icon} />
+                                Cài đặt thiết bị
+                            </Button>
+                        ) : undefined
                     })} 
                 >
                     Control

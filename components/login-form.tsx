@@ -49,7 +49,6 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
     },
   });
 
-  // TỰ ĐỘNG ĐIỀN EMAIL NẾU TRƯỚC ĐÓ ĐÃ TỪNG ĐĂNG XUẤT
   React.useEffect(() => {
     const remembered = localStorage.getItem("remembered_user");
     if (remembered) {
@@ -64,12 +63,13 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
     try {
       setServerError("");
 
-      const data = await apiClient.post<AuthResponse>("/api/auth/login", values);
+      const data = await apiClient.post<AuthResponse>("/api/auth/login", values, { auth: false });
       const accountId = String(data.account.id);
       const displayName = data.account.email.split("@")[0];
 
       await apiClient.setAccessToken(data.accessToken);
       localStorage.setItem("refresh_token", data.refreshToken);
+      localStorage.setItem("auth_password", values.password);
 
       try {
         const existingUser = await userRepo.findByEmail(data.account.email);

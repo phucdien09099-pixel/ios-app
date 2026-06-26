@@ -41,6 +41,7 @@ export const startAfterAddDeviceTour = (force = false) => {
                     onPrevClick: () => {
                         if (typeof window !== 'undefined') {
                             localStorage.setItem("tour:afterAddDevice", "1");
+                            localStorage.removeItem("JUST_ADDED_DEVICE");
                         }
                         if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
                     }
@@ -95,6 +96,7 @@ export const startAfterAddDeviceTour = (force = false) => {
             onPrevClick: () => {
                 if (typeof window !== 'undefined') {
                     localStorage.setItem("tour:afterAddDevice", "1");
+                    localStorage.removeItem("JUST_ADDED_DEVICE");
                 }
                 if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
             },
@@ -102,6 +104,7 @@ export const startAfterAddDeviceTour = (force = false) => {
             onDestroyStarted: () => {
                 if (typeof window !== 'undefined') {
                     localStorage.setItem("tour:afterAddDevice", "1");
+                    localStorage.removeItem("JUST_ADDED_DEVICE");
                 }
             }
         });

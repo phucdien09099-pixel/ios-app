@@ -10,6 +10,54 @@ export interface MqttConfig {
     topicsToSubscribe?: { topic: string; qos: 0 | 1 | 2 }[];
 }
 
+const getCurrentMqttUser = () => {
+    if (typeof window === "undefined") return "anonymous";
+
+    try {
+        const user = JSON.parse(localStorage.getItem("user") || "{}") as {
+            accountId?: string;
+            id?: string;
+            email?: string;
+        };
+
+        return user.email || user.accountId || user.id || "anonymous";
+    } catch {
+        return "anonymous";
+    }
+};
+
+const MQTT_USER = process.env.NEXT_PUBLIC_MQTT_USER || "iot@gmail.com";
+const MQTT_PASS = process.env.NEXT_PUBLIC_MQTT_PASS || "vdtasoo12";
+
+const toUserDeviceTopic = (topic: string) => {
+    if (topic.startsWith("users/")) return topic;
+
+    const parts = topic.split("/");
+    if (parts[0] !== "device" || !parts[1]) return topic;
+
+    const user = getCurrentMqttUser();
+    const device = parts[1];
+    const suffix = parts.slice(2).join("/");
+
+    if (suffix === "sensor/info") {
+        return `users/${user}/devices/${device}/sensor/info`;
+    }
+
+    if (suffix === "sensor") {
+        return `users/${user}/devices/${device}/sensor`;
+    }
+
+    if (suffix === "info") {
+        return `users/${user}/devices/${device}/info`;
+    }
+
+    if (suffix === "status") {
+        return `users/${user}/devices/${device}/status`;
+    }
+
+    return `users/${user}/devices/${device}/${suffix}`;
+};
+
 export class MqttTransport implements TransportsInterface<MqttConfig, string> {
     private client: MqttClient | null = null;
     private connected = false;
@@ -43,8 +91,8 @@ export class MqttTransport implements TransportsInterface<MqttConfig, string> {
         this.savedConfig = config;
         const options: IClientOptions = {
             clientId: config.clientId ?? `${this.connectionId}-${crypto.randomUUID()}`,
-            username: "iot@gmail.com",
-            password: "vdtasoo12",
+            username: config.username ?? MQTT_USER,
+            password: config.password ?? MQTT_PASS,
             clean: true,
             // TransportManager owns the retry loop, so MQTT.js must not create a second one.
             reconnectPeriod: 0,
@@ -100,8 +148,9 @@ export class MqttTransport implements TransportsInterface<MqttConfig, string> {
 
     async subscribe(topic: string): Promise<void> {
         const client = this.requireConnectedClient();
+        const mqttTopic = toUserDeviceTopic(topic);
         await new Promise<void>((resolve, reject) => {
-            client.subscribe(topic, { qos: 0 }, (error) => error ? reject(error) : resolve());
+            client.subscribe(mqttTopic, { qos: 0 }, (error) => error ? reject(error) : resolve());
         });
     }
 
@@ -112,12 +161,15 @@ export class MqttTransport implements TransportsInterface<MqttConfig, string> {
     async send(message: TransportMessage): Promise<void> {
         if (!message.channel) throw new Error("MQTT message requires a topic (channel).");
         const client = this.requireConnectedClient();
+        const topic = toUserDeviceTopic(message.channel);
         const payload = typeof message.payload === "object"
             ? JSON.stringify(message.payload)
             : String(message.payload);
 
+        console.log("[MQTT PUBLISH]", { topic, payload: message.payload });
+
         await new Promise<void>((resolve, reject) => {
-            client.publish(message.channel!, payload, { qos: 0, retain: false }, (error) =>
+            client.publish(topic, payload, { qos: 0, retain: false }, (error) =>
                 error ? reject(error) : resolve()
             );
         });
@@ -145,6 +197,7 @@ export class MqttTransport implements TransportsInterface<MqttConfig, string> {
             } catch {
                 // Keep non-JSON payloads as text.
             }
+            console.log("[MQTT RECEIVE]", { topic, payload });
             this.receiveCallback?.({ channel: topic, payload });
         });
         client.on("close", () => { this.connected = false; });

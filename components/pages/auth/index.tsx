@@ -42,7 +42,6 @@ export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) 
                             onSuccess: () => { back(); onLoginSuccess() },
                             className: "h-[70vh]"
                         },
-                        renderRightButtonHeader: <></>,
                     })}
                     className="h-12 w-full rounded-2xl text-base"
                     size="lg">
@@ -60,7 +59,6 @@ export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) 
                     props: {
                         className: "ring-0! h-[82vh]"
                     },
-                    renderRightButtonHeader: <></>,
                 })}
                     variant="outline"
                     className="h-12 w-full rounded-2xl text-base"

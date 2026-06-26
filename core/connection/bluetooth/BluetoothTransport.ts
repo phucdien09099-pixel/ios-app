@@ -31,14 +31,21 @@ export class BluetoothTransport implements TransportsInterface<{
             const deviceMap = new Map<string, BleDevice>();
             const timeout = 5000;
 
-            await bleService.startScan((devices) => {
-                for (const d of devices) {
-                    deviceMap.set(d.address, d);
-                }
-            }, timeout);
+            try {
+                await bleService.ensurePermissions();
+                await bleService.startScan((devices) => {
+                    for (const d of devices) {
+                        deviceMap.set(d.address, d);
+                    }
+                }, timeout);
+            } catch (error) {
+                console.error("[BLE Transport]: Không thể quét BLE:", error);
+                resolve([]);
+                return;
+            }
 
             setTimeout(async () => {
-                await bleService.stopScan();
+                await bleService.stopScan().catch(() => { });
                 resolve(Array.from(deviceMap.values()));
             }, timeout);
         });
@@ -122,6 +129,8 @@ export class BluetoothTransport implements TransportsInterface<{
             if (config.serviceUUID || process.env.NEXT_PUBLIC_SERVICE_UUID) {
                 bleService.setService(config.serviceUUID || process.env.NEXT_PUBLIC_SERVICE_UUID!);
             }
+
+            await bleService.ensurePermissions();
 
             const targetDevices: any[] = config.devices
                 ? config.devices

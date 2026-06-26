@@ -82,6 +82,37 @@ const dedupeButtons = (buttons: LearnedButton[]) => {
     return Array.from(byCodeKey.values());
 };
 
+const unwrapMessagePayload = (payload: unknown): any => {
+    let current = payload;
+
+    for (let index = 0; index < 3; index += 1) {
+        if (typeof current === "string") {
+            try {
+                current = JSON.parse(current);
+                continue;
+            } catch {
+                return current;
+            }
+        }
+
+        if (current && typeof current === "object" && "payload" in current) {
+            current = (current as Record<string, unknown>).payload;
+            continue;
+        }
+
+        break;
+    }
+
+    return current;
+};
+
+const getLearningDataBase64 = (payload: any): string | undefined =>
+    payload?.action?.dataBase64 ??
+    payload?.action?.data_base64 ??
+    payload?.dataBase64 ??
+    payload?.data_base64 ??
+    payload?.base64;
+
 export default function LearningRemoteController({ data, roomName }: { data: Device; roomName: string }) {
     const [buttons, setButtons] = useState<LearnedButton[]>(() => getDefaultButtons(data.id));
     const [editMode, setEditMode] = useState(false);
@@ -118,7 +149,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                     setButtons(getDefaultButtons(data.id));
                 }
             } catch (error) {
-                console.error("❌ [Tauri DB] Lỗi đọc cấu trúc nút từ SQLite:", error);
+                console.error("[Tauri DB] Lỗi đọc cấu trúc nút từ SQLite:", error);
                 setButtons(getDefaultButtons(data.id));
             }
         };
@@ -130,38 +161,26 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     const syncButtonsToDB = async (latestButtons: LearnedButton[]) => {
         try {
             await deviceRemoteButtonsRepository.upsertMany(data.id, latestButtons);
-            console.log("💾 [Tauri DB] Đồng bộ trực tiếp dữ liệu vào SQLite thành công.");
+            console.log("[Tauri DB] Đồng bộ trực tiếp dữ liệu vào SQLite thành công.");
         } catch (error) {
-            console.error("❌ [Tauri DB] Lỗi đồng bộ dữ liệu xuống SQLite:", error);
+            console.error("[Tauri DB] Lỗi đồng bộ dữ liệu xuống SQLite:", error);
             toast.error("Không thể lưu trạng thái nút bấm vào DB nội bộ!");
         }
     };
 
-    // 🔄 Vòng lặp Effect xử lý dữ liệu thời gian thực từ Socket gửi về
     useEffect(() => {
         if (!lastMessage) return;
 
         try {
-            let messagePayload: any = null;
-            if (typeof lastMessage.payload === "string") {
-                messagePayload = JSON.parse(lastMessage.payload);
-            } else if (lastMessage.payload && typeof lastMessage.payload === "object") {
-                messagePayload = lastMessage.payload;
-            }
-
-            if (messagePayload && typeof messagePayload.payload === "string") {
-                messagePayload = JSON.parse(messagePayload.payload);
-            } else if (messagePayload && typeof messagePayload.payload === "object") {
-                messagePayload = messagePayload.payload;
-            }
+            const messagePayload = unwrapMessagePayload(lastMessage.payload);
 
             // TRƯỜNG HỢP 1: Nhận chuỗi base64 học từ thiết bị gửi lên
             if (learnMode && learningId && messagePayload?.type === "SEND_LEARNING") {
-                console.log("📨 [LearningRemote] Nhận được gói tin SEND_LEARNING từ thiết bị.");
-                const incomingBase64 = messagePayload.action?.dataBase64;
+                console.log("[LearningRemote] Nhận được gói tin SEND_LEARNING từ thiết bị.");
+                const incomingBase64 = getLearningDataBase64(messagePayload);
 
                 if (incomingBase64) {
-                    console.log("🔑 [LearningRemote] Lấy chuỗi base64 thành công:", incomingBase64);
+                    console.log("[LearningRemote] Lấy chuỗi base64 thành công:", incomingBase64);
                     const currentLearningId = learningId;
 
                     setButtons((current) => {
@@ -369,7 +388,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
         setEditMode(false);
 
         const learningPayload = {
-            type: nextState ? "START_LEARNIN" : "STOP_LEARNIN",
+            type: nextState ? "START_LEARNING" : "STOP_LEARNING",
             id: data.id || 1,
             deviceName: data.name || "HUB1",
             brand: data.brand || "MITSUBISHI",
@@ -504,7 +523,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                     })}
                 </div>
             </CardContent>
-           
+
         </>
     );
 }

@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import {
     DashboardCircleAddIcon,
+    Clock01Icon,
     Setting06Icon,
     Delete02Icon,
     TemperatureIcon, // hoặc icon delete bạn đang dùng trong bộ icon
@@ -23,6 +24,7 @@ import { startAddDeviceTour } from "@/components/onboarding/tours/addDeviceTour"
 import { startHubSettingTour } from "@/components/onboarding/tours/hubSettingTour";
 import { useState } from "react";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import AlarmSettings from "../Room/AlarmSettings";
 
 export function RoomCard({
     room,
@@ -157,27 +159,26 @@ export function RoomCard({
                                 title: room.name,
                                 component: DevicesRoom,
                                 props: {
-                                    onload: onDeleted,
+                                    onLoad: onDeleted,
                                     roomId: room.id,
                                     roomName: room.name
                                 },
                                 direction: "right",
+                                renderHelpButtonHeader: <HelpButton onClick={() => startAfterAddDeviceTour(true)} />,
                                 renderRightButtonHeader: (
                                     <div className="flex items-center gap-2">
-                                        <HelpButton onClick={() => startAfterAddDeviceTour(true)} />
-
                                         {/* NÚT 2: Nút Thêm Thiết bị */}
                                         <Button
                                             data-tour="header-add-device-btn"
-                                            size="icon"
-                                            className="rounded-2xl! size-10! shrink-0"
+                                            size="lg"
+                                            className="text-md shrink-0 rounded-xl!"
                                             onClick={() =>
                                                 open({
                                                     id: "addition_device",
                                                     title: "Thêm thiết bị",
                                                     direction: "right",
                                                     component: AddDeviceForm,
-                                                    renderRightButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
+                                                    renderHelpButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
                                                     props: {
                                                         roomId: room.id,
                                                         roomName: room.name
@@ -185,28 +186,47 @@ export function RoomCard({
                                                 })
                                             }
                                         >
-                                            <HugeiconsIcon icon={DashboardCircleAddIcon} size={18} />
+                                            <HugeiconsIcon data-icon="inline-start" icon={DashboardCircleAddIcon} />
+                                            Thêm thiết bị
+                                        </Button>
+
+                                        <Button
+                                            size="lg"
+                                            className="text-md shrink-0 rounded-xl!"
+                                            onClick={() =>
+                                                open({
+                                                    id: `${room.id}-alarm-settings`,
+                                                    title: "Cài đặt báo thức",
+                                                    direction: "right",
+                                                    component: AlarmSettings,
+                                                    props: { roomId: room.id, roomName: room.name }
+                                                })
+                                            }
+                                        >
+                                            <HugeiconsIcon data-icon="inline-start" icon={Clock01Icon} />
+                                            Báo thức
                                         </Button>
 
                                         {/* NÚT 3: Nút Hub Setting */}
                                         <Button
                                             data-tour="detail-btn-inside"
-                                            size="icon"
-                                            className="rounded-2xl! size-10!  shrink-0 transition-all duration-300"
+                                            size="lg"
+                                            className="text-md shrink-0 rounded-xl! transition-all duration-300"
                                             onClick={() =>
                                                 open({
                                                     id: room.id + "setting",
-                                                    title: "Cài đặt Hub",
+                                                    title: "Cài đặt",
                                                     direction: "right",
                                                     component: HubSettings,
                                                     props: {
                                                         roomName: room.name
                                                     },
-                                                    renderRightButtonHeader: <HelpButton onClick={() => startHubSettingTour(true)} />
+                                                    renderHelpButtonHeader: <HelpButton onClick={() => startHubSettingTour(true)} />
                                                 })
                                             }
                                         >
-                                            <HugeiconsIcon icon={Setting06Icon} size={18} />
+                                            <HugeiconsIcon data-icon="inline-start" icon={Setting06Icon} />
+                                            Cài đặt
                                         </Button>
                                     </div>
                                 ),

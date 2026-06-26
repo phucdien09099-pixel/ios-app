@@ -90,6 +90,8 @@ class TransportManager {
         // }
 
         // Đăng ký nhận tin & xử lý tái kết nối tự động cho từng cổng độc lập
+        const connectTasks: Promise<boolean>[] = [];
+
         this.transports.forEach((transport, type) => {
             const config = configs[type];
             if (!config) return;
@@ -105,14 +107,19 @@ class TransportManager {
             });
 
             // Tiến hành kích hoạt kết nối song song (Không chặn block nhau)
-            this.connectSingleTransport(type, config);
+            connectTasks.push(this.connectSingleTransport(type, config));
         });
+
+        const results = await Promise.all(connectTasks);
+        if (results.length > 0 && results.every((connected) => !connected)) {
+            throw new Error("[Transport Manager]: Không thể kết nối bất kỳ cổng mạng nào.");
+        }
     }
 
     // Hàm thực hiện kết nối độc lập cho một transport cụ thể
-    private async connectSingleTransport(type: TransportType, config: any) {
+    private async connectSingleTransport(type: TransportType, config: any): Promise<boolean> {
         const transport = this.transports.get(type);
-        if (!transport) return;
+        if (!transport) return false;
 
         try {
             this.updateStatus(type, "connecting");
@@ -121,11 +128,13 @@ class TransportManager {
 
             this.updateStatus(type, "connected");
             console.log(`[Transport Manager]: Cổng [${type}] đã thông suốt và sẵn sàng.`);
+            return true;
         } catch (error) {
             console.error(`[Transport Manager]: Không thể kết nối tới cổng [${type}]:`, error);
             this.updateStatus(type, "error");
             // Kích hoạt vòng lặp tự động kết nối lại nếu lần đầu thất bại
             this.startSingleReconnectionLoop(type);
+            return false;
         }
     }
 
@@ -177,8 +186,10 @@ class TransportManager {
         const topicParts = topic.split("/");
         if (topicParts.length < 3) return;
 
-        const entityType = topicParts[0].toUpperCase() as "ROOM" | "DEVICE";
-        const entityId = topicParts[1];
+        const isUserDeviceTopic = topicParts[0] === "users" && topicParts[2] === "devices";
+        const entityType = "DEVICE";
+        const entityId = isUserDeviceTopic ? topicParts[3] : topicParts[1];
+        if (!entityId) return;
 
         const uniqueEntityId = `${entityType}_${entityId}`;
         const currentTimestamp = Date.now();
@@ -230,7 +241,6 @@ class TransportManager {
         }
 
         const payload = { channel, payload: data };
-        console.log(payload)
         if (strategy === "broadcast") {
             // Gửi đồng thời lên cả 2 kênh
             const promises: Promise<any>[] = [];

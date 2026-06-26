@@ -1,16 +1,16 @@
 "use client";
 import { useEffect } from "react";
 import { userRepo } from "@/db/repository/UserRepository";
-import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"; 
-import { apiClient } from "@/utils/Tauri/HttpClient"; 
-import { toast } from "sonner"; // ✨ Import thư viện Toast siêu đẹp
+import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
+import { apiClient } from "@/utils/Tauri/HttpClient";
+import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm, useWatch } from "react-hook-form";
-import { TimezoneCombobox } from "@/components/timezone-combobox"; 
+import { TimezoneCombobox } from "@/components/timezone-combobox";
 
 type FormValues = {
   name: string;
@@ -30,21 +30,20 @@ type AccountResponse = {
 };
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
-  const { back } = useNavDrawer(); 
+  const { back } = useNavDrawer();
   const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       name: "",
       email: "",
       password: "",
       confirmPassword: "",
-      timezone: "", 
+      timezone: "",
     }
   });
 
   const password = useWatch({ control, name: "password" });
   const timezone = useWatch({ control, name: "timezone" });
 
-  // TỰ ĐỘNG NHẬN DIỆN MÚI GIỜ HỆ THỐNG
   useEffect(() => {
     try {
       let tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -62,7 +61,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
       const account = await apiClient.post<AccountResponse>("/api/auth/register", {
         email: data.email.trim().toLowerCase(),
         password: data.password,
-      });
+      }, { auth: false });
 
       const existingUser = await userRepo.findByEmail(account.email);
       if (!existingUser) {
@@ -78,10 +77,21 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         });
       }
 
-      // 4. THÔNG BÁO VÀ CHUYỂN HƯỚNG
-      toast.success("Tạo tài khoản thành công! 🎉"); // ✨ Đổi sang Toast
-      back(); // Quay lại trang trước an toàn
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          id: String(account.id),
+          accountId: String(account.id),
+          email: account.email,
+          name: data.name || account.email.split("@")[0],
+          parentId: null,
+          roles: account.roles,
+        })
+      );
+      localStorage.setItem("auth_password", data.password);
 
+      toast.success("Tạo tài khoản thành công! 🎉");
+      back();
     } catch (error) {
       console.error("Lỗi khi tạo tài khoản:", error);
       const message = error instanceof Error ? error.message : String(error);
@@ -106,7 +116,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <FieldGroup>
-            
+
             <Field>
               <FieldLabel htmlFor="name">Full Name</FieldLabel>
               <Input

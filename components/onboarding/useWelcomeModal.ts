@@ -37,6 +37,8 @@ export function useWelcomeModal() {
         localStorage.setItem("tour:backToHome", "1"); 
         localStorage.setItem("tour:detail", "1");
         localStorage.setItem("tour:room", "1");
+        localStorage.removeItem("JUST_CREATED_ROOM_ID");
+        localStorage.removeItem("JUST_ADDED_DEVICE");
         setShowWelcome(false);
 
     };

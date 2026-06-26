@@ -56,7 +56,9 @@ export default function UserPage() {
 
     // 3. Xóa token phiên làm việc hiện tại dưới localStorage
     localStorage.removeItem("user");
+    localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    localStorage.removeItem("auth_password");
 
     // Thêm dòng này để ĐÓNG cái Drawer (màn hình đè) đi:
     back(); 

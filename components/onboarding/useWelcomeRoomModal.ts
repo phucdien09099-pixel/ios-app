@@ -37,6 +37,7 @@ export function useWelcomeRoomModal() {
         
         // 🟢 3. Xóa luôn cờ này (nếu lỡ có) để chắc chắn không bị dính bàn tay vuốt
         localStorage.removeItem("JUST_ADDED_DEVICE"); 
+        document.getElementById("custom-finger-guide")?.remove();
 
         setShowWelcomeRoom(false);
     };

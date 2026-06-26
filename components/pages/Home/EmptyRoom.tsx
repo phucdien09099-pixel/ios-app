@@ -10,7 +10,7 @@ export function EmptyRoom() {
     const { open } = useNavDrawer();
 
     return (
-        <Empty>
+        <Empty className="min-h-[calc(100dvh-13rem)]">
             <EmptyHeader>
                 <EmptyMedia variant="icon">
                     <HugeiconsIcon icon={MeetingRoomIcon} />
@@ -27,7 +27,10 @@ export function EmptyRoom() {
                         id: "addition_room",
                         title: "Thêm Khu Vực",
                         component: AddRoom,
-                    })}><HugeiconsIcon icon={PlusSignIcon} />Tạo khu vực</Button>
+                    })}>
+                    <HugeiconsIcon data-icon="inline-start" icon={PlusSignIcon} />
+                    Tạo khu vực
+                </Button>
                 {/* <Button variant="outline">Nhập khu vực</Button> */}
             </EmptyContent>
             {/* <Button variant="link" className="text-muted-foreground" size="sm" nativeButton={false} render={<a href="#">Tìm hiểu thêm</a>} /> */}

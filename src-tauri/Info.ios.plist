@@ -4,5 +4,9 @@
 <dict>
     <key>NSCameraUsageDescription</key>
     <string>Camera is used to scan the QR code on your Smart Hub.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Bluetooth is used to discover and configure nearby Smart Hub devices.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Bluetooth is used to connect to Smart Hub devices during setup.</string>
 </dict>
 </plist>

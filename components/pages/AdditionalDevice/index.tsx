@@ -144,6 +144,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
             });
 
             localStorage.setItem("JUST_ADDED_DEVICE", "true");
+            window.dispatchEvent(new Event("device-created"));
             setTimeout(() => {
                 startBackToRoomTour();
             }, 300);
@@ -227,10 +228,28 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                             value={form.watch("brand")}
                             onChange={(e) => form.setValue("brand", e.target.value, { shouldValidate: true })}
                             disabled={loading}>
+                            <NativeSelectOption value="PANASONIC">Panasonic</NativeSelectOption>
                             <NativeSelectOption value="DAIKIN">Daikin</NativeSelectOption>
-                            <NativeSelectOption value="SAMSUNG">Samsung</NativeSelectOption>
                             <NativeSelectOption value="LG">LG</NativeSelectOption>
-                            <NativeSelectOption value="PANASONIC">PANASONIC</NativeSelectOption>
+                            <NativeSelectOption value="MIDEA">Midea</NativeSelectOption>
+                            <NativeSelectOption value="GREE">Gree</NativeSelectOption>
+                            <NativeSelectOption value="MITSUBISHI">Mitsubishi</NativeSelectOption>
+                            <NativeSelectOption value="SAMSUNG">Samsung</NativeSelectOption>
+                            <NativeSelectOption value="TOSHIBA">Toshiba</NativeSelectOption>
+                            <NativeSelectOption value="FUJITSU">Fujitsu</NativeSelectOption>
+                            <NativeSelectOption value="SHARP">Sharp</NativeSelectOption>
+                            <NativeSelectOption value="CARRIER">Carrier</NativeSelectOption>
+                            <NativeSelectOption value="HAIER">Haier</NativeSelectOption>
+                            <NativeSelectOption value="HITACHI">Hitachi</NativeSelectOption>
+                            <NativeSelectOption value="WHIRLPOOL">Whirlpool</NativeSelectOption>
+                            <NativeSelectOption value="ELECTRA">Electra</NativeSelectOption>
+                            <NativeSelectOption value="COOLIX">Coolix</NativeSelectOption>
+                            <NativeSelectOption value="SANYO">Sanyo</NativeSelectOption>
+                            <NativeSelectOption value="TCL">TCL</NativeSelectOption>
+                            <NativeSelectOption value="TROTEC">Trotec</NativeSelectOption>
+                            <NativeSelectOption value="KELON">Kelon</NativeSelectOption>
+                            <NativeSelectOption value="VOLTAS">Voltas</NativeSelectOption>
+                            <NativeSelectOption value="YORK">York</NativeSelectOption>
                         </NativeSelect>
                     </div>
                 ) : (
