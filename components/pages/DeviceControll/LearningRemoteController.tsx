@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,16 @@ type LearnedButton = {
     dataBase64?: string;
 };
 
+type StoredRemoteButton = {
+    id: string;
+    name: string;
+    code_key: string;
+    icon_key: RemoteIconKey;
+    learned: number | boolean;
+    data_base64?: string;
+    updated_at: string;
+};
+
 const DEFAULT_BUTTONS: LearnedButton[] = [
     { id: "power", name: "Power", codeKey: "POWER", iconKey: "power", learned: false, updatedAt: "" },
     { id: "mode", name: "Mode", codeKey: "MODE", iconKey: "settings", learned: false, updatedAt: "" },
@@ -82,7 +92,7 @@ const dedupeButtons = (buttons: LearnedButton[]) => {
     return Array.from(byCodeKey.values());
 };
 
-const unwrapMessagePayload = (payload: unknown): any => {
+const unwrapMessagePayload = (payload: unknown): unknown => {
     let current = payload;
 
     for (let index = 0; index < 3; index += 1) {
@@ -106,12 +116,32 @@ const unwrapMessagePayload = (payload: unknown): any => {
     return current;
 };
 
-const getLearningDataBase64 = (payload: any): string | undefined =>
-    payload?.action?.dataBase64 ??
-    payload?.action?.data_base64 ??
-    payload?.dataBase64 ??
-    payload?.data_base64 ??
-    payload?.base64;
+const getRecordValue = (value: unknown, key: string): unknown =>
+    value && typeof value === "object" ? (value as Record<string, unknown>)[key] : undefined;
+
+const getStringRecordValue = (value: unknown, key: string): string | undefined => {
+    const recordValue = getRecordValue(value, key);
+    return typeof recordValue === "string" ? recordValue : undefined;
+};
+
+const getLearningDataBase64 = (payload: unknown): string | undefined => {
+    const action = getRecordValue(payload, "action");
+
+    return (
+        getStringRecordValue(action, "dataBase64") ??
+        getStringRecordValue(action, "data_base64") ??
+        getStringRecordValue(payload, "dataBase64") ??
+        getStringRecordValue(payload, "data_base64") ??
+        getStringRecordValue(payload, "base64")
+    );
+};
+
+const getLearningAckKey = (payload: unknown): string => {
+    const action = getRecordValue(payload, "action");
+    const key = getRecordValue(action, "key") ?? getRecordValue(action, "value") ?? getRecordValue(payload, "key") ?? getRecordValue(payload, "value");
+
+    return normalizeCodeKey(typeof key === "string" ? key : "");
+};
 
 export default function LearningRemoteController({ data, roomName }: { data: Device; roomName: string }) {
     const [buttons, setButtons] = useState<LearnedButton[]>(() => getDefaultButtons(data.id));
@@ -122,6 +152,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     const [successId, setSuccessId] = useState<string | null>(null);
     const { send, lastMessage } = useTransport();
     const { open, back } = useNavDrawer();
+    const processedLearningAckRef = useRef<string | null>(null);
     const learnedCount = buttons.filter((button) => button.learned).length;
     const activeModeLabel = learnMode ? "Đang học lệnh" : editMode ? "Đang chỉnh sửa" : "Sẵn sàng";
     const activeModeDescription = learnMode
@@ -137,7 +168,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                 console.log(dbButtons)
                 if (dbButtons && dbButtons.length > 0) {
                     // Ánh xạ dữ liệu từ cấu trúc DB (snake_case/Integer) về State của FE (camelCase/Boolean)
-                    const formatted = dbButtons.map((btn: any) => ({
+                    const formatted = (dbButtons as StoredRemoteButton[]).map((btn) => ({
                         id: btn.id,
                         name: btn.name,
                         codeKey: btn.code_key,
@@ -165,7 +196,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     }, [data.id]);
 
     // 💾 Hàm thực thi ghi đè/cập nhật mảng trạng thái nút trực tiếp xuống SQLite cục bộ
-    const syncButtonsToDB = async (latestButtons: LearnedButton[]) => {
+    const syncButtonsToDB = useCallback(async (latestButtons: LearnedButton[]) => {
         try {
             await deviceRemoteButtonsRepository.upsertMany(data.id, latestButtons);
             console.log("[Tauri DB] Đồng bộ trực tiếp dữ liệu vào SQLite thành công.");
@@ -173,16 +204,68 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
             console.error("[Tauri DB] Lỗi đồng bộ dữ liệu xuống SQLite:", error);
             toast.error("Không thể lưu trạng thái nút bấm vào DB nội bộ!");
         }
-    };
+    }, [data.id]);
 
     useEffect(() => {
         if (!lastMessage) return;
 
         try {
             const messagePayload = unwrapMessagePayload(lastMessage.payload);
+            const messageType = getStringRecordValue(messagePayload, "type");
+
+            if (learnMode && messageType === "LEARNING_REMOTE") {
+                const status = String(getRecordValue(messagePayload, "status") ?? "").toUpperCase();
+                const ackKey = getLearningAckKey(messagePayload);
+
+                if (status === "SAVED" || status === "FAILED") {
+                    const ackFingerprint = `${status}:${getStringRecordValue(messagePayload, "deviceName") ?? ""}:${ackKey}:${JSON.stringify(getRecordValue(messagePayload, "action") ?? {})}`;
+                    if (processedLearningAckRef.current === ackFingerprint) return;
+                    processedLearningAckRef.current = ackFingerprint;
+
+                    const targetButton = buttons.find((button) =>
+                        learningId ? button.id === learningId : button.codeKey === ackKey
+                    );
+
+                    if (status === "SAVED" && targetButton) {
+                        const updatedAt = new Date().toISOString();
+                        const updated = buttons.map((button) =>
+                            button.id === targetButton.id
+                                ? {
+                                    ...button,
+                                    learned: true,
+                                    updatedAt,
+                                }
+                                : button
+                        );
+
+                        queueMicrotask(() => {
+                            setButtons(updated);
+                            syncButtonsToDB(updated);
+                            toast.success(`Đã học nút ${targetButton.name}`);
+                            setSuccessId(targetButton.id);
+                            setLearningId(null);
+
+                            setTimeout(() => {
+                                setSuccessId((prev) => (prev === targetButton.id ? null : prev));
+                            }, 2000);
+                        });
+                    } else {
+                        queueMicrotask(() => {
+                            toast.error(
+                                targetButton
+                                    ? `Không lưu được nút ${targetButton.name}`
+                                    : "Thiết bị báo học lệnh thất bại"
+                            );
+                            setLearningId(null);
+                        });
+                    }
+
+                    return;
+                }
+            }
 
             // TRƯỜNG HỢP 1: Nhận chuỗi base64 học từ thiết bị gửi lên
-            if (learnMode && learningId && messagePayload?.type === "SEND_LEARNING") {
+            if (learnMode && learningId && messageType === "SEND_LEARNING") {
                 console.log("[LearningRemote] Nhận được gói tin SEND_LEARNING từ thiết bị.");
                 const incomingBase64 = getLearningDataBase64(messagePayload);
 
@@ -190,46 +273,48 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                     console.log("[LearningRemote] Lấy chuỗi base64 thành công:", incomingBase64);
                     const currentLearningId = learningId;
 
-                    setButtons((current) => {
-                        const updated = current.map((item) =>
-                            item.id === currentLearningId
-                                ? {
-                                    ...item,
-                                    learned: true,
-                                    dataBase64: incomingBase64,
-                                    updatedAt: new Date().toISOString(),
-                                }
-                                : item
-                        );
+                    queueMicrotask(() => {
+                        setButtons((current) => {
+                            const updated = current.map((item) =>
+                                item.id === currentLearningId
+                                    ? {
+                                        ...item,
+                                        learned: true,
+                                        dataBase64: incomingBase64,
+                                        updatedAt: new Date().toISOString(),
+                                    }
+                                    : item
+                            );
 
-                        // 💾 Lưu trực tiếp chuỗi base64 vừa nhận vào SQLite
-                        syncButtonsToDB(updated);
-                        return updated;
+                            // 💾 Lưu trực tiếp chuỗi base64 vừa nhận vào SQLite
+                            syncButtonsToDB(updated);
+                            return updated;
+                        });
+
+                        toast.success(`🎉 Đã học thành công!`);
+
+                        setSuccessId(currentLearningId);
+                        setLearningId(null);
+
+                        setTimeout(() => {
+                            setSuccessId((prev) => (prev === currentLearningId ? null : prev));
+                        }, 2000);
                     });
-
-                    toast.success(`🎉 Đã học thành công!`);
-
-                    setSuccessId(currentLearningId);
-                    setLearningId(null);
-
-                    setTimeout(() => {
-                        setSuccessId((prev) => (prev === currentLearningId ? null : prev));
-                    }, 2000);
                 } else {
                     console.warn("⚠️ [LearningRemote] Đúng type SEND_LEARNING nhưng trường 'action.dataBase64' trống.");
                 }
             }
 
             // TRƯỜNG HỢP 2: Lắng nghe phản hồi lệnh phát sóng thành công từ ESP32
-            if (messagePayload?.type === "REMOTE_ACK" || messagePayload?.type === "SEND_SUCCESS") {
+            if (messageType === "REMOTE_ACK" || messageType === "SEND_SUCCESS") {
                 console.log("🚀 [LearningRemote] Mạch xác nhận đã phát xung IR hoàn tất.");
-                setSendingId(null);
+                queueMicrotask(() => setSendingId(null));
             }
 
         } catch (error) {
             console.error("[LearningRemote] Lỗi nghiêm trọng khi bóc tách gói tin IR:", error);
         }
-    }, [lastMessage, learnMode, learningId]);
+    }, [lastMessage, learnMode, learningId, buttons, syncButtonsToDB]);
 
     const openButtonDrawer = (button?: LearnedButton) => {
         open({
@@ -263,7 +348,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
         openButtonDrawer(button);
     };
 
-    const sendRemotePayload = async (action: Record<string, any>) => {
+    const sendRemotePayload = async (action: Record<string, unknown>) => {
         const payload = {
             type: "LEARNING_REMOTE",
             deviceName: data.name,
@@ -350,7 +435,7 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
     };
 
     const runButton = async (button: LearnedButton) => {
-        if (!button.learned || !button.dataBase64) {
+        if (!button.learned) {
             toast.error(`Nút ${button.name} chưa được học lệnh hồng ngoại!`);
             return;
         }
@@ -363,7 +448,6 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
                 command: "SEND",
                 key: button.codeKey,
                 name: button.name,
-                dataBase64: button.dataBase64,
             });
             toast.success(`Đã phát lệnh nút ${button.name}`);
 

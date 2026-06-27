@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { EmptyRoom } from "./EmptyRoom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import AddRoom from "../AdditionalRoom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon, ScanBarcode, Setting06FreeIcons, UserIcon } from "@hugeicons/core-free-icons";
@@ -23,7 +24,7 @@ const PENDING_DETAIL_ROOM_ID = "tour:pendingDetailRoomId";
 
 export function RoomPage() {
     const { open } = useNavDrawer();
-    const { refreshConnection } = useTransport();
+    const { refreshConnection, getDeviceStatus } = useTransport();
     const [rooms, setRooms] = useState<Room[]>([]);
 
     const [guideType, setGuideType] = useState<"room" | "device" | null>(null);
@@ -35,6 +36,9 @@ export function RoomPage() {
         handleStart,
         handleSkip,
     } = useWelcomeModal();
+
+    const totalDevices = rooms.reduce((total, room) => total + (room.devices?.length ?? 0), 0);
+    const onlineRooms = rooms.filter((room) => getDeviceStatus(room.name)).length;
 
     async function load() {
         const data = await roomRepo.getRoomsWithDevices();
@@ -172,13 +176,23 @@ export function RoomPage() {
     }, []);
 
     return (
-        <div className="m-4 mt-10!">
+        <div className="m-4 mt-8!">
             {/* HEADER */}
-            <header className="mb-4 flex flex-col gap-2">
+            <header className="mb-5 flex flex-col gap-4">
                 <div className="flex items-start justify-between gap-4">
-                    <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">
-                        Smart IR
-                    </h3>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h3 className="scroll-m-20 truncate text-3xl font-semibold tracking-tight">
+                                Smart IR
+                            </h3>
+                            <Badge variant="outline" className="rounded-full">
+                                {onlineRooms}/{rooms.length} online
+                            </Badge>
+                        </div>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                            Điều khiển Hub hồng ngoại và thiết bị trong nhà của bạn.
+                        </p>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         <HelpButton onClick={() => startHomeTour(true)} />
@@ -227,11 +241,26 @@ export function RoomPage() {
                     HUB điều khiển hồng ngoại
                 </p>
 
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl border bg-card p-3 shadow-sm">
+                        <p className="text-[11px] text-muted-foreground">Phòng</p>
+                        <p className="text-lg font-semibold">{rooms.length}</p>
+                    </div>
+                    <div className="rounded-2xl border bg-card p-3 shadow-sm">
+                        <p className="text-[11px] text-muted-foreground">Thiết bị</p>
+                        <p className="text-lg font-semibold">{totalDevices}</p>
+                    </div>
+                    <div className="rounded-2xl border bg-card p-3 shadow-sm">
+                        <p className="text-[11px] text-muted-foreground">Kết nối</p>
+                        <p className="text-lg font-semibold text-green-600">{onlineRooms}</p>
+                    </div>
+                </div>
+
                 <div className="flex items-center justify-start">
                     <Button
                         data-tour="add-room-button"
                         size="lg"
-                        className="text-md rounded-xl"
+                        className="h-12 w-full rounded-2xl text-md sm:w-auto"
                         onClick={() => open({
                             id: "addition_room",
                             title: "Thêm Room",
@@ -247,7 +276,7 @@ export function RoomPage() {
             <AppPullToRefresh className="min-h-[calc(100dvh-13rem)]" onRefresh={handleRefresh}>
                 {rooms.length === 0 && <EmptyRoom />}
                 {/* ROOMS */}
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 m-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 m-1">
                     {rooms.map((room) => (
                         <div key={room.id} data-tour={`room-card-${room.id}`}>
                             <RoomCard

@@ -53,10 +53,10 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
         }
     }
     return (
-    <Card data-tour={`device-card-${device.id}`} className="hover:shadow-lg transition cursor-pointer">
-        <CardHeader className="space-y-1 relative">
+    <Card data-tour={`device-card-${device.id}`} className="group overflow-hidden rounded-3xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+        <CardHeader className="relative gap-3 pb-3">
             <div className="flex items-center justify-between">
-                <CardTitle className="text-base">
+                <CardTitle className="truncate text-lg">
                     {device.name}
                 </CardTitle>
 
@@ -76,7 +76,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                 data-tour="device-delete-btn"
                 variant="ghost"
                 size="icon"
-                className="absolute z-10 right-2 bottom-8 text-red-500 hover:text-red-600"
+                className="absolute z-10 right-2 bottom-2 size-9 rounded-2xl text-muted-foreground opacity-70 transition-opacity hover:text-red-600 group-hover:opacity-100"
                 onClick={(e) => {
                     e.stopPropagation(); // Ngăn mở Card khi bấm nút xoá
                     setOpenDelete(true);
@@ -126,7 +126,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
             </AlertDialog>
         </CardHeader>
 
-        <CardContent className="space-y-3">
+        <CardContent className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
                 <Badge
                     variant={
@@ -136,6 +136,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                                 ? "destructive"
                                 : "secondary"
                     }
+                    className="rounded-full px-2.5 py-1"
                 >
                     {displayStatus}
                 </Badge>
@@ -145,11 +146,18 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                 </span>
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="rounded-2xl bg-muted/60 p-3">
+                <p className="text-xs text-muted-foreground">Trạng thái</p>
+                <p className="text-sm font-semibold">
+                    {displayStatus === "ONLINE" ? "Sẵn sàng điều khiển" : displayStatus === "ERROR" ? "Cần kiểm tra" : "Chưa có phản hồi"}
+                </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
                 <Button 
                     data-tour="device-control-btn"
-                    size="sm"
-                    className="flex-1"
+                    size="lg"
+                    className="h-11 flex-1 rounded-2xl"
                     onClick={() => open({
                         id: device.id,
                         title: device.name,
@@ -182,10 +190,10 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                         ) : undefined
                     })} 
                 >
-                    Control
+                    Điều khiển
                 </Button>
 
-                <Button size="sm" variant="outline">
+                <Button size="lg" variant="outline" className="h-11 rounded-2xl">
                     Detail
                 </Button>
             </div>

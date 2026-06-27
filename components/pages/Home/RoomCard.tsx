@@ -40,6 +40,8 @@ export function RoomCard({
     const currentRoomState = deviceStates[room.name];
     const currentTemp = currentRoomState?.temp;
     const [openDelete, setOpenDelete] = useState(false);
+    const isOnline = getDeviceStatus(room.name);
+    const deviceCount = room?.devices?.length || 0;
 
 
     const handleDeleteRoom = async (idRoom: any) => {
@@ -53,14 +55,14 @@ export function RoomCard({
     }
 
     return (
-        <Card className="hover:shadow-md transition cursor-pointer" data-tour={dataTour}>
+        <Card className="group overflow-hidden rounded-3xl border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md" data-tour={dataTour}>
             {/* HEADER */}
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3">
                 <div className="flex flex-col gap-1">
-                    <CardTitle className="text-base leading-none">
+                    <CardTitle className="truncate text-lg leading-none">
                         {room.name}
                     </CardTitle>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="line-clamp-2 text-xs text-muted-foreground">
                         {room.note || "No description"}
                     </div>
                 </div>
@@ -69,7 +71,7 @@ export function RoomCard({
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="text-red-500 hover:text-red-600 -mt-1"
+                    className="size-9 shrink-0 rounded-2xl text-muted-foreground opacity-70 transition-opacity hover:text-red-600 group-hover:opacity-100"
                     onClick={(e) => {
                         e.stopPropagation(); // Ngăn sự kiện click lan ra Card
                         setOpenDelete(true);
@@ -117,15 +119,16 @@ export function RoomCard({
             </CardHeader>
 
             {/* BODY */}
-            <CardContent className="gap-2 pt-0 grid grid-cols-2">
+            <CardContent className="grid grid-cols-2 gap-3 pt-0">
                 <Badge
                     variant="outline"
-                    className={`w-fit flex items-center gap-1 ${getDeviceStatus(room.name)
+                    className={`w-fit rounded-full px-2.5 py-1 flex items-center gap-1 ${isOnline
                         ? "text-green-600 border-green-200 bg-green-50"
                         : "text-red-600 border-red-200 bg-red-50"
                         }`}
                 >
-                    {getDeviceStatus(room.name) ? "online" : "offline"}
+                    <span className={`size-2 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
+                    {isOnline ? "online" : "offline"}
                 </Badge>
 
                 {typeof currentTemp === "number" && currentTemp > 0 && (
@@ -139,14 +142,19 @@ export function RoomCard({
                 )}
 
                 <div className="col-span-2">
-                    <div className="text-sm font-medium">
-                        {room?.devices?.length || 0} devices
+                    <div className="mb-3 rounded-2xl bg-muted/60 p-3">
+                        <div className="text-sm font-semibold">
+                            {deviceCount} devices
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            {isOnline ? "Hub đang phản hồi" : "Chưa nhận trạng thái mới"}
+                        </div>
                     </div>
 
                     <Button
                         data-tour={`detail-btn-${room.id}`}
-                        className="w-full"
-                        size="sm"
+                        className="h-11 w-full rounded-2xl"
+                        size="lg"
                         onClick={() => {
                             if (typeof detailTourObj !== "undefined" && detailTourObj !== null) {
                                 detailTourObj.destroy();

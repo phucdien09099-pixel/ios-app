@@ -16,6 +16,21 @@ import { TransportConfigMap, TransportType } from "@/core/connection/TransportCo
 import { roomRepo } from "@/db/repository/RoomRepository";
 
 type TopicFeature = { init: string } | { pair: string };
+type DeviceState = {
+    id?: string;
+    isOnline?: boolean;
+    temp?: number;
+    transport?: TransportType;
+    updatedAt?: string;
+    [key: string]: unknown;
+};
+type TransportMessage = {
+    id?: string;
+    channel?: string;
+    payload?: unknown;
+    isOnline?: boolean;
+    [key: string]: unknown;
+};
 
 type TransportContextType = {
     connectDual: (configs: Partial<TransportConfigMap>) => Promise<void>;
@@ -27,9 +42,9 @@ type TransportContextType = {
 
     isConnected: boolean;
     connectionStatuses: Partial<Record<TransportType, ConnectionStatus>>;
-    deviceStates: Record<string, any>;
+    deviceStates: Record<string, DeviceState>;
     getDeviceStatus: (id: string) => boolean;
-    lastMessage: any | null;
+    lastMessage: TransportMessage | null;
     listTopicFeature: TopicFeature[];
 };
 
@@ -56,6 +71,7 @@ const getMqttTopics = (user: string) => [
     { topic: `users/${user}/devices/+/status`, qos: 0 as const },
     { topic: `users/${user}/devices/+/sensor`, qos: 0 as const },
     { topic: `users/${user}/devices/+/sensor/info`, qos: 0 as const },
+    // { topic: `users/${user}/devices/+/control/info`, qos: 0 as const },
     { topic: `users/${user}/devices/+/control/set`, qos: 0 as const },
 ];
 
@@ -100,12 +116,12 @@ const readOnlineStatus = (payload: unknown): boolean | null => {
 
 export function TransportProvider({ children }: { children: React.ReactNode }) {
     const [isConnected, setIsConnected] = useState(false);
-    const [lastMessage, setLastMessage] = useState<any | null>(null);
+    const [lastMessage, setLastMessage] = useState<TransportMessage | null>(null);
     const [connectionStatuses, setConnectionStatuses] = useState<Partial<Record<TransportType, ConnectionStatus>>>({
         MQTT: "idle",
         Bluetooth: "idle",
     });
-    const [deviceStates, setDeviceStates] = useState<Record<string, any>>({});
+    const [deviceStates, setDeviceStates] = useState<Record<string, DeviceState>>({});
 
     const initializedRef = useRef(false);
     const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
@@ -171,6 +187,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         transportManager.subscribe(`users/${mqttUser}/devices/+/status`);
         transportManager.subscribe(`users/${mqttUser}/devices/+/sensor`);
         transportManager.subscribe(`users/${mqttUser}/devices/+/sensor/info`);
+        // transportManager.subscribe(`users/${mqttUser}/devices/+/control/info`);
         transportManager.subscribe(`users/${mqttUser}/devices/+/control/set`);
         syncConnectionMetadata();
     }, [connectDual, syncConnectionMetadata]);
@@ -205,9 +222,14 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         const roomNameMap = entityNameMapRef.current;
         const scannedBleDevices = await transportManager.scan("Bluetooth");
         const matchedBleDevices = scannedBleDevices
-            .map((bleDevice: any) => {
-                const bleName = normalizeBleName(bleDevice?.name);
-                if (!bleName || !bleDevice?.address) return null;
+            .map((bleDevice) => {
+                const deviceRecord = bleDevice && typeof bleDevice === "object"
+                    ? bleDevice as Record<string, unknown>
+                    : {};
+                const deviceName = typeof deviceRecord.name === "string" ? deviceRecord.name : "";
+                const deviceAddress = typeof deviceRecord.address === "string" ? deviceRecord.address : "";
+                const bleName = normalizeBleName(deviceName);
+                if (!bleName || !deviceAddress) return null;
 
                 const matchedRoom = Array.from(roomNameMap.entries()).find(([normalizedRoomName]) =>
                     bleName.includes(normalizedRoomName) || normalizedRoomName.includes(bleName)
@@ -216,7 +238,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
                 if (!matchedRoom) return null;
 
                 return {
-                    deviceId: bleDevice.address,
+                    deviceId: deviceAddress,
                     name: matchedRoom[1],
                 };
             })
@@ -269,16 +291,17 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     }, [runSmartConnection]);
 
     useEffect(() => {
-        transportManager.onNormalizedReceive((data: any) => {
+        transportManager.onNormalizedReceive((data: TransportMessage) => {
             setLastMessage(data);
             syncConnectionMetadata();
 
-            if (data?.id && typeof data.isOnline === "boolean") {
+            const messageDeviceId = data.id;
+            if (messageDeviceId && typeof data.isOnline === "boolean") {
                 setDeviceStates((prev) => ({
                     ...prev,
-                    [data.id]: {
-                        ...(prev[data.id] || {}),
-                        id: data.id,
+                    [messageDeviceId]: {
+                        ...(prev[messageDeviceId] || {}),
+                        id: messageDeviceId,
                         isOnline: data.isOnline,
                         updatedAt: new Date().toISOString(),
                     },

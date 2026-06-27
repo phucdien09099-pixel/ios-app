@@ -83,7 +83,7 @@ export default function CreateAutomation({
     });
     const { deviceStates } = useTransport();
     const currentRoomState = deviceStates[roomName];
-    const currentTemp = currentRoomState?.temp;
+    const currentTemp = currentRoomState?.temp + "";
 
     const { register, watch, setValue, handleSubmit } = form;
 
@@ -95,13 +95,13 @@ export default function CreateAutomation({
     const watchAction = watch("action");
     const watchConditionValue = watch("conditionValue");
     const comfortTemperature = watch("comfortTemperature") || "26";
-    
+
     useEffect(() => {
-    if (sessionStorage.getItem("automation_tour_active") === "true") {
-        const delayTimer = setTimeout(() => startAutomationTour(true), 400);
-        return () => clearTimeout(delayTimer);
-    }
-}, []);
+        if (sessionStorage.getItem("automation_tour_active") === "true") {
+            const delayTimer = setTimeout(() => startAutomationTour(true), 400);
+            return () => clearTimeout(delayTimer);
+        }
+    }, []);
     useEffect(() => {
         if (!initialData?.deviceId) return;
 
@@ -160,7 +160,7 @@ export default function CreateAutomation({
             </FieldGroup>
 
             {automationMode === "sleep" ? (
-                <div  className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4" data-tour="scene-condition">
+                <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4" data-tour="scene-condition">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
                             <HugeiconsIcon icon={SleepingIcon} />
@@ -217,7 +217,7 @@ export default function CreateAutomation({
                     </div>
                 </div>
             ) : (
-                <div  className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4" data-tour="scene-condition">
+                <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card p-4" data-tour="scene-condition">
                     <div className="flex items-center gap-3">
                         <div className="flex size-10 items-center justify-center rounded-xl bg-muted">
                             <HugeiconsIcon icon={Settings02Icon} />
@@ -250,7 +250,7 @@ export default function CreateAutomation({
                 </div>
             )}
 
-            <div  className="flex flex-col gap-2" data-tour="scene-action">
+            <div className="flex flex-col gap-2" data-tour="scene-action">
                 <div className="text-sm font-medium">Chọn thiết bị và hành động</div>
                 <div className="grid gap-2">
                     {devices.map((device) => {
@@ -293,7 +293,7 @@ export default function CreateAutomation({
                 <div data-tour="scene-save" className="flex-1">
                     <Button
                         type="button"
-                        className="w-full rounded-2xl" 
+                        className="w-full rounded-2xl"
                         disabled={!canSubmit}
                         onClick={(e) => {
                             sessionStorage.removeItem("automation_tour_active");

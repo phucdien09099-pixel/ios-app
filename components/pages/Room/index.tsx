@@ -13,6 +13,7 @@ import PullDownGuide from "@/components/onboarding/PullDownGuide";
 // 🟢 TÍCH HỢP HOOK VÀ MODAL TỪ BƯỚC TRƯỚC VÀO ĐÂY
 import WelcomeRoomModal from "@/components/onboarding/WelcomeRoomModal";
 import { useWelcomeRoomModal } from "@/components/onboarding/useWelcomeRoomModal";
+import { Badge } from "@/components/ui/badge";
 
 export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: string, roomId: string, onLoad?: () => Promise<void> }) {
     const [devices, setDevice] = useState<Device[]>();
@@ -97,8 +98,23 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
 
     return (
         <>
+            <div className="mx-4 mt-4 rounded-3xl border bg-gradient-to-br from-card via-card to-muted/50 p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-xs font-medium text-muted-foreground">Room control</p>
+                        <h2 className="truncate text-2xl font-semibold tracking-tight">{roomName}</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Quản lý thiết bị và kéo xuống để làm mới trạng thái.
+                        </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 rounded-full">
+                        {devices?.length ?? 0} thiết bị
+                    </Badge>
+                </div>
+            </div>
+
             <AppPullToRefresh
-                className="min-h-[calc(100dvh-9rem)]"
+                className="min-h-[calc(100dvh-13rem)]"
                 onRefresh={async () => {
                     await load(true);
                 }}
@@ -106,7 +122,7 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
                 {devices && devices.length > 0
                     ? (
                         <>
-                            <div className="m-2 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 pb-24">
+                            <div className="m-4 grid grid-cols-1 gap-4 pb-24 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
                                 {devices.map((d) => (
                                     <DeviceCard
                                         roomName={roomName}

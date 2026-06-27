@@ -216,23 +216,26 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                     {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
                 </div>
 
-                <div className="space-y-1" data-tour="device-type">
-                    <label className="text-xs font-medium text-muted-foreground">Loại thiết bị:</label>
-                    <NativeSelect
-                        className="w-full"
-                        value={form.watch("type")}
-                        onChange={(e) => form.setValue("type", e.target.value as any, { shouldValidate: true })}
-                        disabled={loading}
-                    >
-                        <NativeSelectOption value="AC">Air Conditioner (Điều hòa)</NativeSelectOption>
-                        {/* <NativeSelectOption value="TV">Television (Tivi)</NativeSelectOption> */}
-                        {/* <NativeSelectOption value="FAN">Fan (Quạt)</NativeSelectOption> */}
-                        {/* <NativeSelectOption value="LIGHT">Light (Đèn)</NativeSelectOption> */}
-                        {/* <NativeSelectOption value="SMART_SCHEDULE">Schedule (Bộ hẹn giờ)</NativeSelectOption> */}
-                        {/* <NativeSelectOption value="RELAY">Relay (Rơ-le điều khiển)</NativeSelectOption> */}
-                        <NativeSelectOption value="LEARNING_REMOTE">Learning Remote (Remote học lệnh)</NativeSelectOption>
-                    </NativeSelect>
-                </div>
+                {connectionType === "IR_RF" && (
+                    <div className="space-y-1" data-tour="device-type">
+                        <label className="text-xs font-medium text-muted-foreground">Loại thiết bị:</label>
+                        <NativeSelect
+                            className="w-full"
+                            value={form.watch("type")}
+                            onChange={(e) => form.setValue("type", e.target.value as any, { shouldValidate: true })}
+                            disabled={loading}
+                        >
+                            <NativeSelectOption value="AC">Air Conditioner (Điều hòa)</NativeSelectOption>
+                            {/* <NativeSelectOption value="TV">Television (Tivi)</NativeSelectOption> */}
+                            {/* <NativeSelectOption value="FAN">Fan (Quạt)</NativeSelectOption> */}
+                            {/* <NativeSelectOption value="LIGHT">Light (Đèn)</NativeSelectOption> */}
+                            {/* <NativeSelectOption value="SMART_SCHEDULE">Schedule (Bộ hẹn giờ)</NativeSelectOption> */}
+                            {/* <NativeSelectOption value="RELAY">Relay (Rơ-le điều khiển)</NativeSelectOption> */}
+                            <NativeSelectOption value="LEARNING_REMOTE">Learning Remote (Remote học lệnh)</NativeSelectOption>
+                        </NativeSelect>
+                    </div>
+                )}
+
 
                 {connectionType === "IR_RF" ? (
                     type == "AC" &&
