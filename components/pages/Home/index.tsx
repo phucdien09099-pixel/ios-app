@@ -237,9 +237,9 @@ export function RoomPage() {
                     </div>
                 </div>
 
-                <p className="text-sm leading-6 text-muted-foreground">
+                {/* <p className="text-sm leading-6 text-muted-foreground">
                     HUB điều khiển hồng ngoại
-                </p>
+                </p> */}
 
                 <div className="grid grid-cols-3 gap-2">
                     <div className="rounded-2xl border bg-card p-3 shadow-sm">
@@ -273,7 +273,7 @@ export function RoomPage() {
                 </div>
             </header>
 
-            <AppPullToRefresh className="min-h-[calc(100dvh-13rem)]" onRefresh={handleRefresh}>
+            <AppPullToRefresh className="min-h-[calc(89dvh-13rem)]" onRefresh={handleRefresh}>
                 {rooms.length === 0 && <EmptyRoom />}
                 {/* ROOMS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 m-1">

@@ -114,7 +114,7 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
             </div>
 
             <AppPullToRefresh
-                className="min-h-[calc(100dvh-13rem)]"
+                className="min-h-[calc(40dvh-13rem)]"
                 onRefresh={async () => {
                     await load(true);
                 }}

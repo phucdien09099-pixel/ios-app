@@ -12,7 +12,7 @@ export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: s
     const { open } = useNavDrawer();
 
     return (
-        <Empty className="min-h-[calc(100dvh-9rem)]">
+        <Empty className="h-[50%]">
             <EmptyHeader>
                 <EmptyMedia variant="icon">
                     <HugeiconsIcon icon={MeetingRoomIcon} />
@@ -28,10 +28,10 @@ export function EmptyDevices({ roomId, roomName }: { roomName: string, roomId: s
                     onClick={() => open({
                         id: "addition_device",
                         title: "Thêm thiết bị",
-                        
+
                         // 🟢 ĐÃ SỬA CHỖ NÀY THÀNH HELP BUTTON
                         renderHelpButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
-                        
+
                         props: {
                             roomId: roomId,
                             roomName: roomName

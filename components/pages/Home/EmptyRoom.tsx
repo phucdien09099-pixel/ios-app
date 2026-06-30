@@ -10,7 +10,7 @@ export function EmptyRoom() {
     const { open } = useNavDrawer();
 
     return (
-        <Empty className="min-h-[calc(100dvh-13rem)]">
+        <Empty className="min-h-[calc(60dvh-13rem)]">
             <EmptyHeader>
                 <EmptyMedia variant="icon">
                     <HugeiconsIcon icon={MeetingRoomIcon} />
