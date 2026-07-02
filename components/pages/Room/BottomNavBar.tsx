@@ -47,7 +47,7 @@ export default function BottomNavBar({ roomId, }: { roomId: any; }) {
     return (
         <>
             {/* NAVBAR */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md">
+            <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
                 <div className="mx-auto grid max-w-md grid-cols-2 items-center px-2 py-2">
                     {navItems.map((item) => {
                         return (
@@ -169,14 +169,14 @@ function SmartSceneUI({ roomId }: { roomId: string }) {
             </Card>
 
             <Button
-                className="w-full gap-2"
+                className="w-full gap-2 mb-[env(safe-area-inset-bottom)]"
                 onClick={() => open({
                     id: "create",
                     title: "Kịch bản thông minh",
                     component: CreateSmartSceneDrawer,
                     renderHelpButtonHeader: <HelpButton onClick={() => startTimerTour(false)} />,
                     direction: 'bottom',
-                    className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
+                    className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl pb-4',
                     props: { roomId }
                 })}>
                 <HugeiconsIcon icon={AddCircleIcon} />
