@@ -6,6 +6,7 @@ import { DrawerProvider } from "@/components/providers/drawer/DrawerProvider";
 import { Toaster } from "sonner";
 import { DatabaseProvider } from "@/components/providers/db/DatabaseProvider";
 import { TransportProvider } from "@/components/providers/transport/TransportProvider";
+import type { Viewport } from "next";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -13,6 +14,13 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
 export default function RootLayout({
   children,
 }: Readonly<{
