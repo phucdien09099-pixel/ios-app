@@ -8,6 +8,7 @@ import {
     Clock01Icon,
     Setting06Icon,
     Delete02Icon,
+    Loading01Icon,
     TemperatureIcon, // hoặc icon delete bạn đang dùng trong bộ icon
 } from "@hugeicons/core-free-icons";
 import HubSettings from "../HubSettings";
@@ -29,10 +30,14 @@ import AlarmSettings from "../Room/AlarmSettings";
 export function RoomCard({
     room,
     onDeleted,
+    onRefresh,
+    isRefreshing = false,
     dataTour
 }: {
     room: Room,
     onDeleted: () => Promise<void>;
+    onRefresh?: () => Promise<void>;
+    isRefreshing?: boolean;
     dataTour?: string;
 }) {
     const { open } = useNavDrawer();
@@ -63,7 +68,7 @@ export function RoomCard({
                         {room.name}
                     </CardTitle>
                     <div className="line-clamp-2 text-xs text-muted-foreground">
-                        {room.note || "No description"}
+                        {room.note || ""}
                     </div>
                 </div>
 
@@ -144,105 +149,121 @@ export function RoomCard({
                 <div className="col-span-2">
                     <div className="mb-3 rounded-2xl bg-muted/60 p-3">
                         <div className="text-sm font-semibold">
-                            {deviceCount} devices
+                            {deviceCount} Thiết bị
                         </div>
                         <div className="text-xs text-muted-foreground">
                             {isOnline ? "Hub đang phản hồi" : "Chưa nhận trạng thái mới"}
                         </div>
                     </div>
 
-                    <Button
-                        data-tour={`detail-btn-${room.id}`}
-                        className="h-11 w-full rounded-2xl"
-                        size="lg"
-                        onClick={() => {
-                            if (typeof detailTourObj !== "undefined" && detailTourObj !== null) {
-                                detailTourObj.destroy();
-                            }
-                            const pointer = document.getElementById('tour-finger-pointer');
-                            if (pointer) pointer.remove();
+                    <div className="grid grid-cols-2 gap-2" >
+                        <Button
+                            data-tour={`detail-btn-${room.id}`}
+                            className="h-11 w-full rounded-2xl"
+                            size="lg"
+                            onClick={() => {
+                                if (typeof detailTourObj !== "undefined" && detailTourObj !== null) {
+                                    detailTourObj.destroy();
+                                }
+                                const pointer = document.getElementById('tour-finger-pointer');
+                                if (pointer) pointer.remove();
 
-                            open({
-                                id: room.id,
-                                title: room.name,
-                                component: DevicesRoom,
-                                props: {
-                                    onLoad: onDeleted,
-                                    roomId: room.id,
-                                    roomName: room.name
-                                },
-                                direction: "right",
-                                renderHelpButtonHeader: <HelpButton onClick={() => startAfterAddDeviceTour(true)} />,
-                                renderRightButtonHeader: (
-                                    <div className="flex items-center gap-2">
-                                        {/* NÚT 2: Nút Thêm Thiết bị */}
-                                        <Button
-                                            data-tour="header-add-device-btn"
-                                            size="lg"
-                                            className="text-md shrink-0 rounded-xl!"
-                                            onClick={() =>
-                                                open({
-                                                    id: "addition_device",
-                                                    title: "Thêm thiết bị",
-                                                    direction: "right",
-                                                    component: AddDeviceForm,
-                                                    renderHelpButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
-                                                    props: {
-                                                        roomId: room.id,
-                                                        roomName: room.name
-                                                    }
-                                                })
-                                            }
-                                        >
-                                            <HugeiconsIcon data-icon="inline-start" icon={DashboardCircleAddIcon} />
-                                            Thêm thiết bị
-                                        </Button>
+                                open({
+                                    id: room.id,
+                                    title: room.name,
+                                    component: DevicesRoom,
+                                    props: {
+                                        onLoad: onDeleted,
+                                        roomId: room.id,
+                                        roomName: room.name
+                                    },
+                                    direction: "right",
+                                    renderHelpButtonHeader: <HelpButton onClick={() => startAfterAddDeviceTour(true)} />,
+                                    renderRightButtonHeader: (
+                                        <div className="flex items-center gap-2">
+                                            {/* NÚT 2: Nút Thêm Thiết bị */}
+                                            <Button
+                                                data-tour="header-add-device-btn"
+                                                size="lg"
+                                                className="text-md shrink-0 rounded-xl!"
+                                                onClick={() =>
+                                                    open({
+                                                        id: "addition_device",
+                                                        title: "Thêm thiết bị",
+                                                        direction: "right",
+                                                        component: AddDeviceForm,
+                                                        renderHelpButtonHeader: <HelpButton onClick={() => startAddDeviceTour(true)} />,
+                                                        props: {
+                                                            roomId: room.id,
+                                                            roomName: room.name
+                                                        }
+                                                    })
+                                                }
+                                            >
+                                                <HugeiconsIcon data-icon="inline-start" icon={DashboardCircleAddIcon} />
+                                                Thêm thiết bị
+                                            </Button>
 
-                                        <Button
-                                            size="lg"
-                                            className="text-md shrink-0 rounded-xl!"
-                                            onClick={() =>
-                                                open({
-                                                    id: `${room.id}-alarm-settings`,
-                                                    title: "Cài đặt báo thức",
-                                                    direction: "right",
-                                                    component: AlarmSettings,
-                                                    props: { roomId: room.id, roomName: room.name }
-                                                })
-                                            }
-                                        >
-                                            <HugeiconsIcon data-icon="inline-start" icon={Clock01Icon} />
-                                            Báo thức
-                                        </Button>
+                                            <Button
+                                                size="lg"
+                                                className="text-md shrink-0 rounded-xl!"
+                                                onClick={() =>
+                                                    open({
+                                                        id: `${room.id}-alarm-settings`,
+                                                        title: "Cài đặt báo thức",
+                                                        direction: "right",
+                                                        component: AlarmSettings,
+                                                        props: { roomId: room.id, roomName: room.name }
+                                                    })
+                                                }
+                                            >
+                                                <HugeiconsIcon data-icon="inline-start" icon={Clock01Icon} />
+                                                Báo thức
+                                            </Button>
 
-                                        {/* NÚT 3: Nút Hub Setting */}
-                                        <Button
-                                            data-tour="detail-btn-inside"
-                                            size="lg"
-                                            className="text-md shrink-0 rounded-xl! transition-all duration-300"
-                                            onClick={() =>
-                                                open({
-                                                    id: room.id + "setting",
-                                                    title: "Cài đặt",
-                                                    direction: "right",
-                                                    component: HubSettings,
-                                                    props: {
-                                                        roomName: room.name
-                                                    },
-                                                    renderHelpButtonHeader: <HelpButton onClick={() => startHubSettingTour(true)} />
-                                                })
-                                            }
-                                        >
-                                            <HugeiconsIcon data-icon="inline-start" icon={Setting06Icon} />
-                                            Cài đặt
-                                        </Button>
-                                    </div>
-                                ),
-                            });
-                        }}
-                    >
-                        Detail
-                    </Button>
+                                            {/* NÚT 3: Nút Hub Setting */}
+                                            <Button
+                                                data-tour="detail-btn-inside"
+                                                size="lg"
+                                                className="text-md shrink-0 rounded-xl! transition-all duration-300"
+                                                onClick={() =>
+                                                    open({
+                                                        id: room.id + "setting",
+                                                        title: "Cài đặt",
+                                                        direction: "right",
+                                                        component: HubSettings,
+                                                        props: {
+                                                            roomName: room.name
+                                                        },
+                                                        renderHelpButtonHeader: <HelpButton onClick={() => startHubSettingTour(true)} />
+                                                    })
+                                                }
+                                            >
+                                                <HugeiconsIcon data-icon="inline-start" icon={Setting06Icon} />
+                                                Cài đặt
+                                            </Button>
+                                        </div>
+                                    ),
+                                });
+                            }}>
+                            Vào phòng
+                        </Button>
+                        <Button
+                            className="h-11 w-full rounded-2xl"
+                            variant="outline"
+                            disabled={isRefreshing}
+                            onClick={async (event) => {
+                                event.stopPropagation();
+                                await onRefresh?.();
+                            }}
+                        >
+                            {isRefreshing ? (
+                                <HugeiconsIcon data-icon="inline-start" icon={Loading01Icon} className="animate-spin" />
+                            ) : null}
+                            {isRefreshing ? "Đang làm mới" : "Làm mới"}
+                        </Button>
+                    </div>
+
                 </div>
             </CardContent>
         </Card>

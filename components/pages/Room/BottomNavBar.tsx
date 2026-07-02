@@ -25,11 +25,11 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-    {
-        key: "feature",
-        label: "Feature",
-        icon: HomeIcon,
-    },
+    // {
+    //     key: "feature",
+    //     label: "Feature",
+    //     icon: HomeIcon,
+    // },
     {
         key: "smart",
         label: "Kịch bản",
@@ -48,7 +48,7 @@ export default function BottomNavBar({ roomId, }: { roomId: any; }) {
         <>
             {/* NAVBAR */}
             <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md">
-                <div className="mx-auto grid max-w-md grid-cols-3 items-center px-2 py-2">
+                <div className="mx-auto grid max-w-md grid-cols-2 items-center px-2 py-2">
                     {navItems.map((item) => {
                         return (
                             <Button

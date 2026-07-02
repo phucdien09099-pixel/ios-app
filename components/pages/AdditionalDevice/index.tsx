@@ -225,13 +225,13 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                             onChange={(e) => form.setValue("type", e.target.value as any, { shouldValidate: true })}
                             disabled={loading}
                         >
-                            <NativeSelectOption value="AC">Air Conditioner (Điều hòa)</NativeSelectOption>
+                            <NativeSelectOption value="AC">Điều hòa</NativeSelectOption>
                             {/* <NativeSelectOption value="TV">Television (Tivi)</NativeSelectOption> */}
                             {/* <NativeSelectOption value="FAN">Fan (Quạt)</NativeSelectOption> */}
                             {/* <NativeSelectOption value="LIGHT">Light (Đèn)</NativeSelectOption> */}
                             {/* <NativeSelectOption value="SMART_SCHEDULE">Schedule (Bộ hẹn giờ)</NativeSelectOption> */}
                             {/* <NativeSelectOption value="RELAY">Relay (Rơ-le điều khiển)</NativeSelectOption> */}
-                            <NativeSelectOption value="LEARNING_REMOTE">Learning Remote (Remote học lệnh)</NativeSelectOption>
+                            <NativeSelectOption value="LEARNING_REMOTE">Remote học lệnh</NativeSelectOption>
                         </NativeSelect>
                     </div>
                 )}

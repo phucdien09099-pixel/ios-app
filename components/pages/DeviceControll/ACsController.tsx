@@ -33,7 +33,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
         if (currentMode === "DRY") return 2;
         return 0; // FAN / AUTO
     };
-    
+
     const sendFullState = async (overrideStates?: {
         power?: boolean;
         temperature?: number;
@@ -70,7 +70,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                     <div className="flex items-center justify-between" data-tour="ac-power">
                         <div>
                             <h1 className="text-xl font-semibold">{data.name}</h1>
-                            <p className="text-sm text-muted-foreground">Air Conditioner</p>
+                            <p className="text-sm text-muted-foreground">Điều hoà</p>
                         </div>
 
                         <Button

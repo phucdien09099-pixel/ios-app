@@ -71,7 +71,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
             <p className="text-xs text-muted-foreground">
                 {device.type} • {device.brand}
             </p>
-            
+
             <Button
                 data-tour="device-delete-btn"
                 variant="ghost"
@@ -97,26 +97,26 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                             Bạn có chắc chắn muốn xoá?
                         </p>
                     </div>
-                    
+
                     {/* Hai nút chức năng bo góc tròn */}
                     <div className="flex justify-center gap-3 w-full">
-                        <Button 
-                            variant="secondary" 
-                            className="flex-1 rounded-full h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm" 
-                            onClick={(e) => { 
-                                e.stopPropagation(); 
-                                setOpenDelete(false); 
+                        <Button
+                            variant="secondary"
+                            className="flex-1 rounded-full h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDelete(false);
                             }}
                         >
                             Huỷ
                         </Button>
-                        <Button 
-                            variant="destructive" 
-                            className="flex-1 rounded-full h-10 bg-[#f43f5e] hover:bg-[#e11d48] text-white font-medium text-sm shadow-none" 
+                        <Button
+                            variant="destructive"
+                            className="flex-1 rounded-full h-10 bg-[#f43f5e] hover:bg-[#e11d48] text-white font-medium text-sm shadow-none"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDelete(false);
-                                hanldeDeleteDevice(device.id); 
+                                hanldeDeleteDevice(device.id);
                             }}
                         >
                             Xoá
@@ -154,7 +154,7 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
             </div>
 
             <div className="flex gap-2 pt-1">
-                <Button 
+                <Button
                     data-tour="device-control-btn"
                     size="lg"
                     className="h-11 flex-1 rounded-2xl"
@@ -188,14 +188,14 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                                 Cài đặt thiết bị
                             </Button>
                         ) : undefined
-                    })} 
+                    })}
                 >
                     Điều khiển
                 </Button>
 
-                <Button size="lg" variant="outline" className="h-11 rounded-2xl">
+                {/* <Button size="lg" variant="outline" className="h-11 rounded-2xl">
                     Detail
-                </Button>
+                </Button> */}
             </div>
         </CardContent>
     </Card>

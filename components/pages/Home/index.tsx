@@ -19,6 +19,7 @@ import { homeDriverObj, startHomeTour } from "@/components/onboarding/tours/home
 import HelpButton from "@/components/common/HelpButton";
 import { startRoomTour } from "@/components/onboarding/tours/roomTour";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
+import { toast } from "sonner";
 
 const PENDING_DETAIL_ROOM_ID = "tour:pendingDetailRoomId";
 
@@ -26,6 +27,7 @@ export function RoomPage() {
     const { open } = useNavDrawer();
     const { refreshConnection, getDeviceStatus } = useTransport();
     const [rooms, setRooms] = useState<Room[]>([]);
+    const [refreshingRoomId, setRefreshingRoomId] = useState<string | null>(null);
 
     const [guideType, setGuideType] = useState<"room" | "device" | null>(null);
     const [newRoomId, setNewRoomId] = useState<string | null>(null);
@@ -76,6 +78,22 @@ export function RoomPage() {
 
             // Nếu sau này bạn có Tour phụ giới thiệu tính năng của thiết bị, bạn kích hoạt ở đây nhé:
             // setTimeout(() => { startDeviceTour(); }, 600);
+        }
+    }
+
+    async function handleRefreshRoom(roomId: string) {
+        setRefreshingRoomId(roomId);
+        try {
+            await Promise.all([
+                load(),
+                refreshConnection(),
+            ]);
+            toast.success("Đã làm mới kết nối thiết bị");
+        } catch (error) {
+            console.error("Không thể làm mới kết nối:", error);
+            toast.error("Không thể làm mới kết nối thiết bị");
+        } finally {
+            setRefreshingRoomId(null);
         }
     }
 
@@ -281,6 +299,10 @@ export function RoomPage() {
                         <div key={room.id} data-tour={`room-card-${room.id}`}>
                             <RoomCard
                                 room={room}
+                                isRefreshing={refreshingRoomId === room.id}
+                                onRefresh={async () => {
+                                    await handleRefreshRoom(room.id);
+                                }}
                                 onDeleted={async () => {
                                     await load();
                                 }}

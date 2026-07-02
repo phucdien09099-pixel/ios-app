@@ -53,7 +53,7 @@ export function SmartSwitchController({ data }: { data: Device }) {
 
     const sendCommand = async (action: Record<string, any>) => {
         const payload = {
-            type: data.type, 
+            type: data.type,
             brand: data.brand || "UNKNOWN", // Fallback nếu DB chưa có brand
             action: action, // Chỉ chứa 1 hành động duy nhất
         };
@@ -190,11 +190,11 @@ export function SmartSwitchController({ data }: { data: Device }) {
 
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold">
-                            Devices
+                            Thiết bị
                         </h2>
 
                         <p className="text-sm text-muted-foreground">
-                            {buttons.length} switches
+                            {buttons.length} nút nhấn
                         </p>
                     </div>
 
@@ -509,9 +509,8 @@ export function SettingSwitchController() {
 
                     <Button
                         variant="outline"
-                        className="w-full rounded-2xl"
-                    >
-                        Scan Devices
+                        className="w-full rounded-2xl">
+                        Quét thiết bị
                     </Button>
 
                 </div>
