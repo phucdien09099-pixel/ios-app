@@ -98,7 +98,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
 
     const handleSelectAutomation = async () => {
         // 1. Đóng cái Menu "Chọn kịch bản" lại luôn
-        await back();
+        
 
         // 2. Chờ 0.25s cho Menu trượt xuống mượt mà, rồi đẩy Form lên thay thế
         setTimeout(() => {
