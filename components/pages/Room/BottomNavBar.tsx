@@ -69,7 +69,6 @@ export default function BottomNavBar({ roomId, }: { roomId: any; }) {
                                     ? <HelpButton onClick={() => startAutomationTour(true)} />
                                     : <></>,
                                     direction: "bottom",
-
                                     className: "mt-[8vh]! w-screen bg-background rounded-t-2xl"
                                 })}
                                 className={cn(

@@ -19,7 +19,9 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
     Delete02Icon,
+    JoinStraightFreeIcons,
     PlusSignIcon,
+    Unlink01Icon,
     UserGroupIcon,
 } from "@hugeicons/core-free-icons"
 import { userRepo } from "@/db/repository/UserRepository"
@@ -27,6 +29,14 @@ import { userSessionRepo } from "@/db/repository/UserSessionRepository"
 import { User, UserRole } from "@/db/types/user"
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"
 import AddMember from "./AddMember"
+import MemberJoinQr from "./MemberJoinQr"
+import { getDB } from "@/db"
+import {
+    deleteServerDevicePermission,
+    deleteServerRoomPermission,
+    getServerDevicePermissions,
+    getServerRoomPermissions,
+} from "@/libs/smartSync"
 
 const roleLabels: Record<UserRole, string> = {
     owner: "Chủ sở hữu",
@@ -70,6 +80,35 @@ export default function MemberList() {
         if (!deleteTarget) return
         setDeleting(true)
         try {
+            const accountId = Number(deleteTarget.id)
+            if (Number.isInteger(accountId) && accountId > 0) {
+                const db = await getDB()
+                const roomPerms = await db.select<{ room_id: string }[]>(
+                    "SELECT room_id FROM room_permissions WHERE user_id = ?",
+                    [deleteTarget.id]
+                )
+                const devicePerms = await db.select<{ device_id: string }[]>(
+                    "SELECT device_id FROM device_permissions WHERE user_id = ?",
+                    [deleteTarget.id]
+                )
+
+                for (const permission of roomPerms) {
+                    const serverPermissions = await getServerRoomPermissions(permission.room_id)
+                    const matched = serverPermissions.find((item) => item.accountId === accountId)
+                    if (matched) {
+                        await deleteServerRoomPermission(permission.room_id, matched.id)
+                    }
+                }
+
+                for (const permission of devicePerms) {
+                    const serverPermissions = await getServerDevicePermissions(permission.device_id)
+                    const matched = serverPermissions.find((item) => item.accountId === accountId)
+                    if (matched) {
+                        await deleteServerDevicePermission(permission.device_id, matched.id)
+                    }
+                }
+            }
+
             await userRepo.deleteUser(deleteTarget.id)
             setMembers((prev) => prev.filter((m) => m.id !== deleteTarget.id))
         } catch (err) {
@@ -88,15 +127,23 @@ export default function MemberList() {
             props: { onSuccess: loadMembers },
         })
     }
+
+    const openJoinQr = () => {
+        open({
+            id: "member_join_qr",
+            title: "Trở thành thành viên",
+            component: MemberJoinQr,
+        })
+    }
     const openEditMember = (member: User) => {
         open({
             id: "edit_member", // ID khác đi một chút để phân biệt
-            title: "Cập nhật quyền thành viên", 
+            title: "Cập nhật quyền thành viên",
             component: AddMember,
             // Truyền thêm prop member để sang bên AddMember bạn biết là đang sửa ai
-            props: { 
-                member: member, 
-                onSuccess: loadMembers 
+            props: {
+                member: member,
+                onSuccess: loadMembers
             },
         })
     }
@@ -124,10 +171,16 @@ export default function MemberList() {
                                 </p>
                             </div>
                         </div>
-                        <Button className="rounded-2xl gap-1.5" onClick={openAddMember}>
-                            <HugeiconsIcon icon={PlusSignIcon} size={16} />
-                            Thêm
+                        <div className="grid grid-cols-1">
+                            <Button className="rounded-2xl gap-1.5" onClick={openAddMember}>
+                                <HugeiconsIcon icon={PlusSignIcon} size={16} />
+                                Thêm thành viên
+                            </Button>
+                        <Button className="rounded-2xl gap-1.5" onClick={openJoinQr}>
+                            <HugeiconsIcon icon={Unlink01Icon} size={16} />
+                            Trở thành thành viên
                         </Button>
+                        </div>
                     </CardContent>
                 </Card>
 

@@ -8,6 +8,15 @@ class ConfigRepository extends SQLiteBase<ConfigDB> {
         super("configs");
     }
 
+    private async ensureSchema() {
+        const columns = await this.query<{ name: string }>(`PRAGMA table_info(configs)`);
+        const columnNames = new Set(columns.map((column) => column.name));
+
+        if (!columnNames.has("room_id")) {
+            await this.execute(`ALTER TABLE configs ADD COLUMN room_id TEXT`);
+        }
+    }
+
     // ================= CREATE (Tuỳ chỉnh thêm nếu cần) =================
     async createConfig(data: Omit<ConfigDB, "id" | "created_at"> & { id?: string }) {
         return await this.create({
@@ -29,6 +38,8 @@ class ConfigRepository extends SQLiteBase<ConfigDB> {
     }
 
     async upsertConfig(data: Omit<ConfigDB, "created_at">) {
+        await this.ensureSchema();
+
         return await this.execute(
             `
             INSERT INTO configs (
@@ -73,6 +84,16 @@ class ConfigRepository extends SQLiteBase<ConfigDB> {
             WHERE device_id = ?
             `,
             [deviceId]
+        );
+    }
+
+    async deleteConfig(id: string) {
+        return await this.execute(
+            `
+            DELETE FROM configs
+            WHERE id = ?
+            `,
+            [id]
         );
     }
 }

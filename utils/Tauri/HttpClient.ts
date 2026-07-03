@@ -43,9 +43,32 @@ class HttpClient {
         }
     }
 
+    async put<T>(path: string, body?: unknown, options?: { auth?: boolean }): Promise<T> {
+        try {
+            return await invoke<T>("api_request", {
+                method: "PUT",
+                url: this.buildUrl(path),
+                sessionToken: options?.auth === false ? null : this.accessToken,
+                body: body ?? null,
+            });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(message || "An error occurred during PUT request");
+        }
+    }
+
     async get<T>(path: string): Promise<T> {
         return invoke<T>("api_request", {
             method: "GET",
+            url: this.buildUrl(path),
+            sessionToken: this.accessToken,
+            body: null,
+        });
+    }
+
+    async delete<T = void>(path: string): Promise<T> {
+        return invoke<T>("api_request", {
+            method: "DELETE",
             url: this.buildUrl(path),
             sessionToken: this.accessToken,
             body: null,

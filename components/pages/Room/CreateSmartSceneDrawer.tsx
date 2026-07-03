@@ -36,9 +36,8 @@ const buildEsp32TaskPayload = (finalData: any, existingId?: string) => {
         actions: [
             {
                 type: isSleepMode ? "autoTemp" : (finalData.type || "autoTemp"),
-                condition: finalData.operator || ">",
-                temp: finalData.comfortTemperature,
-                value: finalData.action?.value || "ON"
+                value: finalData.action?.value || "ON",
+                temp: Number(finalData.comfortTemperature ?? finalData.conditionValue ?? 26)
             }
         ]
     };
@@ -183,7 +182,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
 
     // Màn hình danh sách kịch bản
     return (
-        <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
+        <div className="mx-auto flex min-h-full w-full max-w-xl flex-col bg-background pb-24">
             <div className="flex items-center justify-between px-4 pt-2 pb-1 shrink-0">
                 <Button
                     variant="ghost"

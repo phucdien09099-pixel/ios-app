@@ -14,6 +14,7 @@ import { z } from "zod";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import QrScannerCard from "@/components/common/QrScannerCard";
+import { createServerDevice } from "@/libs/smartSync";
 
 import { startAddDeviceTour, startBackToRoomTour } from "@/components/onboarding/tours/addDeviceTour";
 
@@ -131,8 +132,18 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
         setLoading(true);
         try {
             const data = form.getValues();
+            const serverDevice = await createServerDevice({
+                roomId,
+                parentId: null,
+                name: data.name,
+                type: data.type,
+                serial: data.connectionType === "IOT_SUB" ? data.iotDeviceId : null,
+                brand: data.connectionType === "IR_RF" ? data.brand : "GENERIC_IOT",
+                status: "online",
+            });
 
             await deviceRepo.createDevice({
+                id: serverDevice.id,
                 room_id: roomId,
                 parent_id: null,
                 name: data.name,
@@ -148,7 +159,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
             console.log("[MQTT SEND SAVE]", { topic, dynamicPayload });
             await send(dynamicPayload, topic, "broadcast");
 
-            toast.success("Lưu thiết bị và cấu hình thành công (CONFIRM) 🎉");
+            toast.success("Lưu thiết bị và cấu hình thành công");
 
             form.reset({
                 name: "",
@@ -188,7 +199,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                     <HugeiconsIcon icon={Tag01Icon} size={15} />
                     Thiết bị Thường (IR/RF)
                 </button>
-                <button
+                {/* <button
                     type="button"
                     onClick={() => {
                         form.setValue("connectionType", "IOT_SUB");
@@ -202,7 +213,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                 >
                     <HugeiconsIcon icon={CpuIcon} size={15} />
                     Thiết bị IoT Phần Cứng
-                </button>
+                </button> */}
             </div>
 
             <form onSubmit={form.handleSubmit(handlePairDevice)} className="space-y-4">
@@ -342,7 +353,7 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                         ) : (
                             <span className="flex items-center gap-2">
                                 <HugeiconsIcon icon={Link01Icon} size={18} />
-                                Kiểm tra tín hiệu thiết bị (SCAN)
+                                Kiểm tra tín hiệu thiết bị
                             </span>
                         )}
                     </Button>
@@ -352,9 +363,8 @@ export default function AddDeviceForm({ roomId, roomName }: { roomId: string, ro
                         onClick={onSaveDevice}
                         disabled={loading || scanningIot}
                         className="w-full h-11 rounded-xl bg-green-600 hover:bg-green-700 text-white"
-                        data-tour="device-save-btn"
-                    >
-                        Lưu Thiết Bị Vào Phòng (CONFIRM)
+                        data-tour="device-save-btn">
+                        Lưu Thiết Bị Vào Phòng
                     </Button>
                 </div>
             </form>
