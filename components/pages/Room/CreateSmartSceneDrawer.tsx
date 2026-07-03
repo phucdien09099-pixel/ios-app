@@ -18,6 +18,7 @@ import { roomRepo } from "@/db/repository/RoomRepository";
 import { Room } from "@/db/types/room";
 import HelpButton from "@/components/common/HelpButton";
 import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
+import { toast } from "sonner";
 
 interface CreateSmartSceneDrawerProps {
     roomId: string;
@@ -71,6 +72,22 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     const { send } = useTransport();
 
     const getDeviceIcon = (type: string) => IcoIcon;
+
+    const sendAutomationPayload = async (payload: any, action: "set" | "delete" = "set") => {
+        if (!room?.name) {
+            toast.warning("Đã lưu kịch bản, nhưng chưa có thông tin Hub để gửi xuống thiết bị.");
+            return false;
+        }
+
+        try {
+            await send(payload, `device/${room.name}/auto/${action}`);
+            return true;
+        } catch (error) {
+            console.warn("Không thể gửi kịch bản xuống thiết bị:", error);
+            toast.warning("Đã lưu kịch bản. Thiết bị đang offline nên chưa gửi xuống Hub.");
+            return false;
+        }
+    };
 
     const loadData = async () => {
         if (!roomId) return;
@@ -126,7 +143,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             is_active: 1,
                         });
 
-                        await send(triggerConfigObj, `device/${room?.name}/auto/set`);
+                        await sendAutomationPayload(triggerConfigObj, "set");
 
                         await loadData();
                         await back();
@@ -173,6 +190,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                         action: JSON.stringify(finalData.action || { value: "ON" }),
                     });
 
+                    await sendAutomationPayload(triggerConfigObj, "set");
                     await loadData();
                     back();
                 }
@@ -278,7 +296,8 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                             onClick={async (e) => {
                                                 e.stopPropagation();
                                                 // Gọi hàm xóa trong DB (Giả sử bạn có hàm delete trong automationRepo)
-                                                await automationRepo.delete(automation.id);
+                                                await automationRepo.deleteAutomation(automation.id);
+                                                await sendAutomationPayload({ id: automation.id }, "delete");
                                                 setAutomations((prev) => prev.filter((a) => a.id !== automation.id));
                                             }}
                                         >
@@ -330,6 +349,8 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                                                 checked={automation.is_active === 1}
                                                 onCheckedChange={async (checked) => {
                                                     await automationRepo.update(automation.id, { is_active: checked ? 1 : 0 });
+                                                    const triggerConfig = automation.trigger_config ? JSON.parse(automation.trigger_config) : {};
+                                                    await sendAutomationPayload({ ...triggerConfig, id: triggerConfig.id ?? automation.id }, checked ? "set" : "delete");
                                                     setAutomations(prev =>
                                                         prev.map(a => a.id === automation.id ? { ...a, is_active: checked ? 1 : 0 } : a)
                                                     );
