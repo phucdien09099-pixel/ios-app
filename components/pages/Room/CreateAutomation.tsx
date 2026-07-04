@@ -44,7 +44,7 @@ export interface AutomationFormValues {
 }
 
 export interface CreateAutomationDrawerProps {
-    roomName: string;
+    roomName?: string;
     devices: Device[];
     onCreateAutomation: (finalData: any) => void;
     onCancel: () => void;
@@ -81,11 +81,12 @@ export default function CreateAutomation({
             automationMode: initialData?.automationMode || DEFAULT_VALUES.automationMode,
         },
     });
-    const { deviceStates } = useTransport();
-    const currentRoomState = deviceStates[roomName];
-    const currentTemp = currentRoomState?.temp + "";
-
     const { register, watch, setValue, handleSubmit } = form;
+    const { deviceStates } = useTransport();
+    const currentRoomState = roomName ? deviceStates[roomName] : undefined;
+    const currentTemp = typeof currentRoomState?.temp === "number"
+        ? String(currentRoomState.temp)
+        : watch("currentTemperature") || DEFAULT_VALUES.currentTemperature;
 
     const [showActionDrawer, setShowActionDrawer] = useState(false);
     const [selectedActionDevice, setSelectedActionDevice] = useState<Device | null>(null);

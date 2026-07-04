@@ -26,6 +26,17 @@ const getCurrentMqttUser = () => {
     }
 };
 
+const getMqttOwnerForDevice = (device: string) => {
+    if (typeof window === "undefined") return getCurrentMqttUser();
+
+    try {
+        const owners = JSON.parse(localStorage.getItem("smart:mqttOwnerByRoom") || "{}") as Record<string, string>;
+        return owners[device] || getCurrentMqttUser();
+    } catch {
+        return getCurrentMqttUser();
+    }
+};
+
 const MQTT_USER = process.env.NEXT_PUBLIC_MQTT_USER || "iot@gmail.com";
 const MQTT_PASS = process.env.NEXT_PUBLIC_MQTT_PASS || "vdtasoo12";
 
@@ -35,8 +46,8 @@ const toUserDeviceTopic = (topic: string) => {
     const parts = topic.split("/");
     if (parts[0] !== "device" || !parts[1]) return topic;
 
-    const user = getCurrentMqttUser();
     const device = parts[1];
+    const user = getMqttOwnerForDevice(device);
     const suffix = parts.slice(2).join("/");
 
     if (suffix === "sensor/info") {

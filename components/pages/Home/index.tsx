@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AddRoom from "../AdditionalRoom";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { PlusSignIcon, ScanBarcode, Setting06FreeIcons, UserIcon } from "@hugeicons/core-free-icons";
+import { Loading01Icon, PlusSignIcon, RefreshIcon, UserIcon } from "@hugeicons/core-free-icons";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import { roomRepo } from "@/db/repository/RoomRepository";
 import { Room } from "@/db/types/room";
@@ -20,6 +20,7 @@ import HelpButton from "@/components/common/HelpButton";
 import { startRoomTour } from "@/components/onboarding/tours/roomTour";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { toast } from "sonner";
+import { hasServerSmartData, syncSmartDataFromServer } from "@/libs/smartSync";
 
 const PENDING_DETAIL_ROOM_ID = "tour:pendingDetailRoomId";
 
@@ -28,6 +29,7 @@ export function RoomPage() {
     const { refreshConnection, getDeviceStatus } = useTransport();
     const [rooms, setRooms] = useState<Room[]>([]);
     const [refreshingRoomId, setRefreshingRoomId] = useState<string | null>(null);
+    const [syncingServer, setSyncingServer] = useState(false);
 
     const [guideType, setGuideType] = useState<"room" | "device" | null>(null);
     const [newRoomId, setNewRoomId] = useState<string | null>(null);
@@ -50,11 +52,86 @@ export function RoomPage() {
         // console.log("fetch new data");
     }
 
+    async function promptServerSyncIfNeeded(currentRooms: Room[]) {
+        if (currentRooms.length > 0) return;
+        if (syncingServer) return;
+        if (sessionStorage.getItem("smart:syncPromptShown") === "1") return;
+        if (!localStorage.getItem("access_token")) return;
+
+        sessionStorage.setItem("smart:syncPromptShown", "1");
+
+        try {
+            const hasData = await hasServerSmartData();
+            if (!hasData) return;
+
+            toast("Có dữ liệu Smart IR trên server", {
+                description: "Bạn có muốn đồng bộ room và thiết bị về máy này không?",
+                duration: 10000,
+                action: {
+                    label: "Đồng bộ",
+                    onClick: async () => {
+                        try {
+                            setSyncingServer(true);
+                            const result = await syncSmartDataFromServer({ replaceLocal: true });
+                            const data = await load();
+                            await refreshConnection();
+                            toast.success(`Đã đồng bộ ${result.rooms} room, ${result.devices} thiết bị`);
+                            checkWelcome(data.length);
+                        } catch (error) {
+                            console.error("Không thể đồng bộ dữ liệu server:", error);
+                            toast.error("Không thể đồng bộ dữ liệu từ server");
+                            sessionStorage.removeItem("smart:syncPromptShown");
+                        } finally {
+                            setSyncingServer(false);
+                        }
+                    },
+                },
+            });
+        } catch (error) {
+            console.error("Không thể kiểm tra dữ liệu server:", error);
+            sessionStorage.removeItem("smart:syncPromptShown");
+        }
+    }
+
+    async function handleSyncFromServer(options?: { silent?: boolean }) {
+        if (!localStorage.getItem("access_token")) {
+            toast.error("Vui lòng đăng nhập để đồng bộ dữ liệu");
+            return;
+        }
+
+        setSyncingServer(true);
+        try {
+            const result = await syncSmartDataFromServer({ replaceLocal: true });
+            const data = await load();
+            await refreshConnection();
+            checkWelcome(data.length);
+
+            if (!options?.silent) {
+                toast.success(`Đã đồng bộ ${result.rooms} phòng, ${result.devices} thiết bị`);
+            }
+
+            return data;
+        } catch (error) {
+            console.error("Không thể đồng bộ dữ liệu server:", error);
+            if (!options?.silent) {
+                toast.error("Không thể đồng bộ dữ liệu từ server");
+            }
+            throw error;
+        } finally {
+            setSyncingServer(false);
+        }
+    }
+
     async function handleRefresh() {
-        const [data] = await Promise.all([
-            load(),
-            refreshConnection(),
-        ]);
+        let data: Room[];
+        try {
+            data = await handleSyncFromServer({ silent: true }) ?? await load();
+        } catch {
+            [data] = await Promise.all([
+                load(),
+                refreshConnection(),
+            ]);
+        }
 
         if (!guideType) return;
 
@@ -147,7 +224,10 @@ export function RoomPage() {
             setGuideType(null);
         };
 
-        void load().then(checkTargetCreated);
+        void load().then((data) => {
+            checkTargetCreated(data);
+            void promptServerSyncIfNeeded(data);
+        });
 
         const handleDataCreated = async () => {
             await load();
@@ -172,6 +252,7 @@ export function RoomPage() {
 
         const handleFocus = async () => {
             const data = await load();
+            void promptServerSyncIfNeeded(data);
             if (localStorage.getItem("JUST_CREATED_ROOM_ID")) return;
             checkTargetCreated(data);
         };
@@ -220,32 +301,7 @@ export function RoomPage() {
                                 title: "",
                                 component: UserPage,
                                 renderRightButtonHeader:
-                                    <>
-                                        <Button
-                                            size="lg"
-                                            className="rounded-2xl"
-                                            variant="outline"
-                                            onClick={() => open({
-                                                id: "qr_pair",
-                                                title: "",
-                                                component: () => <></>,
-                                            })}>
-                                            <HugeiconsIcon data-icon="inline-start" icon={ScanBarcode} />
-                                            Quét QR
-                                        </Button>
-                                        <Button
-                                            size="lg"
-                                            className="rounded-2xl"
-                                            variant="outline"
-                                            onClick={() => open({
-                                                id: "qr_pair",
-                                                title: "",
-                                                component: () => <></>,
-                                            })}>
-                                            <HugeiconsIcon data-icon="inline-start" icon={Setting06FreeIcons} />
-                                            Cài đặt
-                                        </Button>
-                                    </>
+                                    <></>
                             })}
                             variant="outline"
                             size="icon"
@@ -274,19 +330,34 @@ export function RoomPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-start">
+                <div className="grid grid-cols-[7fr_3fr] gap-2 w-full">
                     <Button
                         data-tour="add-room-button"
                         size="lg"
-                        className="h-12 w-full rounded-2xl text-md sm:w-auto"
+                        className="h-12  rounded-2xl text-md sm:w-auto"
                         onClick={() => open({
                             id: "addition_room",
-                            title: "Thêm Room",
+                            title: "Thêm Phòng",
                             component: AddRoom,
                             renderHelpButtonHeader: <HelpButton onClick={() => startRoomTour(true)} />
                         })}>
                         <HugeiconsIcon data-icon="inline-start" icon={PlusSignIcon} />
-                        Thêm Room
+                        Thêm Phòng
+                    </Button>
+
+                    <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-12 rounded-2xl text-md sm:w-auto"
+                        disabled={syncingServer}
+                        onClick={() => handleSyncFromServer()}
+                    >
+                        <HugeiconsIcon
+                            data-icon="inline-start"
+                            icon={syncingServer ? Loading01Icon : RefreshIcon}
+                            className={syncingServer ? "animate-spin" : ""}
+                        />
+                        {syncingServer ? "Đang đồng bộ" : "Đồng bộ"}
                     </Button>
                 </div>
             </header>

@@ -16,6 +16,7 @@ import { startACTour, startTVTour } from "@/components/onboarding/tours/deviceco
 import HelpButton from "@/components/common/HelpButton";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
+import { deleteServerDevice } from "@/libs/smartSync";
 
 export type Device = {
     id: string;
@@ -45,11 +46,15 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
 
     const hanldeDeleteDevice = async (deviceId: any) => {
         try {
+            if (localStorage.getItem("access_token")) {
+                await deleteServerDevice(String(deviceId));
+            }
             await deviceRepo.deleteDevice(deviceId);
-            toast.success("Deleted device");
+            toast.success("Đã xoá thiết bị trên server và máy này");
             await onDeleted();
         } catch (error) {
-            toast.success("Deleted Fail");
+            console.error("Không thể xoá thiết bị:", error);
+            toast.error("Không thể xoá thiết bị. Vui lòng thử đồng bộ lại hoặc kiểm tra quyền tài khoản.");
         }
     }
     return (

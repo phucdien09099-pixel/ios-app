@@ -19,6 +19,7 @@ import { Room } from "@/db/types/room";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import HelpButton from "@/components/common/HelpButton";
 import { startTimerTour } from "@/components/onboarding/tours/timerTour";
+import { toast } from "sonner";
 
 type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 
@@ -68,9 +69,37 @@ export const DAYS_LABELS: Record<DayOfWeek, string> = {
     Sunday: "CN",
 };
 
+const DAY_TO_ESP_VALUE: Record<DayOfWeek, number> = {
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6,
+    Sunday: 0,
+};
+
+const normalizeActionForEsp = (action: any) => {
+    if (!action) return { type: "power", value: "OFF" };
+
+    if (action.type === "autoTemp") {
+        return {
+            type: "autoTemp",
+            value: "ON",
+            temp: Number(action.temp ?? action.temperature ?? 26),
+        };
+    }
+
+    return {
+        type: action.type ?? "power",
+        value: action.value ?? "OFF",
+    };
+};
+
 function buildConfigAndPayload(data: any, devices: Device[], roomId: string, existingId?: string) {
     const id = existingId ?? crypto.randomUUID();
-    const deviceType = devices.find(d => d.id === data.deviceId)?.type ?? "LIGHT";
+    const selectedDevice = devices.find(d => d.id === data.deviceId);
+    const deviceType = selectedDevice?.type ?? "LIGHT";
     const config = {
         id,
         room_id: roomId,
@@ -81,17 +110,18 @@ function buildConfigAndPayload(data: any, devices: Device[], roomId: string, exi
         power: String(data.action?.value || "OFF"),
         trigger_time: data.time || "00:00",
         days_of_week: JSON.stringify(data.days || []),
+        duration_minutes: null,
         action: JSON.stringify(data.action || {}),
         is_active: 1,
     };
     const payload = {
         id,
-        roomId: roomId,
-        time: data.time,
-        repeat: data.repeat,
-        days: data.days || [],
-        device: deviceType,
-        actions: [data.action],
+        deviceName: selectedDevice?.name ?? data.deviceId,
+        time: data.time || "00:00",
+        endTime: data.endTime || data.time || "00:00",
+        repeat: data.repeat ?? true,
+        days: (data.days || []).map((day: DayOfWeek) => DAY_TO_ESP_VALUE[day]).filter((day: number | undefined) => day !== undefined),
+        actions: [normalizeActionForEsp(data.action)],
     };
     return { config, payload };
 }
@@ -141,6 +171,22 @@ export function TimerUI({ roomId }: { roomId: string }) {
         setTimers(roomTimers);
     };
 
+    const sendTimerPayload = async (payload: any, topic: string) => {
+        if (!room?.name) {
+            toast.warning("Đã lưu hẹn giờ, nhưng chưa có thông tin Hub để gửi xuống thiết bị.");
+            return false;
+        }
+
+        try {
+            await send(payload, topic);
+            return true;
+        } catch (error) {
+            console.warn("Không thể gửi hẹn giờ xuống thiết bị:", error);
+            toast.warning("Đã lưu hẹn giờ. Thiết bị đang offline nên chưa gửi xuống Hub.");
+            return false;
+        }
+    };
+
     useEffect(() => {
         loadData();
     }, [roomId]);
@@ -161,15 +207,13 @@ export function TimerUI({ roomId }: { roomId: string }) {
                 devices,
                 ...(timer && { initialData: timer }),
                 onCreateTimer: async (data: any) => {
-                    const { config, payload } = buildConfigAndPayload(data, devices, timer?.id);
-                    console.log(config);
+                    const { config, payload } = buildConfigAndPayload(data, devices, roomId, timer?.id);
                     if (timer) {
-                        const { id: _id, is_active: _ia, ...updateData } = config;
-                        await send({ ...payload, id: data.deviceId }, `device/${room?.name}/auto/set`);
-                        await configRepo.update(timer.id, updateData);
+                        await configRepo.upsertConfig(config);
+                        await sendTimerPayload(payload, `device/${room?.name}/auto/set`);
                     } else {
-                        await send(payload, `device/${room?.name}/auto/set`);
-                        await configRepo.create(config);
+                        await configRepo.upsertConfig(config);
+                        await sendTimerPayload(payload, `device/${room?.name}/auto/set`);
                     }
                     await loadData();
                     back();
@@ -270,9 +314,9 @@ export function TimerUI({ roomId }: { roomId: string }) {
                                             className="h-full w-full rounded-none rounded-r-3xl bg-red-500 hover:bg-red-600 text-white font-medium text-sm"
                                             onClick={async (e) => {
                                                 e.stopPropagation();
-                                                await configRepo.delete(timer.id);
+                                                await configRepo.deleteConfig(timer.id);
                                                 const payload = { id: timer.id };
-                                                await send(payload, `device/${room?.name}/auto/delete`);
+                                                await sendTimerPayload(payload, `device/${room?.name}/auto/delete`);
                                                 setTimers((prev) => prev.filter((t) => t.id !== timer.id));
                                             }}>
                                             Xóa

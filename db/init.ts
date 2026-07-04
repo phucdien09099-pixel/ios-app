@@ -320,6 +320,11 @@ export async function initDB() {
     `);
 
     // ================= 10. AUTOMATIONS (KỊCH BẢN TỰ ĐỘNG) =================
+    const configColumns = await db.select<{ name: string }[]>(`PRAGMA table_info(configs)`);
+    if (!configColumns.some((column) => column.name === "room_id")) {
+        await db.execute(`ALTER TABLE configs ADD COLUMN room_id TEXT`);
+    }
+
     await db.execute(`
         CREATE TABLE IF NOT EXISTS automations (
             id TEXT PRIMARY KEY,

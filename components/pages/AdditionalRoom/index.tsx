@@ -14,6 +14,7 @@ import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { BleDevice } from "@mnlphlp/plugin-blec";
 import { bleService } from "@/utils/Tauri/BluetoothSerial";
 import QrScanner from "qr-scanner";
+import { createServerDevice, createServerRoom, upsertMqttOwner } from "@/libs/smartSync";
 
 import { startBackToHomeTour, startRoomTour, roomDriverObj, showHubNotFoundTour } from "@/components/onboarding/tours/roomTour";
 
@@ -309,7 +310,7 @@ export default function AddRoom() {
         setLoading(true);
         try {
             await bleService.stopScan();
-            const newRoomId = uuid();
+            let newRoomId = uuid();
 
             if (data.mode === "with_hub" && selectedHub) {
                 toast.info("Đang nạp thông tin mạng xuống Hub...");
@@ -332,6 +333,12 @@ export default function AddRoom() {
             }
 
             const roomNote = data.note?.trim();
+            const serverRoom = await createServerRoom({
+                name: data.name,
+                note: roomNote || null,
+            });
+            newRoomId = serverRoom.id;
+            upsertMqttOwner(serverRoom.name, serverRoom.ownerMqttUser || serverRoom.ownerEmail);
 
             await roomRepo.create({
                 id: newRoomId,
@@ -340,7 +347,18 @@ export default function AddRoom() {
             });
 
             if (data.mode === "with_hub" && selectedHub) {
+                const serverHub = await createServerDevice({
+                    roomId: newRoomId,
+                    parentId: null,
+                    name: `${data.name}`,
+                    status: "online",
+                    type: "HUB",
+                    serial: selectedHub.address || selectedHub.name,
+                    brand: "SmartHub",
+                });
+
                 await deviceRepo.createDevice({
+                    id: serverHub.id,
                     room_id: newRoomId,
                     parent_id: null,
                     name: `${data.name}`,

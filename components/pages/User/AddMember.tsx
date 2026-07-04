@@ -15,6 +15,9 @@ import { User } from "@/db/types/user"
 import { useEffect, useState } from "react"
 import { getDB } from "@/db"
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"
+import { setServerDevicePermission, setServerRoomPermission } from "@/libs/smartSync"
+import QrScannerCard from "@/components/common/QrScannerCard"
+import { parseMemberQrPayload } from "./MemberJoinQr"
 
 
 type Device = {
@@ -33,6 +36,7 @@ type Room = {
 type FormValues = {
     username: string
     email: string
+    accountId: string
     rooms: Room[]
 }
 
@@ -48,11 +52,15 @@ export default function AddMember({ member, onSuccess }: Props) {
         defaultValues: {
             username: "",
             email: "",
+            accountId: "",
             rooms: [], // Khởi tạo mảng rỗng
         },
     })
 
     const rooms = watch("rooms")
+    const accountId = watch("accountId")
+    const email = watch("email")
+    const username = watch("username")
     // 2. Thêm state loading
     const [isLoading, setIsLoading] = useState(true)
     
@@ -92,6 +100,7 @@ export default function AddMember({ member, onSuccess }: Props) {
                 reset({
                     username: member?.name || "",
                     email: member?.email || "",
+                    accountId: member?.id && /^\d+$/.test(member.id) ? member.id : "",
                     rooms: formattedRooms
                 })
             } catch (err) {
@@ -104,9 +113,25 @@ export default function AddMember({ member, onSuccess }: Props) {
         loadHubData()
     }, [reset, member])
 
+    const handleScanMemberQr = (value: string) => {
+        const payload = parseMemberQrPayload(value)
+        setValue("accountId", payload.accountId, { shouldDirty: true, shouldValidate: true })
+        setValue("email", payload.email, { shouldDirty: true, shouldValidate: true })
+        setValue("username", payload.name, { shouldDirty: true, shouldValidate: true })
+    }
+
     const onSubmit = async (values: FormValues) => {
+        const serverAccountId = Number(values.accountId);
+        const hasPermissionSelected = values.rooms.some(
+            (room) => room.allow || room.devices.some((device) => device.allow)
+        );
         if (!values.email || !values.username) {
             alert("Vui lòng nhập đầy đủ tên và email!");
+            return;
+        }
+
+        if (hasPermissionSelected && (!Number.isInteger(serverAccountId) || serverAccountId <= 0)) {
+            alert("Vui long nhap Account ID hop le cua thanh vien de dong bo quyen len server.");
             return;
         }
 
@@ -137,7 +162,9 @@ export default function AddMember({ member, onSuccess }: Props) {
                 await db.execute(`DELETE FROM device_permissions WHERE user_id = $1`, [targetUserId]);
             } else {
                 // CHẾ ĐỘ THÊM: Tạo user mới (Code cũ của bạn)
-                targetUserId = crypto.randomUUID();
+                targetUserId = Number.isInteger(serverAccountId) && serverAccountId > 0
+                    ? String(serverAccountId)
+                    : crypto.randomUUID();
                 const data: User = {
                     id: targetUserId,
                     name: values.username,
@@ -158,6 +185,13 @@ export default function AddMember({ member, onSuccess }: Props) {
                         `INSERT INTO room_permissions (id, room_id, user_id, can_view, can_control, can_edit) VALUES ($1, $2, $3, 1, 1, 0)`,
                         [roomPermId, room.id, targetUserId]
                     );
+
+                    await setServerRoomPermission(room.id, {
+                        accountId: serverAccountId,
+                        canView: true,
+                        canControl: true,
+                        canEdit: false,
+                    });
                 }
 
                 for (const device of room.devices) {
@@ -167,6 +201,13 @@ export default function AddMember({ member, onSuccess }: Props) {
                             `INSERT INTO device_permissions (id, device_id, user_id, can_view, can_control, can_edit) VALUES ($1, $2, $3, 1, 1, 0)`,
                             [devicePermId, device.id, targetUserId]
                         );
+
+                        await setServerDevicePermission(device.id, {
+                            accountId: serverAccountId,
+                            canView: true,
+                            canControl: true,
+                            canEdit: false,
+                        });
                     }
                 }
             }
@@ -188,7 +229,27 @@ export default function AddMember({ member, onSuccess }: Props) {
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="min-h-screen bg-muted/30 pb-24">
             <div className="mx-auto max-w-md space-y-5">
-                <Card className="rounded-3xl border-0 shadow-sm">
+                {!member && (
+                    <QrScannerCard
+                        title="Quét QR thành viên"
+                        description="Yêu cầu người được thêm mở mục Trở thành thành viên, sau đó quét QR để lấy Account ID và email."
+                        value={accountId ? `${username} • ${email} • ID ${accountId}` : ""}
+                        valueLabel="Thành viên đã quét"
+                        buttonLabel="Quét QR thành viên"
+                        rescanLabel="Quét lại QR"
+                        validate={(value) => {
+                            try {
+                                parseMemberQrPayload(value)
+                                return null
+                            } catch (error) {
+                                return error instanceof Error ? error.message : "QR thành viên không hợp lệ"
+                            }
+                        }}
+                        onScan={handleScanMemberQr}
+                    />
+                )}
+
+                {(member || accountId) && <Card className="rounded-3xl border-0 shadow-sm">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
                             <HugeiconsIcon icon={UserAdd01Icon} size={20} />
@@ -212,10 +273,33 @@ export default function AddMember({ member, onSuccess }: Props) {
 
                                 <Input
                                     {...register("username")}
+                                    readOnly={!member}
                                     className="h-11 rounded-2xl pl-10"
                                     placeholder="Nhập tên người dùng"
                                 />
                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Account ID</Label>
+
+                            <div className="relative">
+                                <HugeiconsIcon
+                                    icon={UserAdd01Icon}
+                                    size={18}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+
+                                <Input
+                                    {...register("accountId")}
+                                    readOnly={!member}
+                                    inputMode="numeric"
+                                    className="h-11 rounded-2xl pl-10"
+                                    placeholder="VD: 2"
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Dung Account ID cua tai khoan da dang ky de dong bo quyen len server.
+                            </p>
                         </div>
 
                         <div className="space-y-2">
@@ -230,15 +314,16 @@ export default function AddMember({ member, onSuccess }: Props) {
 
                                 <Input
                                     {...register("email")}
+                                    readOnly={!member}
                                     className="h-11 rounded-2xl pl-10"
                                     placeholder="example@gmail.com"
                                 />
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                </Card>}
 
-                <Card className="rounded-3xl border-0 shadow-sm">
+                {(member || accountId) && <Card className="rounded-3xl border-0 shadow-sm">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
                             <HugeiconsIcon icon={SmartPhone01Icon} size={20} />
@@ -433,14 +518,14 @@ export default function AddMember({ member, onSuccess }: Props) {
                         )}
                     </div>
                 </CardContent>
-                </Card>
+                </Card>}
 
-                <Button
+                {(member || accountId) && <Button
                     type="submit"
                     className="h-12 w-full rounded-2xl text-base font-medium"
                 >
                     {member ? "Lưu thay đổi" : "Thêm thành viên"}
-                </Button>
+                </Button>}
             </div>
         </form>
     )

@@ -26,6 +26,7 @@ import { startHubSettingTour } from "@/components/onboarding/tours/hubSettingTou
 import { useState } from "react";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import AlarmSettings from "../Room/AlarmSettings";
+import { deleteServerRoom } from "@/libs/smartSync";
 
 export function RoomCard({
     room,
@@ -51,11 +52,15 @@ export function RoomCard({
 
     const handleDeleteRoom = async (idRoom: any) => {
         try {
+            if (localStorage.getItem("access_token")) {
+                await deleteServerRoom(String(idRoom));
+            }
             await roomRepo.deleteRoom(idRoom);
-            toast.success("Room deleted");
+            toast.success("Đã xoá phòng trên server và máy này");
             await onDeleted()
         } catch (error) {
-            toast.success("Delete Fail");
+            console.error("Không thể xoá phòng:", error);
+            toast.error("Không thể xoá phòng. Vui lòng thử đồng bộ lại hoặc kiểm tra quyền tài khoản.");
         }
     }
 

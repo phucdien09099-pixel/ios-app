@@ -98,7 +98,7 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
 
     return (
         <>
-            <div className="mx-4 mt-4 rounded-3xl border bg-gradient-to-br from-card via-card to-muted/50 p-4 shadow-sm">
+            <div className="mx-4 mt-4 rounded-3xl border bg-linear-to-br from-card via-card to-muted/50 p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <p className="text-xs font-medium text-muted-foreground">Thiết bị điều khiển phòng</p>

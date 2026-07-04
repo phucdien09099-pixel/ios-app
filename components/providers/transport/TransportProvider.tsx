@@ -66,14 +66,26 @@ const getCurrentMqttUser = () => {
     }
 };
 
-const getMqttTopics = (user: string) => [
-    { topic: `users/${user}/devices/+/info`, qos: 0 as const },
-    { topic: `users/${user}/devices/+/status`, qos: 0 as const },
-    { topic: `users/${user}/devices/+/sensor`, qos: 0 as const },
-    { topic: `users/${user}/devices/+/sensor/info`, qos: 0 as const },
-    // { topic: `users/${user}/devices/+/control/info`, qos: 0 as const },
-    { topic: `users/${user}/devices/+/control/set`, qos: 0 as const },
-];
+const getMqttTopics = (user: string) => {
+    const topics = [
+        `users/${user}/devices/+/info`,
+        `users/${user}/devices/+/status`,
+        `users/${user}/devices/+/sensor`,
+        `users/${user}/devices/+/sensor/info`,
+        `users/${user}/devices/+/control/set`,
+
+        // Member accounts need to see status published by the owner account,
+        // for example users/admin@gmail.com/devices/<room>/status.
+        // The smart API filters rooms/devices by permission; this wildcard only
+        // lets the UI receive MQTT heartbeats for synced rooms.
+        "users/+/devices/+/info",
+        "users/+/devices/+/status",
+        "users/+/devices/+/sensor",
+        "users/+/devices/+/sensor/info",
+    ];
+
+    return Array.from(new Set(topics)).map((topic) => ({ topic, qos: 0 as const }));
+};
 
 const normalizeBleName = (value?: string | null) =>
     (value ?? "")
@@ -183,12 +195,9 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             },
         });
 
-        transportManager.subscribe(`users/${mqttUser}/devices/+/info`);
-        transportManager.subscribe(`users/${mqttUser}/devices/+/status`);
-        transportManager.subscribe(`users/${mqttUser}/devices/+/sensor`);
-        transportManager.subscribe(`users/${mqttUser}/devices/+/sensor/info`);
-        // transportManager.subscribe(`users/${mqttUser}/devices/+/control/info`);
-        transportManager.subscribe(`users/${mqttUser}/devices/+/control/set`);
+        getMqttTopics(mqttUser).forEach(({ topic }) => {
+            transportManager.subscribe(topic);
+        });
         syncConnectionMetadata();
     }, [connectDual, syncConnectionMetadata]);
 
