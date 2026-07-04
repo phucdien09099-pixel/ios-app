@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Logout01Icon } from "@hugeicons/core-free-icons";
 import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 import { clearLocalSmartData } from "@/libs/smartSync";
+import { apiClient } from "@/utils/Tauri/HttpClient";
 
 const menus = [
     {
@@ -42,6 +43,13 @@ export default function UserPage() {
     const handleLogout = async () => {
     try {
         const storedUser = localStorage.getItem("user");
+        const refreshToken = localStorage.getItem("refresh_token");
+        if (refreshToken) {
+            await apiClient.post("/api/auth/logout", { refreshToken }, { auth: false }).catch((error) => {
+                console.warn("Không thể revoke refresh token trên server:", error);
+            });
+        }
+
         if (storedUser) {
             const parsed = JSON.parse(storedUser);
 

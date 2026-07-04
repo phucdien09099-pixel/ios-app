@@ -16,8 +16,21 @@ export default function EntryPointPage() {
 
         if (activeUser) {
           console.log("Tìm thấy phiên đăng nhập cũ hợp lệ:", activeUser);
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              id: activeUser.id,
+              accountId: activeUser.id,
+              email: activeUser.email,
+              name: activeUser.name || activeUser.email?.split("@")[0] || "User",
+              parentId: activeUser.parent_id ?? null,
+              is_owner: activeUser.is_owner,
+            })
+          );
           await apiClient.setAccessToken(activeUser.access_token);
-          setAppState("logged_in");
+          await apiClient.setRefreshToken(activeUser.refresh_token);
+          const hasValidSession = await apiClient.ensureValidAccessToken();
+          setAppState(hasValidSession ? "logged_in" : "logged_out");
         } else {
           setAppState("logged_out");
         }

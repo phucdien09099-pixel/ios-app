@@ -67,8 +67,7 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
       const accountId = String(data.account.id);
       const displayName = data.account.email.split("@")[0];
 
-      await apiClient.setAccessToken(data.accessToken);
-      localStorage.setItem("refresh_token", data.refreshToken);
+      await apiClient.setAuthSession(data);
       localStorage.setItem("auth_password", values.password);
 
       try {
@@ -105,6 +104,7 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
         expiresAt.setSeconds(expiresAt.getSeconds() + data.refreshExpiresInSeconds);
 
         await userSessionRepo.createSession({
+          id: crypto.randomUUID(),
           user_id: userId,
           access_token: data.accessToken,
           refresh_token: data.refreshToken,

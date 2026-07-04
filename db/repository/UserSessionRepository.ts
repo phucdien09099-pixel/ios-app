@@ -14,6 +14,7 @@ class UserSessionRepository extends SQLiteBase<UserSession> {
         const rows = await this.query<any>(
             `
             SELECT
+                s.id as session_id,
                 u.id,
                 u.email,
                 u.name,
@@ -81,6 +82,30 @@ class UserSessionRepository extends SQLiteBase<UserSession> {
             refresh_token: refreshToken,
             expires_at: expiresAt,
         });
+    }
+
+    async updateLatestTokensByUserId(
+        userId: string,
+        accessToken: string,
+        refreshToken: string,
+        expiresAt?: string
+    ) {
+        return await this.execute(
+            `
+            UPDATE user_sessions
+            SET access_token = ?,
+                refresh_token = ?,
+                expires_at = ?
+            WHERE id = (
+                SELECT id
+                FROM user_sessions
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+            )
+            `,
+            [accessToken, refreshToken, expiresAt ?? null, userId]
+        );
     }
 
     // ================= DELETE SESSION =================

@@ -124,6 +124,14 @@ export async function createServerDevice(data: {
     });
 }
 
+export async function deleteServerRoom(roomId: string) {
+    return apiClient.delete<void>(`/api/smart/rooms/${encodeURIComponent(roomId)}`);
+}
+
+export async function deleteServerDevice(deviceId: string) {
+    return apiClient.delete<void>(`/api/smart/devices/${encodeURIComponent(deviceId)}`);
+}
+
 export async function hasServerSmartData() {
     const rooms = await getServerRooms();
     return rooms.length > 0;
