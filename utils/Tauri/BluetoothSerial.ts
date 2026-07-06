@@ -26,9 +26,14 @@ export class BLEService {
     async ensurePermissions(
         askIfDenied = true
     ) {
-        return await checkPermissions(
-            askIfDenied
-        );
+        try {
+            return await checkPermissions(
+                askIfDenied
+            );
+        } catch (error) {
+            console.warn("[BLE Service]: Không thể kiểm tra/xin quyền Bluetooth:", error);
+            return false;
+        }
     }
 
     // =========================
@@ -48,6 +53,11 @@ export class BLEService {
         timeout = 10000,
         allowIbeacons = false
     ) {
+        const granted = await this.ensurePermissions(false);
+        if (!granted) {
+            throw new Error("Bluetooth permission is not granted");
+        }
+
         await startScan(
             (devices) => {
                 callback(devices);

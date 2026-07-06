@@ -62,7 +62,7 @@ const getAutomationConditionLabel = (triggerConfig: any, fallbackLabel: string) 
 };
 
 export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawerProps) {
-    const { open, back } = useNavDrawer();
+    const { open, replace, back } = useNavDrawer();
     const [devices, setDevices] = useState<Device[]>([]);
     const [automations, setAutomations] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
@@ -112,13 +112,10 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
         loadData();
     }, [roomId]);
 
-    const handleSelectAutomation = async () => {
-        // 1. Đóng cái Menu "Chọn kịch bản" lại luôn
-        await back();
+    const handleSelectAutomation = () => {
 
-        // 2. Chờ 0.25s cho Menu trượt xuống mượt mà, rồi đẩy Form lên thay thế
         setTimeout(() => {
-            open({
+            replace({
                 id: "createAutomationForm",
                 title: "Tạo tự động hóa",
                 direction: "bottom",
@@ -198,7 +195,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
         });
     };
 
-    // Màn hình danh sách kịch bản
     return (
         <div className="mx-auto flex min-h-full w-full max-w-xl flex-col bg-background pb-24">
             <div className="flex items-center justify-between px-4 pt-2 pb-1 shrink-0">
@@ -214,7 +210,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     variant="default"
                     className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium relative z-[60]" // 🟢 Thêm relative z-[60]
                     onClick={() => {
-                        // 🟢 NỐI CẦU 1: Bấm thêm thì lưu cờ
                         const isTourRunning = document.querySelector('.driver-active-element') !== null;
                         if (isTourRunning) {
                             sessionStorage.setItem("automation_tour_active", "true");
@@ -227,7 +222,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             direction: "bottom",
                             className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
                             component: SceneTypeSelector,
-                            // 🟢 NÚT ? CHO MÀN HÌNH TIẾP THEO
                             renderHelpButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
                             props: { onSelectAutomation: handleSelectAutomation }
                         })

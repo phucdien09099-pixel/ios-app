@@ -10,29 +10,28 @@ interface SceneTypeSelectorProps {
 }
 
 export function SceneTypeSelector({ onSelectAutomation }: SceneTypeSelectorProps) {
-  useEffect(() => {
-        if (sessionStorage.getItem("automation_tour_active") === "true") {
-            const delayTimer = setTimeout(() => startAutomationTour(true), 400);
-            return () => clearTimeout(delayTimer);
-        }
-    }, []);
+  // useEffect(() => {
+  //       if (sessionStorage.getItem("automation_tour_active") === "true") {
+  //           const delayTimer = setTimeout(() => startAutomationTour(true), 400);
+  //           return () => clearTimeout(delayTimer);
+  //       }
+  //   }, []);
   return (
     <div className="space-y-3">
-      {/* Tự động (Cảm biến) */}
-      <div 
+      <button
+        type="button"
         data-tour="scene-type-auto"
         onClick={() => {
-                    if (document.querySelector('.driver-active-element') !== null) {
-                        sessionStorage.setItem("automation_tour_active", "true");
-                        import('@/components/onboarding/tours/automationTour').then(m => m.automationDriverObj?.destroy());
-                    }
-                    onSelectAutomation();
-                }}
-        className="flex items-center justify-between p-4 bg-muted/40 hover:bg-muted/80 rounded-2xl cursor-pointer transition-colors active:scale-[0.98]"
-      >
+          if (document.querySelector(".driver-active-element") !== null) {
+            sessionStorage.setItem("automation_tour_active", "true");
+            import("@/components/onboarding/tours/automationTour").then((m) => m.automationDriverObj?.destroy());
+          }
+          onSelectAutomation();
+        }}
+        className="flex w-full touch-manipulation items-center justify-between p-4 text-left bg-muted/40 hover:bg-muted/80 rounded-2xl cursor-pointer transition-colors active:scale-[0.98]">
         <div className="flex items-start gap-4">
           <div className="mt-0.5 text-orange-500">
-            <HugeiconsIcon icon={Sun01Icon} size={24} /> 
+            <HugeiconsIcon icon={Sun01Icon} size={24} />
           </div>
           <div>
             <div className="font-medium">Tự động (Cảm biến)</div>
@@ -42,7 +41,7 @@ export function SceneTypeSelector({ onSelectAutomation }: SceneTypeSelectorProps
           </div>
         </div>
         <HugeiconsIcon icon={ArrowRight01Icon} className="text-muted-foreground shrink-0 w-5 h-5" />
-      </div>
+      </button>
 
       {/* Các menu khác giữ nguyên ... */}
       <div className="flex items-center justify-between p-4 bg-muted/40 opacity-70 rounded-2xl">
