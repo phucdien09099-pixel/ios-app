@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "ir_remote_app",
+  "productName": "Smart Remote",
   "version": "0.1.0",
   "identifier": "com.tauri.testbuild",
   "build": {
