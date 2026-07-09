@@ -202,7 +202,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
             direction: 'bottom',
             className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
             component: CreateTimerDrawer,
-            renderHelpButtonHeader: <HelpButton onClick={() => startTimerTour(true)} />,
+            renderHelpButtonHeader: <HelpButton onClick={() => startTimerTour()} />,
             props: {
                 devices,
                 ...(timer && { initialData: timer }),
@@ -224,7 +224,6 @@ export function TimerUI({ roomId }: { roomId: string }) {
         });
 
     return (
-        // 1. Khung tổng: Cố định chiều cao, không cuộn
         <div className="flex flex-col w-full max-w-xl mx-auto h-full max-h-[75vh] bg-background">
 
             <div className="flex items-start justify-between px-4 pt-2 pb-1 flex-shrink-0">
@@ -250,15 +249,13 @@ export function TimerUI({ roomId }: { roomId: string }) {
                         variant="default"
                         className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium transition-colors flex items-center justify-center relative z-[60]"
                         onClick={() => {
-                            // 🟢 KIỂM TRA: Nếu Tour đang chạy mà bấm nút này, thì lưu cờ chuyển tiếp
                             const isTourRunning = document.querySelector('.driver-active-element') !== null;
                             if (isTourRunning) {
                                 sessionStorage.setItem("timer_tour_active", "true");
-                                // Tắt tour cũ ở ngoài đi
                                 import('@/components/onboarding/tours/timerTour').then(m => m.timerDriverObj?.destroy());
                             }
 
-                            openTimerDrawer(); // Mở drawer bình thường
+                            openTimerDrawer();
                         }}>
                         <HugeiconsIcon icon={AddCircleIcon} size={28} />
                         Thêm hẹn giờ

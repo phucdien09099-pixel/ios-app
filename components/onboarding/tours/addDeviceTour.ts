@@ -4,8 +4,22 @@ import "driver.js/dist/driver.css";
 export let addDeviceDriverObj: any = null;
 
 export function startAddDeviceTour(force = false) {
-    if (!force && typeof window !== 'undefined' && localStorage.getItem("tour:addDevice") === "1") {
+    // 🟢 KIỂM TRA CỜ "TOUR LIÊN HOÀN" TỪ SESSION STORAGE
+    let isChainForced = false;
+    if (typeof window !== 'undefined') {
+        isChainForced = sessionStorage.getItem("force_tour_add_device") === "1";
+    }
+    
+    // Nếu được ép buộc trực tiếp (force = true) HOẶC đang trong chuỗi tour liên hoàn
+    const shouldForce = force || isChainForced;
+
+    if (!shouldForce && typeof window !== 'undefined' && localStorage.getItem("tour:addDevice") === "1") {
         return;
+    }
+
+    // 🟢 Xoá cờ ngay lập tức để không bị lặp lại nếu lần sau người dùng tự mở tay
+    if (typeof window !== 'undefined') {
+        sessionStorage.removeItem("force_tour_add_device");
     }
     
     if (addDeviceDriverObj) addDeviceDriverObj.destroy();
@@ -53,8 +67,6 @@ export function startAddDeviceTour(force = false) {
         onDestroyStarted: () => {
             if (typeof window !== 'undefined') {
                 localStorage.setItem("tour:addDevice", "1"); 
-                // localStorage.setItem("JUST_ADDED_DEVICE", "1");
-                // window.dispatchEvent(new Event("device-created"));
             }
             if (addDeviceDriverObj) {
                 addDeviceDriverObj.destroy();
@@ -69,36 +81,41 @@ export const startBackToRoomTour = () => {
     if (typeof window !== 'undefined' && localStorage.getItem("tour:backToRoom") === "1") {
         return;
     }
+    
     if (typeof window !== 'undefined') {
         localStorage.setItem("tour:backToRoom", "1");
         localStorage.setItem("JUST_ADDED_DEVICE", "1");
     }
 
-
     const handleHighlightClick = (e: MouseEvent) => {
-    if (!e.isTrusted) return; 
+        if (!e.isTrusted) return; 
 
-    const btn = document.querySelector('[data-tour="drawer-back-button"]');
-    if (!btn) return;
+        const btn = document.querySelector('[data-tour="drawer-back-button"]');
+        if (!btn) return;
 
-    const rect = btn.getBoundingClientRect();
-    if (
-        e.clientX >= rect.left && e.clientX <= rect.right &&
-        e.clientY >= rect.top && e.clientY <= rect.bottom
-    ) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // 1. Gỡ ngay event listener để giải phóng nút
-        document.removeEventListener('click', handleHighlightClick, true);
-        
-        // 2. Tắt cái tour
-        if (addDeviceDriverObj) addDeviceDriverObj.destroy();
-        
-        // 3. Giờ mới kích hoạt nút back một cách an toàn
-        (btn as HTMLElement).click(); 
-    }
-};
+        const rect = btn.getBoundingClientRect();
+        if (
+            e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom
+        ) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 1. Gỡ ngay event listener để giải phóng nút
+            document.removeEventListener('click', handleHighlightClick, true);
+            
+            // 2. Tắt cái tour
+            if (addDeviceDriverObj) addDeviceDriverObj.destroy();
+            
+            // 🟢 3. CẮM CỜ ĐỂ TRUYỀN LỆNH CHO TRANG PHÒNG CHẠY TOUR TIẾP THEO
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem("trigger_after_add_device", "1");
+            }
+
+            // 4. Giờ mới kích hoạt nút back một cách an toàn
+            (btn as HTMLElement).click();
+        }
+    };
 
     addDeviceDriverObj = driver({
         showProgress: false,
@@ -109,7 +126,6 @@ export const startBackToRoomTour = () => {
         },
         
         onDestroyStarted: () => {
-
             document.removeEventListener('click', handleHighlightClick, true);
             
             if (typeof window !== 'undefined') {

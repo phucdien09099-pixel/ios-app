@@ -39,8 +39,8 @@ export interface AutomationFormValues {
     operator: string;
     conditionValue: string;
     action: TimerAction | undefined;
-    deviceId: any;    // 💾 Vẫn giữ nguyên để lưu Database
-    deviceName: string; // 🏷️ Thêm vào để lấy dữ liệu đồng bộ ra ngoài phần cứng/giao diện
+    deviceId: any;
+    deviceName: string;
 }
 
 export interface CreateAutomationDrawerProps {
@@ -92,7 +92,7 @@ export default function CreateAutomation({
     const [selectedActionDevice, setSelectedActionDevice] = useState<Device | null>(null);
 
     const automationMode = watch("automationMode");
-    const watchActionDeviceId = watch("deviceId"); // 🔍 Vẫn theo dõi DeviceId để xử lý logic canSubmit
+    const watchActionDeviceId = watch("deviceId");
     const watchAction = watch("action");
     const watchConditionValue = watch("conditionValue");
     const comfortTemperature = watch("comfortTemperature") || "26";
@@ -121,7 +121,6 @@ export default function CreateAutomation({
     };
 
     const handleActionDeviceClick = (device: Device) => {
-        // ✨ Lưu song song cả ID và Name vào biểu mẫu Form State
         setValue("deviceId", device.id);
         setValue("deviceName", device.name || "");
 
@@ -255,7 +254,6 @@ export default function CreateAutomation({
                 <div className="text-sm font-medium">Chọn thiết bị và hành động</div>
                 <div className="grid gap-2">
                     {devices.map((device) => {
-                        // 🟢 UI nút bấm bên ngoài giao diện vẫn kích hoạt Active mượt mà dựa trên deviceId
                         const isActive = watchActionDeviceId === device.id;
 
                         return (

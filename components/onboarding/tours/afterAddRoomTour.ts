@@ -20,7 +20,7 @@ export const startDetailTour = (roomId: string) => {
                 element: `[data-tour="room-card-${roomId}"]`,
                 popover: {
                     title: 'Khám phá phòng',
-                    description: 'Phòng của bạn đã được tạo! Hãy nhấn vào nút Detail để vào bên trong thêm thiết bị nhé.',
+                    description: 'Phòng của bạn đã được tạo! Hãy nhấn vào nút Vào phòng để vào bên trong thêm thiết bị nhé.',
                     side: 'bottom',
                     align: 'center',
                     showButtons: [],

@@ -32,6 +32,8 @@ import { configRepo } from "@/db/repository/ConfigRepository";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { ConfigDB } from "@/db/types/config";
 import { sendNotificationToMe } from "@/libs/fcmClient";
+import { startAlarmTour } from "@/components/onboarding/tours/alarmTour";
+import HelpButton from "@/components/common/HelpButton";
 
 type AlarmMode =
     | "SHORT_BEEP"
@@ -156,6 +158,9 @@ export default function AlarmSettings({ roomId, roomName }: { roomId: string; ro
             title: "Thêm báo thức",
             direction: "right",
             component: AlarmFormDrawer,
+            renderHelpButtonHeader: (
+                <HelpButton onClick={() => import('@/components/onboarding/tours/alarmTour').then(m => m.startAlarmTour())} />
+            ),
             props: {
                 roomId,
                 roomName,
@@ -190,7 +195,14 @@ export default function AlarmSettings({ roomId, roomName }: { roomId: string; ro
                                 Các báo thức đã lưu cho khu vực {roomName}.
                             </CardDescription>
                         </div>
-                        <Button className="shrink-0 rounded-2xl" onClick={openCreateAlarm}>
+                        <Button data-tour="add-alarm-btn" className="shrink-0 rounded-2xl" onClick={() => {
+                                const isTourRunning = document.querySelector('.driver-active-element') !== null;
+                                if (isTourRunning) {
+                                    sessionStorage.setItem("alarm_tour_active", "true");
+                                    import('@/components/onboarding/tours/alarmTour').then(m => m.alarmDriverObj?.destroy());
+                                }
+                                openCreateAlarm();
+                            }}>
                             <HugeiconsIcon data-icon="inline-start" icon={AddCircleIcon} />
                             Thêm báo thức
                         </Button>
@@ -285,6 +297,20 @@ function AlarmFormDrawer({
 
         void loadHub();
     }, [roomId]);
+    useEffect(() => {
+        // Kiểm tra xem người dùng có đang trong quá trình đi Tour không
+        const isTourActive = sessionStorage.getItem("alarm_tour_active") === "true";
+        
+        if (isTourActive) {
+            // Phải có setTimeout (khoảng 300ms) để chờ Drawer trượt từ phải sang trái xong 100%
+            // Nếu gọi ngay lập tức, driver.js sẽ tính sai tọa độ vì form đang bay trên màn hình
+            const timer = setTimeout(() => {
+                startAlarmTour();
+            }, 300); 
+
+            return () => clearTimeout(timer); // Cleanup timer để tránh memory leak
+        }
+    }, []);
 
     const sendAlarm = async (nextMode: AlarmMode | "OFF") => {
         setIsSending(true);
@@ -408,7 +434,7 @@ function AlarmFormDrawer({
     };
 
     return (
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-24">
+        <div data-slot="drawer-content" className="mx-auto flex w-full max-w-xl flex-col gap-4 pb-24">
             <Card>
                 <CardHeader>
                     <CardTitle>Âm báo của Hub</CardTitle>
@@ -422,6 +448,7 @@ function AlarmFormDrawer({
                         <Field>
                             <FieldLabel htmlFor="alarm-mode">Kiểu âm báo</FieldLabel>
                             <NativeSelect
+                                data-tour="alarm-mode-select"
                                 id="alarm-mode"
                                 className="w-full"
                                 value={mode}
@@ -440,7 +467,7 @@ function AlarmFormDrawer({
                                 <FieldLabel>Âm lượng</FieldLabel>
                                 <span className="text-sm text-muted-foreground">{volume}%</span>
                             </div>
-                            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                            <div data-tour="alarm-volume-slider" className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
                                 <HugeiconsIcon icon={VolumeLowIcon} className="text-muted-foreground" />
                                 <Slider
                                     value={volume}
@@ -456,7 +483,7 @@ function AlarmFormDrawer({
                 </CardContent>
 
                 <CardFooter className="flex flex-wrap gap-2">
-                    <Button disabled={isSending} onClick={() => sendAlarm(mode)}>
+                    <Button data-tour="alarm-test-btn" disabled={isSending} onClick={() => sendAlarm(mode)}>
                         <HugeiconsIcon data-icon="inline-start" icon={Notification03Icon} />
                         Phát thử báo thức
                     </Button>
@@ -479,6 +506,7 @@ function AlarmFormDrawer({
                         <Field>
                             <FieldLabel htmlFor="alarm-on-time">Giờ kích hoạt báo thức</FieldLabel>
                             <Input
+                                data-tour="alarm-time-input"
                                 id="alarm-on-time"
                                 type="time"
                                 value={alarmOnTime}
@@ -488,6 +516,7 @@ function AlarmFormDrawer({
                         <Field>
                             <FieldLabel>Tự tắt sau</FieldLabel>
                             <ToggleGroup
+                                data-tour="alarm-duration-toggle"
                                 variant="outline"
                                 size="lg"
                                 value={[String(alarmDurationMinutes)]}
@@ -513,6 +542,7 @@ function AlarmFormDrawer({
                         <Field>
                             <FieldLabel>Ngày lặp lại</FieldLabel>
                             <ToggleGroup
+                                data-tour="alarm-days-toggle"
                                 multiple
                                 variant="outline"
                                 size="lg"
@@ -536,7 +566,7 @@ function AlarmFormDrawer({
                     </FieldGroup>
                 </CardContent>
                 <CardFooter>
-                    <Button className="w-full" disabled={isSavingSchedule} onClick={saveAlarmSchedule}>
+                    <Button data-tour="alarm-save-btn" className="w-full" disabled={isSavingSchedule} onClick={saveAlarmSchedule}>
                         Lưu báo thức
                     </Button>
                 </CardFooter>

@@ -3,21 +3,34 @@ import "driver.js/dist/driver.css";
 
 export let timerDriverObj: any = null;
 
-export const startTimerTour = (forceInside = false) => {
+const isElementVisibleOnScreen = (selector: string) => {
+    const el = document.querySelector(selector);
+    if (!el) return false;
+    
+    const rect = el.getBoundingClientRect();
+    return (
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.top < window.innerHeight &&
+        rect.bottom > 0
+    );
+};
+
+export const startTimerTour = (forceInside: boolean = false) => {
     if (timerDriverObj) timerDriverObj.destroy();
 
-    const isCreateFormOpen = document.querySelector('[data-tour="timer-name"]') !== null || forceInside;
+    const isFormActuallyVisible = isElementVisibleOnScreen('[data-tour="timer-name"]');
+    const isCreateFormOpen = isFormActuallyVisible || forceInside;
 
     if (isCreateFormOpen) {
         // --- KỊCH BẢN 1: BÊN TRONG FORM ---
         timerDriverObj = driver({
             showProgress: true,
             allowClose: false,
-            showButtons: ['next', 'previous'], // 🟢 Bật lại nút bên trái
+            showButtons: ['next', 'previous'],
             nextBtnText: "Tiếp tục ➔",
-            prevBtnText: "Bỏ qua", // 🟢 Đổi tên thành Bỏ qua
+            prevBtnText: "Bỏ qua", 
             doneBtnText: "Hoàn tất",
-            // 🟢 THỦ THUẬT: Ép sự kiện click nút Previous thành Hủy Tour
             onPrevClick: () => {
                 sessionStorage.removeItem("timer_tour_active");
                 if (timerDriverObj) timerDriverObj.destroy();
@@ -41,9 +54,9 @@ export const startTimerTour = (forceInside = false) => {
         timerDriverObj = driver({
             showProgress: false,
             allowClose: false,
-            showButtons: ['next', 'previous'], // 🟢 Bật nút trái
+            showButtons: ['next', 'previous'],
             nextBtnText: "Bắt đầu ngay",
-            prevBtnText: "Bỏ qua", // 🟢 Đổi tên thành Bỏ qua
+            prevBtnText: "Bỏ qua", 
             onPrevClick: () => {
                 sessionStorage.removeItem("timer_tour_active");
                 if (timerDriverObj) timerDriverObj.destroy();
@@ -54,16 +67,10 @@ export const startTimerTour = (forceInside = false) => {
             },
             steps: [
                 {
-                    popover: {
-                        title: "👋 Hướng dẫn Hẹn giờ",
-                        description: "Chào mừng bạn! Tính năng này giúp thiết bị tự động bật/tắt theo thời gian. Nhấn nút bên dưới để xem cách làm nhé.",
-                    }
-                },
-                {
                     element: '[data-tour="timer-add-btn"]',
                     popover: {
-                        title: "Tạo mới",
-                        description: "Hãy tự tay nhấn vào nút này để mở form. Hệ thống sẽ tiếp tục hướng dẫn bạn ở màn hình tiếp theo!",
+                        title: "Tạo hẹn giờ mới",
+                        description: "Nhấn vào đây để tiến hành thêm hẹn giờ!",
                         side: "bottom"
                     }
                 }

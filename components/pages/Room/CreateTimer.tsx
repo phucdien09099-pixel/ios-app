@@ -12,7 +12,6 @@ import { Controller, useForm, UseFormReturn } from "react-hook-form";
 import { TimerFormValues } from "./TimerDrawer";
 import { Slider } from "@/components/ui/slider";
 import ActionSelectionDrawer from "./ActionSelectionDrawer";
-import HelpButton from "@/components/common/HelpButton";
 import { startTimerTour } from "@/components/onboarding/tours/timerTour";
 import {
     Drawer,

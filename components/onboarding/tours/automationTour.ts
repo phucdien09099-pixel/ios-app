@@ -5,8 +5,7 @@ export let automationDriverObj: any = null;
 
 export const startAutomationTour = (forceInside = false) => {
     if (automationDriverObj) automationDriverObj.destroy();
-
-    // Nhận diện màn hình hiện tại
+    
     const isFormOpen = document.querySelector('[data-tour="scene-name"]') !== null;
     const isSelectorOpen = document.querySelector('[data-tour="scene-type-auto"]') !== null;
 
@@ -28,7 +27,7 @@ export const startAutomationTour = (forceInside = false) => {
                 if (automationDriverObj) automationDriverObj.destroy();
             },
             steps: [
-                { element: '[data-tour="scene-name"]', popover: { title: "Tên kịch bản", description: "Đặt tên dễ nhớ, ví dụ: 'Tự bật điều hòa khi nóng'." } },
+                { element: '[data-tour="scene-name"]', popover: { title: "Tên kịch bản và chọn chức năng", description: "Đặt tên dễ nhớ, và chọn loại chức năng" } },
                 { element: '[data-tour="scene-condition"]', popover: { title: "Điều kiện (Nếu...)", description: "Thiết lập thời gian hoặc nhiệt độ để kích hoạt." } },
                 { element: '[data-tour="scene-action"]', popover: { title: "Hành động (Thì...)", description: "Chọn thiết bị và hành động tương ứng." } },
                 { element: '[data-tour="scene-save"]', popover: { title: "Lưu lại", description: "Sau khi cấu hình xong, hãy lưu kịch bản nhé!", side: "top" } }
@@ -83,17 +82,11 @@ export const startAutomationTour = (forceInside = false) => {
             },
             steps: [
                 {
-                    popover: {
-                        title: "🤖 Hướng dẫn Kịch bản",
-                        description: "Kịch bản (Smart Scene) giúp thiết bị tự động làm việc theo điều kiện cài đặt sẵn.",
-                    }
-                },
-                {
                     element: '[data-tour="scene-add-btn"]',
                     popover: {
-                        title: "Tạo mới",
-                        description: "Nhấn vào nút Thêm kịch bản để bắt đầu. Hệ thống sẽ tiếp tục hướng dẫn ở bước sau!",
-                        side: "bottom"
+                        title: "Tạo kịch bản mới",
+                        description: "Nhấn vào đây để tiến hành thêm kịch bản!",
+                        side: "bottom",
                     }
                 }
             ]

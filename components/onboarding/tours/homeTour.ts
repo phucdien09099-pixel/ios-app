@@ -4,8 +4,14 @@ import "driver.js/dist/driver.css";
 export let homeDriverObj: any = null;
 
 export function startHomeTour(force = false) {
-    // Nếu không force và đã xem rồi thì bỏ qua
     if (!force && typeof window !== 'undefined' && localStorage.getItem("tour:home") === "1") {
+        return;
+    }
+
+    const isRoomFormOpen = document.querySelector('[data-tour="room-name"]') !== null 
+                        || document.querySelector('[data-tour="scan-hub-qr"]') !== null;
+
+    if (!force && isRoomFormOpen) {
         return;
     }
 
@@ -16,7 +22,7 @@ export function startHomeTour(force = false) {
 
     if (!hasRoom) {
         dynamicSteps = [
-            { element: '[data-tour="add-room-button"]', popover: { title: "Tạo khu vực đầu tiên", description: "Nhấn vào dấu + này để tạo khu vực đầu tiên của bạn.", side: "bottom" } }
+            { element: '[data-tour="add-room-button"]', popover: { title: "Tạo khu vực đầu tiên", description: "Nhấn vào đây để tạo khu vực đầu tiên của bạn.", side: "bottom" } }
         ];
     } else {
         dynamicSteps = [
@@ -24,7 +30,7 @@ export function startHomeTour(force = false) {
                 element: '[data-tour^="room-card-"]', 
                 popover: { 
                     title: "Quản lý thiết bị", 
-                    description: "Phòng của bạn ở đây! Hãy nhấn vào nút Detail để vào trong và thêm các thiết bị.", 
+                    description: "Phòng của bạn ở đây! Hãy nhấn vào nút Vào phòng để vào trong và thêm các thiết bị.", 
                     side: "bottom",
                     showButtons: [],
                 },
@@ -51,15 +57,12 @@ export function startHomeTour(force = false) {
         ];
     }
 
-    // ❌ ĐÃ XÓA ĐOẠN if (force) dynamicSteps.unshift(...) Ở ĐÂY
-
     homeDriverObj = driver({
         showProgress: true,
         allowClose: false,
         nextBtnText: "Tiếp theo",
-        prevBtnText: "Quay lại", // Trả về tên đúng nghĩa của nó
+        prevBtnText: "Quay lại",
         doneBtnText: "Hoàn tất",
-        // ❌ ĐÃ XÓA onPrevClick Ở ĐÂY
         steps: dynamicSteps,
         onDestroyStarted: () => {
             if (typeof window !== 'undefined') localStorage.setItem("tour:home", "1");

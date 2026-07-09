@@ -9,7 +9,7 @@ import {
     Setting06Icon,
     Delete02Icon,
     Loading01Icon,
-    TemperatureIcon, // hoặc icon delete bạn đang dùng trong bộ icon
+    TemperatureIcon,
 } from "@hugeicons/core-free-icons";
 import HubSettings from "../HubSettings";
 import AddDeviceForm from "../AdditionalDevice";
@@ -23,11 +23,12 @@ import HelpButton from "@/components/common/HelpButton";
 import { startAfterAddDeviceTour } from "@/components/onboarding/tours/afterAddDeviceTour";
 import { startAddDeviceTour } from "@/components/onboarding/tours/addDeviceTour";
 import { startHubSettingTour } from "@/components/onboarding/tours/hubSettingTour";
+import { startAlarmTour } from "@/components/onboarding/tours/alarmTour";
 import { useState } from "react";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import AlarmSettings from "../Room/AlarmSettings";
 import { deleteServerRoom } from "@/libs/smartSync";
-
+import { startEmptyRoomTour } from "@/components/onboarding/tours/emptyRoomTour";
 export function RoomCard({
     room,
     onDeleted,
@@ -83,7 +84,7 @@ export function RoomCard({
                     size="icon"
                     className="size-9 shrink-0 rounded-2xl text-muted-foreground opacity-70 transition-opacity hover:text-red-600 group-hover:opacity-100"
                     onClick={(e) => {
-                        e.stopPropagation(); // Ngăn sự kiện click lan ra Card
+                        e.stopPropagation();
                         setOpenDelete(true);
                     }}
                 >
@@ -183,7 +184,17 @@ export function RoomCard({
                                         roomName: room.name
                                     },
                                     direction: "right",
-                                    renderHelpButtonHeader: <HelpButton onClick={() => startAfterAddDeviceTour(true)} />,
+                                    renderHelpButtonHeader: (
+                                        <HelpButton 
+                                            onClick={() => {
+                                                if (deviceCount === 0) {
+                                                    startEmptyRoomTour(true);
+                                                } else {
+                                                    startAfterAddDeviceTour(true);
+                                                }
+                                            }} 
+                                        />
+                                    ),
                                     renderRightButtonHeader: (
                                         <div className="flex items-center gap-2">
                                             {/* NÚT 2: Nút Thêm Thiết bị */}
@@ -210,6 +221,7 @@ export function RoomCard({
                                             </Button>
 
                                             <Button
+                                            data-tour="alarm-settings-btn"
                                                 size="lg"
                                                 className="text-md shrink-0 rounded-xl!"
                                                 onClick={() =>
@@ -218,7 +230,8 @@ export function RoomCard({
                                                         title: "Cài đặt báo thức",
                                                         direction: "right",
                                                         component: AlarmSettings,
-                                                        props: { roomId: room.id, roomName: room.name }
+                                                        props: { roomId: room.id, roomName: room.name },
+                                                        renderHelpButtonHeader: <HelpButton onClick={() => startAlarmTour()} />
                                                     })
                                                 }
                                             >

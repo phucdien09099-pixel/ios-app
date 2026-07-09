@@ -96,7 +96,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
         const [roomDevices, roomAutomations, roomInfo] = await Promise.all([
             deviceRepo.getByRoom(roomId),
             automationRepo.getByRoom(roomId),
-            roomRepo.getById(roomId), // 🔥 Thêm lệnh gọi repo lấy thông tin Room ở đây
+            roomRepo.getById(roomId),
         ]);
 
         // console.log("Devices:", roomDevices);
@@ -105,7 +105,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
         // Cập nhật các State
         setDevices(roomDevices);
         setAutomations(roomAutomations);
-        setRoom(roomInfo); // 🔥 Mở comment và set dữ liệu vào state
+        setRoom(roomInfo);
     };
 
     useEffect(() => {
@@ -113,10 +113,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     }, [roomId]);
 
     const handleSelectAutomation = async () => {
-        // 1. Đóng cái Menu "Chọn kịch bản" lại luôn
-        
-
-        // 2. Chờ 0.25s cho Menu trượt xuống mượt mà, rồi đẩy Form lên thay thế
         setTimeout(() => {
             open({
                 id: "createAutomationForm",
@@ -124,14 +120,13 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 direction: "bottom",
                 className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
                 component: CreateAutomation,
-                renderHelpButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
+                renderHelpButtonHeader: <HelpButton onClick={() => startAutomationTour()} />,
                 props: {
                     roomName: room?.name,
                     devices,
                     getDeviceIcon,
                     onCancel: back,
                     onCreateAutomation: async (finalData: any) => {
-                        // Gọi hàm đóng gói payload
                         const triggerConfigObj = buildEsp32TaskPayload(finalData);
                         console.log(triggerConfigObj)
                         await automationRepo.createAutomation({
@@ -198,7 +193,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
         });
     };
 
-    // Màn hình danh sách kịch bản
     return (
         <div className="mx-auto flex min-h-full w-full max-w-xl flex-col bg-background pb-24">
             <div className="flex items-center justify-between px-4 pt-2 pb-1 shrink-0">
@@ -210,11 +204,10 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     {isEditing ? "Xong" : "Xoá"}
                 </Button>
                 <Button
-                    data-tour="scene-add-btn" // 🟢 Thêm Data Tour
+                    data-tour="scene-add-btn"
                     variant="default"
-                    className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium relative z-[60]" // 🟢 Thêm relative z-[60]
+                    className="bg-foreground text-background hover:bg-foreground/90 gap-1.5 rounded-2xl px-4 h-9 text-sm font-medium relative z-[60]"
                     onClick={() => {
-                        // 🟢 NỐI CẦU 1: Bấm thêm thì lưu cờ
                         const isTourRunning = document.querySelector('.driver-active-element') !== null;
                         if (isTourRunning) {
                             sessionStorage.setItem("automation_tour_active", "true");
@@ -227,7 +220,6 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                             direction: "bottom",
                             className: "mt-[8vh]! w-screen bg-background rounded-t-2xl",
                             component: SceneTypeSelector,
-                            // 🟢 NÚT ? CHO MÀN HÌNH TIẾP THEO
                             renderHelpButtonHeader: <HelpButton onClick={() => startAutomationTour(true)} />,
                             props: { onSelectAutomation: handleSelectAutomation }
                         })

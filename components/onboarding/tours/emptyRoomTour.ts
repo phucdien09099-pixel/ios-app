@@ -24,6 +24,16 @@ export const startEmptyRoomTour = (force = false) => {
 
     document.body.appendChild(finger);
 
+    const handleAddDeviceClick = () => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem("force_tour_add_device", "1");
+        }
+        targetElement.removeEventListener('click', handleAddDeviceClick);
+    };
+    
+    targetElement.addEventListener('click', handleAddDeviceClick);
+
+
     const handleRemoveFinger = () => {
         finger.remove();
         document.removeEventListener('click', handleRemoveFinger);
