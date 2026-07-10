@@ -44,6 +44,20 @@ export class BLEService {
         return await getAdapterState();
     }
 
+    async hasUsableBluetooth(askIfDenied = false) {
+        try {
+            const [granted, adapterState] = await Promise.all([
+                this.ensurePermissions(askIfDenied),
+                this.getAdapterState().catch(() => "Unknown" as AdapterState),
+            ]);
+
+            return granted && adapterState === "On";
+        } catch (error) {
+            console.warn("[BLE Service]: Bluetooth chưa khả dụng:", error);
+            return false;
+        }
+    }
+
     // =========================
     // Scan
     // =========================

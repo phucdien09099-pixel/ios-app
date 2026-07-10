@@ -12,32 +12,36 @@ import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { startACTour } from "@/components/onboarding/tours/devicecontrolTour";
 import HelpButton from "@/components/common/HelpButton";
 
+type ModeAC = "COOL" | "DRY" | "FAN" | "SLEEP"
+
 const MODES = [
     { key: "COOL", label: "Cool" },
     { key: "DRY", label: "Dry" },
     { key: "FAN", label: "Fan" },
+    { key: "SLEEP", label: "Sleep" },
 ] as const;
 
 export default function ACsController({ data, roomName }: { roomName: string, data: Device }) {
     const [power, setPower] = useState(true);
     const [temperature, setTemperature] = useState(24);
     const [fanSpeed, setFanSpeed] = useState(0); // Mặc định về 0 để khớp với firmware mẫu
-    const [mode, setMode] = useState<"COOL" | "DRY" | "FAN">("COOL");
+    const [mode, setMode] = useState<ModeAC>("COOL");
 
     const topic = deviceRepo.getMqttTopic(data.id);
     const { send } = useTransport();
 
     // Ánh xạ chuỗi Mode sang dạng số nguyên (int) khớp với firmware ESP32 (Cool=1, Dry=2, Fan/Auto=0)
-    const getModeNumber = (currentMode: "COOL" | "DRY" | "FAN") => {
+    const getModeNumber = (currentMode: ModeAC) => {
         if (currentMode === "COOL") return 1;
         if (currentMode === "DRY") return 2;
+        if (currentMode === "SLEEP") return 3;
         return 0; // FAN / AUTO
     };
 
     const sendFullState = async (overrideStates?: {
         power?: boolean;
         temperature?: number;
-        mode?: "COOL" | "DRY" | "FAN";
+        mode?: ModeAC;
         fanSpeed?: number;
     }) => {
         // Sử dụng giá trị mới nhất vừa thay đổi (override) hoặc fallback về state hiện tại
@@ -117,12 +121,10 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                                 variant="outline"
                                 className="rounded-2xl size-14"
                                 onClick={async () => {
-                                    if (temperature >= 30) return;
-                                    const next = temperature + 1;
+                                    if (temperature >= 30) return; const next = temperature + 1;
                                     setTemperature(next);
                                     await sendFullState({ temperature: next });
-                                }}
-                            >
+                                }}>
                                 <HugeiconsIcon icon={ChevronUp} />
                             </Button>
                         </div>
@@ -130,10 +132,9 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                 </div>
 
                 <div className="space-y-6">
-                    {/* WORK MODES */}
                     <div className="space-y-3" data-tour="ac-mode">
                         <div className="text-sm font-medium">Mode</div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-4 gap-3">
                             {MODES.map((item) => {
                                 const active = mode === item.key;
                                 return (
@@ -146,8 +147,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                                         className={cn(
                                             "rounded-2xl border h-24 flex items-center justify-center text-sm font-medium transition",
                                             active ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
-                                        )}
-                                    >
+                                        )}>
                                         {item.label}
                                     </button>
                                 );

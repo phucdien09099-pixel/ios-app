@@ -1,19 +1,11 @@
 "use client";
 
-import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
-
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, } from "react";
 import { ConnectionStatus } from "@/core/connection/connections";
 import { transportManager } from "@/core/connection/TransportManager";
 import { TransportConfigMap, TransportType } from "@/core/connection/TransportConfigMap";
 import { roomRepo } from "@/db/repository/RoomRepository";
+import { bleService } from "@/utils/Tauri/BluetoothSerial";
 
 type TopicFeature = { init: string } | { pair: string };
 type DeviceState = {
@@ -209,7 +201,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             syncConnectionMetadata();
         }
 
-        console.log("[Transport Provider]: Quét BLE trước, không thấy mới fallback MQTT...");
+        // console.log("[Transport Provider]: Có Bluetooth thì ưu tiên BLE, không có thì dùng MQTT.");
 
         const rooms = await roomRepo.getRooms();
         const roomNames = rooms.map((room) => room.name).filter(Boolean);
@@ -227,6 +219,13 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             });
             return nextStates;
         });
+
+        const bluetoothReady = await bleService.hasUsableBluetooth(false);
+        if (!bluetoothReady) {
+            console.log("[Transport Provider]: Bluetooth đang tắt/chưa cấp quyền, dùng MQTT mặc định.");
+            await connectMqttFallback();
+            return;
+        }
 
         const roomNameMap = entityNameMapRef.current;
         const scannedBleDevices = await transportManager.scan("Bluetooth");
