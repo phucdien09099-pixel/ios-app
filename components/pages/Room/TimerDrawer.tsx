@@ -25,9 +25,13 @@ import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/compone
 type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 
 interface TimerAction {
-    type: "power" | "temp" | "brightness" | "color" | "volume" | "channel";
+    type: "power" | "temp" | "brightness" | "color" | "volume" | "channel" | "autoTemp" | "LEARNING_REMOTE";
     value: string | number | boolean;
     label: string;
+    command?: string;
+    key?: string;
+    name?: string;
+    remoteButtonId?: string;
 }
 
 export interface TimerFormValues {
@@ -83,6 +87,19 @@ const DAY_TO_ESP_VALUE: Record<DayOfWeek, number> = {
 const normalizeActionForEsp = (action: any) => {
     if (!action) return { type: "power", value: "OFF" };
 
+    if (action.type === "LEARNING_REMOTE") {
+        const key = action.key ?? action.value;
+
+        return {
+            type: "LEARNING_REMOTE",
+            value: key,
+            command: action.command ?? "SEND",
+            key,
+            name: action.name ?? action.label,
+            remoteButtonId: action.remoteButtonId,
+        };
+    }
+
     if (action.type === "autoTemp") {
         return {
             type: "autoTemp",
@@ -119,7 +136,7 @@ function buildConfigAndPayload(data: any, devices: Device[], roomId: string, exi
         id,
         deviceName: selectedDevice?.name ?? data.deviceId,
         time: data.time || "00:00",
-        endTime: data.endTime || data.time || "00:00",
+        endTime: data.endTime || "",
         repeat: data.repeat ?? true,
         days: (data.days || []).map((day: DayOfWeek) => DAY_TO_ESP_VALUE[day]).filter((day: number | undefined) => day !== undefined),
         actions: [normalizeActionForEsp(data.action)],
@@ -195,18 +212,18 @@ export function TimerUI({ roomId }: { roomId: string }) {
     const getDeviceIcon = (type: DeviceType) => {
         return IcoIcon;
     };
-    
+
     useEffect(() => {
         pauseTourForDeviceDrawer();
         return () => {
-            resumeTourAfterDeviceDrawer(); 
+            resumeTourAfterDeviceDrawer();
         };
     }, []);
 
     const openTimerDrawer = (timer?: any) =>
         open({
             id: timer ? "editTimer" : "createTimer",
-            title: timer ? "Sửa thông tin hẹn giờ" : "Tạo timer",
+            title: timer ? "Sửa thông tin hẹn giờ" : "Tạo hẹn giờ",
             direction: 'bottom',
             className: 'mt-[8vh]! w-screen bg-background rounded-t-2xl',
             component: CreateTimerDrawer,

@@ -32,7 +32,13 @@ export class BluetoothTransport implements TransportsInterface<{
             const timeout = 5000;
 
             try {
-                await bleService.ensurePermissions();
+                const granted = await bleService.ensurePermissions(false);
+                if (!granted) {
+                    console.warn("[BLE Transport]: Chưa có quyền Bluetooth, bỏ qua BLE scan và fallback MQTT.");
+                    resolve([]);
+                    return;
+                }
+
                 await bleService.startScan((devices) => {
                     for (const d of devices) {
                         deviceMap.set(d.address, d);
@@ -79,6 +85,11 @@ export class BluetoothTransport implements TransportsInterface<{
         try {
             const deviceMap = new Map<string, BleDevice>();
             const timeout = 5000;
+
+            const granted = await bleService.ensurePermissions(false);
+            if (!granted) {
+                throw new Error("Bluetooth permission is not granted");
+            }
 
             await bleService.startScan((devices) => {
                 for (const d of devices) {
@@ -130,7 +141,10 @@ export class BluetoothTransport implements TransportsInterface<{
                 bleService.setService(config.serviceUUID || process.env.NEXT_PUBLIC_SERVICE_UUID!);
             }
 
-            await bleService.ensurePermissions();
+            const granted = await bleService.ensurePermissions(false);
+            if (!granted) {
+                throw new Error("Bluetooth permission is not granted");
+            }
 
             const targetDevices: any[] = config.devices
                 ? config.devices

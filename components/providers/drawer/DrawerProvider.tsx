@@ -18,6 +18,7 @@ export type DrawerPage = {
 type DrawerContextType = {
     stack: DrawerPage[];
     push: (page: DrawerPage) => void;
+    replaceTop: (page: DrawerPage) => void;
     pop: () => void;
     reset: () => void;
 
@@ -31,13 +32,20 @@ export function DrawerProvider({ children }: { children: React.ReactNode }) {
         setStack((prev) => [...prev, page]);
     };
 
+    const replaceTop = (page: DrawerPage) => {
+        setStack((prev) => {
+            if (prev.length === 0) return [page];
+            return [...prev.slice(0, -1), page];
+        });
+    };
+
     const pop = () => {
         setStack((prev) => prev.slice(0, -1));
     };
 
     const reset = () => setStack([]);
     return (
-        <DrawerContext.Provider value={{ stack, push, pop, reset }}>
+        <DrawerContext.Provider value={{ stack, push, replaceTop, pop, reset }}>
             {children}
             <NestedDrawers />
         </DrawerContext.Provider>

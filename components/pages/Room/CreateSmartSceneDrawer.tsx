@@ -63,7 +63,7 @@ const getAutomationConditionLabel = (triggerConfig: any, fallbackLabel: string) 
 };
 
 export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawerProps) {
-    const { open, back } = useNavDrawer();
+    const { open, replace, back } = useNavDrawer();
     const [devices, setDevices] = useState<Device[]>([]);
     const [automations, setAutomations] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
@@ -114,15 +114,15 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     }, [roomId]);
 
     useEffect(() => {
-            pauseTourForDeviceDrawer();
-            return () => {
-                resumeTourAfterDeviceDrawer(); 
-            };
-        }, []);
+        pauseTourForDeviceDrawer();
+        return () => {
+            resumeTourAfterDeviceDrawer();
+        };
+    }, []);
 
     const handleSelectAutomation = async () => {
         setTimeout(() => {
-            open({
+            replace({
                 id: "createAutomationForm",
                 title: "Tạo tự động hóa",
                 direction: "bottom",
@@ -238,9 +238,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 </Button>
             </div>
 
-            {/* Vùng danh sách: Cho phép cuộn (flex-1 overflow-y-auto) */}
             <div className="flex-1 overflow-y-auto px-4 pt-2">
-                {/* Thêm pb-6 ở đây để khi cuộn xuống dưới cùng, phần tử cuối không bị dính vào viền */}
                 <div className="w-full space-y-3 pb-6">
                     {automations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">

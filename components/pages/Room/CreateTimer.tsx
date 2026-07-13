@@ -30,6 +30,10 @@ export interface TimerAction {
     type: string;
     value: any;
     label: string;
+    command?: string;
+    key?: string;
+    name?: string;
+    remoteButtonId?: string;
 }
 
 export interface CreateTimerDrawerProps {
@@ -89,13 +93,13 @@ export default function CreateTimerDrawer({
 
     const [showActionDrawer, setShowActionDrawer] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-    
+
     useEffect(() => {
             if (sessionStorage.getItem("timer_tour_active") === "true") {
                 const delayTimer = setTimeout(() => {
-                    startTimerTour(true); // force chạy kịch bản bên trong
-                }, 400); // Đợi 400ms cho Drawer của giao diện cuộn lên hoàn tất
-                
+                    startTimerTour(true); 
+                }, 400);
+
                 return () => clearTimeout(delayTimer);
             }
         }, []);
@@ -140,7 +144,7 @@ export default function CreateTimerDrawer({
     };
     const handleDrawerOpenChange = (open: boolean) => {
     setShowActionDrawer(open);
-    if (!open) { 
+    if (!open) {
         resumeTourWithDelay();
     }
 };
