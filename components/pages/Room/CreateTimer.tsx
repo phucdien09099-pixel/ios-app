@@ -31,6 +31,10 @@ export interface TimerAction {
     type: string;
     value: any;
     label: string;
+    command?: string;
+    key?: string;
+    name?: string;
+    remoteButtonId?: string;
 }
 
 export interface CreateTimerDrawerProps {

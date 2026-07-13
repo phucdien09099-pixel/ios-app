@@ -187,11 +187,9 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                             variant="outline"
                             className="h-14 rounded-2xl"
                             onClick={async () => {
-                                // Gửi lệnh kèm trigger phụ nếu cần thiết, hoặc giữ nguyên full state cũ
                                 await sendFullState();
                                 console.log("Triggered Swing command with current state context");
-                            }}
-                        >
+                            }}>
                             Swing
                         </Button>
 
@@ -200,8 +198,7 @@ export default function ACsController({ data, roomName }: { roomName: string, da
                             className="h-14 rounded-2xl"
                             onClick={async () => {
                                 await sendFullState();
-                            }}
-                        >
+                            }}>
                             Timer
                         </Button>
                     </div>

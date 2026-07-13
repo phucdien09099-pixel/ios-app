@@ -24,9 +24,13 @@ import { toast } from "sonner";
 type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 
 interface TimerAction {
-    type: "power" | "temp" | "brightness" | "color" | "volume" | "channel";
+    type: "power" | "temp" | "brightness" | "color" | "volume" | "channel" | "autoTemp" | "LEARNING_REMOTE";
     value: string | number | boolean;
     label: string;
+    command?: string;
+    key?: string;
+    name?: string;
+    remoteButtonId?: string;
 }
 
 export interface TimerFormValues {
@@ -81,6 +85,19 @@ const DAY_TO_ESP_VALUE: Record<DayOfWeek, number> = {
 
 const normalizeActionForEsp = (action: any) => {
     if (!action) return { type: "power", value: "OFF" };
+
+    if (action.type === "LEARNING_REMOTE") {
+        const key = action.key ?? action.value;
+
+        return {
+            type: "LEARNING_REMOTE",
+            value: key,
+            command: action.command ?? "SEND",
+            key,
+            name: action.name ?? action.label,
+            remoteButtonId: action.remoteButtonId,
+        };
+    }
 
     if (action.type === "autoTemp") {
         return {
