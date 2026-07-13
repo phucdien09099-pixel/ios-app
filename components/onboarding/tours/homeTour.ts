@@ -1,5 +1,6 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let homeDriverObj: any = null;
 
@@ -61,7 +62,16 @@ export function startHomeTour(force = false) {
         showProgress: true,
         allowClose: false,
         nextBtnText: "Tiếp theo",
-        prevBtnText: "Quay lại",
+        prevBtnText: "Bỏ qua",
+        onPrevClick: () => {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem("tour:home", "1");
+            }
+            if (homeDriverObj) homeDriverObj.destroy();
+            setTimeout(() => {
+                triggerSmartWhisper(true, false);
+            }, 300);
+        },
         doneBtnText: "Hoàn tất",
         steps: dynamicSteps,
         onDestroyStarted: () => {

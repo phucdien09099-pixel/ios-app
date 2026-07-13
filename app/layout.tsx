@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { DatabaseProvider } from "@/components/providers/db/DatabaseProvider";
 import { TransportProvider } from "@/components/providers/transport/TransportProvider";
 import type { Viewport } from "next";
+import WhisperTester from "@/components/common/WhisperTester";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -36,6 +37,7 @@ export default function RootLayout({
           <DatabaseProvider>
             <TransportProvider>
                 <DrawerProvider>
+                  <WhisperTester />
                 {children}
                 </DrawerProvider>
               <Toaster

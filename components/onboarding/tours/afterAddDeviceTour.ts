@@ -1,51 +1,59 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import { startEmptyRoomTour } from "./emptyRoomTour"; 
+import { startEmptyRoomTour } from "./emptyRoomTour";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let afterAddDeviceDriverObj: any = null;
 
-export const startAfterAddDeviceTour = (force = false) => {
-    // 🟢 1. KIỂM TRA CỜ TỪ NÚT BACK CHUYỂN SANG
-    let isChainForced = false;
-    if (typeof window !== 'undefined') {
-        isChainForced = sessionStorage.getItem("trigger_after_add_device") === "1";
-    }
-    
-    const shouldForce = force || isChainForced;
+let savedDeviceStepIndex = 0;
+export let isTourPausedForDrawer = false;
 
-    if (!shouldForce && typeof window !== 'undefined' && localStorage.getItem("tour:afterAddDevice") === "1") {
-        return;
-    }
+let startTimeoutId: NodeJS.Timeout | null = null;
+let resumeTimeoutId: NodeJS.Timeout | null = null;
 
-    // 🟢 2. CHẶN ĐỨNG NẾU ĐANG Ở TRANG THÊM THIẾT BỊ
-    // Nếu tìm thấy nút "Lưu thiết bị", nghĩa là drawer/page thêm thiết bị vẫn đang mở -> Không được chạy tour này!
-    if (document.querySelector('[data-tour="device-save-btn"]')) {
-        console.warn("Vẫn đang ở trang thêm thiết bị, chặn afterAddDeviceTour!");
-        return;
+export const startAfterAddDeviceTour = (force = false, startIndex = 0) => {
+    const isResuming = startIndex > 0;
+
+    if (isTourPausedForDrawer) {
+        return; 
     }
 
-    // Xoá cờ ngay để không bị lặp
-    if (typeof window !== 'undefined') {
-        sessionStorage.removeItem("trigger_after_add_device");
+    if (!isResuming) {
+        let isChainForced = false;
+        if (typeof window !== 'undefined') {
+            isChainForced = sessionStorage.getItem("trigger_after_add_device") === "1";
+        }
+        const shouldForce = force || isChainForced;
+
+        if (!shouldForce && typeof window !== 'undefined' && localStorage.getItem("tour:afterAddDevice") === "1") {
+            return;
+        }
+
+        if (document.querySelector('[data-tour="device-save-btn"]')) {
+            return;
+        }
     }
 
-    if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
+    if (afterAddDeviceDriverObj) {
+        afterAddDeviceDriverObj.destroy();
+        afterAddDeviceDriverObj = null;
+    }
 
-    // Tăng setTimeout lên 300ms để đợi animation đóng trang Thêm thiết bị hoàn tất
-    setTimeout(() => {
+    if (startTimeoutId) clearTimeout(startTimeoutId);
+
+    startTimeoutId = setTimeout(() => {
+        // 🟢 FIX 1: Tự động reset ID về null khi timeout đã chạy xong
+        startTimeoutId = null; 
+
+        if (isTourPausedForDrawer) return;
+
         const hasDevice = document.querySelector('[data-tour^="device-card-"]') !== null;
 
-        // ==========================================
-        // 🟢 NGỮ CẢNH A: PHÒNG TRỐNG
-        // ==========================================
-        if (!hasDevice) {
+        if (!hasDevice && !isResuming) {
             startEmptyRoomTour(force);
             return;
         }
 
-        // ==========================================
-        // 🟢 NGỮ CẢNH B: ĐÃ CÓ THIẾT BỊ
-        // ==========================================
         let dynamicSteps: any[] = [
             { element: '[data-tour^="device-card-"]', popover: { title: "Thiết bị của bạn đây!", description: "Trạng thái Online/Offline trực tiếp trên thẻ.", side: "bottom", align: "center" } },
             { element: '[data-tour="device-control-btn"]', popover: { title: "Bảng điều khiển", description: "Nhấn vào đây để bật/tắt.", side: "top", align: "center" } },
@@ -54,23 +62,7 @@ export const startAfterAddDeviceTour = (force = false) => {
             { element: '[data-tour="detail-btn-inside"]', popover: { title: "Cài đặt nâng cao", description: "Mở bảng cài đặt và tinh chỉnh đèn/thiết bị cho phòng này.", side: "left", align: "center" } },
             { element: '[data-tour="nav-smart"]', popover: { title: "Kịch bản thông minh", description: "Thiết lập tự động hóa.", side: "top", align: "center" } },
             { element: '[data-tour="nav-timer"]', popover: { title: "Hẹn giờ", description: "Cài đặt thời gian tự động bật/tắt dễ dàng.", side: "top", align: "center" } },
-            {
-                element: '[data-tour="device-control-btn"]',
-                popover: {
-                    title: "Khám phá ngay! 🚀",
-                    description: "Bây giờ, hãy tự mình nhấn vào đây để mở bảng điều khiển và trải nghiệm tính năng nhé!",
-                    side: "top", align: "center", showButtons: []
-                },
-                onHighlighted: () => {
-                    const btn = document.querySelector('[data-tour="device-control-btn"]') as HTMLElement;
-                    if (btn) {
-                        btn.onclick = (e) => {
-                            e.stopImmediatePropagation();
-                            if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
-                        };
-                    }
-                }
-            }
+            { element: '[data-tour="device-control-btn"]', popover: { title: "Khám phá ngay! 🚀", description: "Bây giờ, hãy tự mình nhấn vào đây để trải nghiệm nhé!", side: "top", align: "center" } }
         ];
 
         afterAddDeviceDriverObj = driver({
@@ -81,21 +73,82 @@ export const startAfterAddDeviceTour = (force = false) => {
             prevBtnText: "Bỏ qua",
             doneBtnText: "Hoàn tất",
             onPrevClick: () => {
-                if (typeof window !== 'undefined') {
-                    localStorage.setItem("tour:afterAddDevice", "1");
-                    localStorage.removeItem("JUST_ADDED_DEVICE");
+                if (typeof window !== 'undefined') localStorage.setItem("tour:afterAddDevice", "1");
+                if (afterAddDeviceDriverObj) {
+                    afterAddDeviceDriverObj.destroy();
+                    afterAddDeviceDriverObj = null;
                 }
-                if (afterAddDeviceDriverObj) afterAddDeviceDriverObj.destroy();
+                setTimeout(() => {
+                    triggerSmartWhisper(true, false);
+                }, 300);
+                savedDeviceStepIndex = 0; 
             },
             steps: dynamicSteps,
             onDestroyStarted: () => {
-                if (typeof window !== 'undefined') {
-                    localStorage.setItem("tour:afterAddDevice", "1");
-                    localStorage.removeItem("JUST_ADDED_DEVICE");
+                if (!isTourPausedForDrawer && typeof window !== 'undefined') {
+                    if (afterAddDeviceDriverObj && !afterAddDeviceDriverObj.hasNextStep()) {
+                        localStorage.setItem("tour:afterAddDevice", "1");
+                    }
                 }
+                if (afterAddDeviceDriverObj) {
+                    afterAddDeviceDriverObj.destroy();
+                    afterAddDeviceDriverObj = null;
+                }
+                // 🟢 FIX 2: Tẩy não khi tour bị destroy
+                savedDeviceStepIndex = 0; 
             }
         });
 
-        afterAddDeviceDriverObj.drive();
-    }, 300); // Thời gian chờ đủ dài để giao diện cũ đóng lại
+        afterAddDeviceDriverObj.drive(startIndex);
+    }, 300);
+};
+
+export const pauseTourForDeviceDrawer = () => {
+    // Nếu cả 3 biến này đều null/trống -> Hoàn toàn không có Tour nào đang hoạt động
+    if (!afterAddDeviceDriverObj && !startTimeoutId && !resumeTimeoutId) {
+        return; 
+    }
+
+    isTourPausedForDrawer = true; 
+
+    // 🟢 FIX 1: Clear xong phải ép về null để chốt chặn if() phía trên hoạt động đúng ở lần sau
+    if (startTimeoutId) {
+        clearTimeout(startTimeoutId);
+        startTimeoutId = null; 
+    }
+    if (resumeTimeoutId) {
+        clearTimeout(resumeTimeoutId);
+        resumeTimeoutId = null; 
+    }
+
+    if (afterAddDeviceDriverObj) {
+        const currentIndex = afterAddDeviceDriverObj.getActiveIndex();
+        if (currentIndex !== undefined) {
+            savedDeviceStepIndex = currentIndex;
+        }
+        afterAddDeviceDriverObj.destroy();
+        afterAddDeviceDriverObj = null;
+    }
+    
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.driver-popover, .driver-overlay, .driver-js-shadow').forEach(el => el.remove());
+        document.querySelectorAll('.driver-active-element').forEach(el => el.classList.remove('driver-active-element'));
+    }
+};
+
+export const resumeTourAfterDeviceDrawer = () => {
+    if (isTourPausedForDrawer) {
+        isTourPausedForDrawer = false; 
+        
+        if (resumeTimeoutId) clearTimeout(resumeTimeoutId);
+
+        resumeTimeoutId = setTimeout(() => {
+            // 🟢 FIX 1: Tự reset ID về null khi kích hoạt
+            resumeTimeoutId = null; 
+            
+            if (!isTourPausedForDrawer) {
+                startAfterAddDeviceTour(true, savedDeviceStepIndex + 1); 
+            }
+        }, 400);
+    }
 };

@@ -1,5 +1,6 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let addDeviceDriverObj: any = null;
 
@@ -60,6 +61,9 @@ export function startAddDeviceTour(force = false) {
                 localStorage.setItem("tour:addDevice", "1");
                 localStorage.setItem("tour:backToRoom", "1"); // Bỏ qua phát ngắt luôn tour chỉ nút quay lại phòng
             }
+            setTimeout(() => {
+                triggerSmartWhisper(true, false);
+            }, 300);
             if (addDeviceDriverObj) addDeviceDriverObj.destroy();
         },
 

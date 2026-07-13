@@ -1,5 +1,6 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let roomDriverObj: any = null;
 
@@ -30,6 +31,9 @@ export function startRoomTour(force = false) { // 🟢 Thêm tham số force
                 localStorage.setItem("tour:backToHome", "1");
             }
             if (roomDriverObj) roomDriverObj.destroy();
+            setTimeout(() => {
+                triggerSmartWhisper(true, false);
+            }, 300);
         },
         doneBtnText: "Hoàn tất",
         steps: dynamicSteps,

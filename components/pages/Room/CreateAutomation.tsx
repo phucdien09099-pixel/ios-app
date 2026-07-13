@@ -126,12 +126,42 @@ export default function CreateAutomation({
 
         setSelectedActionDevice(device);
         setShowActionDrawer(true);
+        if (sessionStorage.getItem("automation_tour_active") === "true") {
+            import('@/components/onboarding/tours/automationTour').then(m => {
+                m.pauseTourForDrawer();
+            });
+        }
     };
 
+    // Trường hợp 1: Người dùng chốt chọn 1 hành động
     const handleSelectAction = (selectedAction: TimerAction) => {
         setValue("action", selectedAction);
-        setShowActionDrawer(false);
+        setShowActionDrawer(false); // Đóng drawer
+
+        resumeTourWithDelay(); // Hàm tự định nghĩa ở dưới
     };
+
+    // Trường hợp 2: Người dùng vuốt xuống hoặc bấm ra ngoài hủy chọn
+    const handleDrawerOpenChange = (open: boolean) => {
+        setShowActionDrawer(open);
+        
+        if (!open) { // Nếu trạng thái là đóng
+            resumeTourWithDelay();
+        }
+    }
+
+    // Hàm gọi lại Tour (dùng chung cho cả 2 trường hợp đóng)
+    const resumeTourWithDelay = () => {
+        if (sessionStorage.getItem("automation_tour_active") === "true") {
+            // BẮT BUỘC phải dùng setTimeout để đợi Drawer trượt hẳn xuống dưới
+            // Nếu gọi ngay, driver.js sẽ tính toán sai tọa độ do layout đang dịch chuyển
+            setTimeout(() => {
+                import('@/components/onboarding/tours/automationTour').then(m => {
+                    m.resumeTourAfterDrawer();
+                });
+            }, 400); // 400ms là thời gian an toàn cho hầu hết các animation Drawer
+        }
+    }
 
     const canSubmit =
         automationMode === "sleep"
@@ -289,8 +319,9 @@ export default function CreateAutomation({
                     <HugeiconsIcon icon={Cancel01Icon} data-icon="inline-start" />
                     Hủy
                 </Button>
-                <div data-tour="scene-save" className="flex-1">
+                <div  className="flex-1">
                     <Button
+                        data-tour="scene-save"
                         type="button"
                         className="w-full rounded-2xl"
                         disabled={!canSubmit}
@@ -311,7 +342,7 @@ export default function CreateAutomation({
 
             <ActionSelectionDrawer
                 open={showActionDrawer}
-                onOpenChange={setShowActionDrawer}
+                onOpenChange={handleDrawerOpenChange}
                 device={selectedActionDevice}
                 currentAction={watchAction}
                 onSelectAction={handleSelectAction}

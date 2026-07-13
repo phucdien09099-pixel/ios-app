@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { startEmptyRoomTour } from "./tours/emptyRoomTour";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export function useWelcomeRoomModal() {
     const [showWelcomeRoom, setShowWelcomeRoom] = useState(false);
@@ -27,19 +28,16 @@ export function useWelcomeRoomModal() {
     };
 
     const handleSkipRoom = () => {
-        // 1. Lưu cờ đã hỏi Modal này
         localStorage.setItem("tour:welcomed_room", "1");
-        
-        // 🟢 2. DẬP CẦU DAO TOÀN BỘ CÁC TOUR LIÊN QUAN ĐẾN THIẾT BỊ
-        localStorage.setItem("tour:afterAddDevice", "1"); // Chặn tour ngắm thiết bị
-        localStorage.setItem("tour:addDevice", "1");      // Chặn tour trong form điền thiết bị
-        localStorage.setItem("tour:backToRoom", "1");     // Chặn tour chỉ vào nút Back
-        
-        // 🟢 3. Xóa luôn cờ này (nếu lỡ có) để chắc chắn không bị dính bàn tay vuốt
+        localStorage.setItem("tour:afterAddDevice", "1");
+        localStorage.setItem("tour:addDevice", "1");
+        localStorage.setItem("tour:backToRoom", "1");
         localStorage.removeItem("JUST_ADDED_DEVICE"); 
         document.getElementById("custom-finger-guide")?.remove();
-
         setShowWelcomeRoom(false);
+        setTimeout(() => {
+            triggerSmartWhisper(true, false);
+        }, 300);
     };
 
     return {

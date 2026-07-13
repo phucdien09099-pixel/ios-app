@@ -17,6 +17,7 @@ import HelpButton from "@/components/common/HelpButton";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { deleteServerDevice } from "@/libs/smartSync";
+import { pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 
 export type Device = {
     id: string;
@@ -163,37 +164,44 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                     data-tour="device-control-btn"
                     size="lg"
                     className="h-11 flex-1 rounded-2xl"
-                    onClick={() => open({
-                        id: device.id,
-                        title: device.name,
-                        component: DeviceControll,
-                        props: {
-                            device,
-                            roomName
-                        },
-                        renderHelpButtonHeader: device.type === "TV"
-                            ? <HelpButton onClick={() => startTVTour(true)} />
-                            : (device.type === "AC" || !["TV", "RELAY", "LIGHT", "SMART_SCHEDULE", "LEARNING_REMOTE"].includes(device.type))
-                                ? <HelpButton onClick={() => startACTour(true)} />
-                                : undefined,
-                        renderRightButtonHeader: device.type === "RELAY" ? (
-                            <Button
-                                size="lg"
-                                variant="ghost"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    open({
-                                        id: device.id + device.name + "setting",
-                                        title: device.name + " setting",
-                                        component: SettingSwitchController,
-                                    });
-                                }}
-                            >
-                                <HugeiconsIcon data-icon="inline-start" icon={Setting06Icon} />
-                                Cài đặt thiết bị
-                            </Button>
-                        ) : undefined
-                    })}
+                    onClick={() => {
+                        // 🟢 GỌI HÀM PAUSE TẠI ĐÂY TRƯỚC KHI MỞ DRAWER
+                        pauseTourForDeviceDrawer(); 
+                        
+                        open({
+                            id: device.id,
+                            title: device.name,
+                            component: DeviceControll,
+                            props: {
+                                device,
+                                roomName
+                            },
+                            renderHelpButtonHeader: device.type === "TV"
+                                ? <HelpButton onClick={() => startTVTour(true)} />
+                                : (device.type === "AC" || !["TV", "RELAY", "LIGHT", "SMART_SCHEDULE", "LEARNING_REMOTE"].includes(device.type))
+                                    ? <HelpButton onClick={() => startACTour(true)} />
+                                    : undefined,
+                            renderRightButtonHeader: device.type === "RELAY" ? (
+                                <Button
+                                    size="lg"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Nếu bấm cài đặt cũng cần pause thì thêm vào đây
+                                        pauseTourForDeviceDrawer(); 
+                                        open({
+                                            id: device.id + device.name + "setting",
+                                            title: device.name + " setting",
+                                            component: SettingSwitchController,
+                                        });
+                                    }}
+                                >
+                                    <HugeiconsIcon data-icon="inline-start" icon={Setting06Icon} />
+                                    Cài đặt thiết bị
+                                </Button>
+                            ) : undefined
+                        });
+                    }}
                 >
                     Điều khiển
                 </Button>

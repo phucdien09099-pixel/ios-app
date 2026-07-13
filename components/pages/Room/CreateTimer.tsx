@@ -117,12 +117,33 @@ export default function CreateTimerDrawer({
         if (typeof onSelectDevice === 'function') {
             onSelectDevice(device);
         }
+        if (sessionStorage.getItem("timer_tour_active") === "true") {
+        import('@/components/onboarding/tours/timerTour').then(m => {
+            m.pauseTourForDrawer();
+        });
+    }
+    };
+    const resumeTourWithDelay = () => {
+    if (sessionStorage.getItem("timer_tour_active") === "true") {
+        setTimeout(() => {
+            import('@/components/onboarding/tours/timerTour').then(m => {
+                m.resumeTourAfterDrawer();
+            });
+        }, 400); // 400ms an toàn cho animation đóng drawer
+    }
     };
 
     const handleSelectAction = (selectedAction: TimerAction) => {
         setValue("action", selectedAction as any);
         setShowActionDrawer(false);
+        resumeTourWithDelay();
     };
+    const handleDrawerOpenChange = (open: boolean) => {
+    setShowActionDrawer(open);
+    if (!open) { 
+        resumeTourWithDelay();
+    }
+};
 
     return (
         <div className="px-4 pb-40 space-y-4 max-h-[80vh] overflow-y-auto select-text">
@@ -203,7 +224,7 @@ export default function CreateTimerDrawer({
             </div>
 
             {/* Lặp lại */}
-            <div className="flex items-center justify-between rounded-2xl border p-3">
+            <div data-tour="timer-repeat" className="flex items-center justify-between rounded-2xl border p-3">
                 <div>
                     <div className="font-medium">Lặp lại</div>
                     <div className="text-xs text-muted-foreground">Chạy mỗi ngày đã chọn</div>
@@ -253,7 +274,7 @@ export default function CreateTimerDrawer({
             {/* Drawer chọn hành động */}
             <ActionSelectionDrawer
                 open={showActionDrawer}
-                onOpenChange={setShowActionDrawer}
+                onOpenChange={handleDrawerOpenChange}
                 device={selectedDevice}
                 currentAction={action}
                 onSelectAction={handleSelectAction}

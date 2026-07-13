@@ -20,6 +20,7 @@ import { useTransport } from "@/components/providers/transport/TransportProvider
 import HelpButton from "@/components/common/HelpButton";
 import { startTimerTour } from "@/components/onboarding/tours/timerTour";
 import { toast } from "sonner";
+import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 
 type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 
@@ -194,6 +195,13 @@ export function TimerUI({ roomId }: { roomId: string }) {
     const getDeviceIcon = (type: DeviceType) => {
         return IcoIcon;
     };
+    
+    useEffect(() => {
+        pauseTourForDeviceDrawer();
+        return () => {
+            resumeTourAfterDeviceDrawer(); 
+        };
+    }, []);
 
     const openTimerDrawer = (timer?: any) =>
         open({

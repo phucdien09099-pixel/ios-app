@@ -1,9 +1,10 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let automationDriverObj: any = null;
 
-export const startAutomationTour = (forceInside = false) => {
+export const startAutomationTour = (forceInside = false, startIndex = 0) => {
     if (automationDriverObj) automationDriverObj.destroy();
     
     const isFormOpen = document.querySelector('[data-tour="scene-name"]') !== null;
@@ -21,6 +22,9 @@ export const startAutomationTour = (forceInside = false) => {
             onPrevClick: () => {
                 sessionStorage.removeItem("automation_tour_active");
                 if (automationDriverObj) automationDriverObj.destroy();
+                setTimeout(() => {
+                    triggerSmartWhisper(true, false);
+                }, 300);
             },
             onDestroyStarted: () => {
                 sessionStorage.removeItem("automation_tour_active");
@@ -33,8 +37,7 @@ export const startAutomationTour = (forceInside = false) => {
                 { element: '[data-tour="scene-save"]', popover: { title: "Lưu lại", description: "Sau khi cấu hình xong, hãy lưu kịch bản nhé!", side: "top" } }
             ]
         });
-        automationDriverObj.drive();
-
+        automationDriverObj.drive(startIndex);
     } else if (isSelectorOpen) {
         // --- KỊCH BẢN 2: MÀN HÌNH CHỌN LOẠI KỊCH BẢN ---
         automationDriverObj = driver({
@@ -93,4 +96,19 @@ export const startAutomationTour = (forceInside = false) => {
         });
         automationDriverObj.drive();
     }
+};
+let savedStepIndex = 0;
+
+export const pauseTourForDrawer = () => {
+    if (automationDriverObj) {
+        const currentIndex = automationDriverObj.getActiveIndex();
+        if (currentIndex !== undefined) {
+            savedStepIndex = currentIndex;
+        }
+        automationDriverObj.destroy();
+    }
+};
+
+export const resumeTourAfterDrawer = () => {
+    startAutomationTour(true, savedStepIndex + 1); 
 };

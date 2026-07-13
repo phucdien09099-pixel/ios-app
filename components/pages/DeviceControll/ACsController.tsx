@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/libs/utils";
@@ -9,8 +9,7 @@ import { ChevronDown, ChevronUp, PowerIcon } from "@hugeicons/core-free-icons";
 import { Device } from "../Room/DeviceCard";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
-import { startACTour } from "@/components/onboarding/tours/devicecontrolTour";
-import HelpButton from "@/components/common/HelpButton";
+import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 
 const MODES = [
     { key: "COOL", label: "Cool" },
@@ -23,6 +22,13 @@ export default function ACsController({ data, roomName }: { roomName: string, da
     const [temperature, setTemperature] = useState(24);
     const [fanSpeed, setFanSpeed] = useState(0); // Mặc định về 0 để khớp với firmware mẫu
     const [mode, setMode] = useState<"COOL" | "DRY" | "FAN">("COOL");
+
+    useEffect(() => {
+        pauseTourForDeviceDrawer();
+        return () => {
+            resumeTourAfterDeviceDrawer(); 
+        };
+    }, []);
 
     const topic = deviceRepo.getMqttTopic(data.id);
     const { send } = useTransport();

@@ -1,29 +1,23 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let hubSettingDriverObj: any = null;
 
 export const startHubSettingTour = (force = false) => {
     if (hubSettingDriverObj) hubSettingDriverObj.destroy();
 
-    // 🟢 CÁCH KIỂM TRA BẤT BẠI: 
-    // 1. Lấy phần tử thanh trượt âm lượng
     const volumeSliderElement = document.querySelector('[data-tour="hub-volume-slider"]') as HTMLElement | null;
-    // 2. Lấy nút Tab âm lượng
     const volumeTabBtn = document.querySelector('[data-tour="hub-tab-volume"]');
 
-    // Kiểm tra xem nội dung âm lượng có đang hiển thị vật lý trên màn hình không (offsetParent !== null)
     const isSliderVisible = volumeSliderElement !== null && volumeSliderElement.offsetParent !== null;
-    // Kiểm tra dự phòng xem Tab có đang được chọn không
     const isTabActive = volumeTabBtn?.getAttribute('data-state') === 'active' || volumeTabBtn?.getAttribute('aria-selected') === 'true';
 
-    // Đang ở Tab Âm Lượng nếu 1 trong 2 điều kiện trên là đúng
     const isVolumeTabActive = isSliderVisible || isTabActive;
 
     let dynamicSteps: any[] = [];
 
     if (isVolumeTabActive) {
-        // --- CHỈ HIỂN THỊ 2 BƯỚC CỦA TAB ÂM LƯỢNG ---
         dynamicSteps = [
             { 
                 element: '[data-tour="hub-tab-volume"]', 
@@ -35,7 +29,6 @@ export const startHubSettingTour = (force = false) => {
             }
         ];
     } else {
-        // --- HIỂN THỊ 6 BƯỚC CỦA TAB ĐÈN (MẶC ĐỊNH) ---
         dynamicSteps = [
             { 
                 element: '[data-tour="hub-tabs"]', 
@@ -49,13 +42,19 @@ export const startHubSettingTour = (force = false) => {
         ];
     }
 
-    // Khởi chạy tour
     hubSettingDriverObj = driver({
         showProgress: true,
         allowClose: false,
-        showButtons: ['next', 'previous'],
-        nextBtnText: "Tiếp tục",
-        prevBtnText: "Quay lại",
+        showButtons: ['next', 'previous'], 
+        nextBtnText: "Tiếp theo",
+        prevBtnText: "Bỏ qua", 
+        onPrevClick: () => {
+            if (hubSettingDriverObj) hubSettingDriverObj.destroy();
+            setTimeout(() => {
+                triggerSmartWhisper(true, false);
+            }, 300);
+        },
+        
         doneBtnText: "Hoàn tất",
         steps: dynamicSteps,
         onDestroyStarted: () => {

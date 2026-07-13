@@ -1,20 +1,32 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+// 🟢 1. IMPORT HÀM GỌI WHISPER
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let deviceDriverObj: any = null;
 
 // --- TOUR MÁY LẠNH ---
-export function startACTour(force = false) { // 🟢 Thêm force
+export function startACTour(force = false) { 
     if (!force && typeof window !== 'undefined' && localStorage.getItem("tour:ac") === "1") {
         return;
     }
-    if (deviceDriverObj) deviceDriverObj.destroy(); // Dọn dẹp tour cũ nếu có
+    if (deviceDriverObj) deviceDriverObj.destroy(); 
 
     deviceDriverObj = driver({
         showProgress: true,
         allowClose: false,
-        nextBtnText: "Tiếp tục", // Sửa text cho hay
-        prevBtnText: "Quay lại", // Đổi thành quay lại
+        nextBtnText: "Tiếp theo", // Đồng bộ text
+        
+        // 🟢 2. Sửa thành Bỏ qua và thêm hàm onPrevClick
+        prevBtnText: "Bỏ qua", 
+        onPrevClick: () => {
+            if (typeof window !== 'undefined') localStorage.setItem("tour:ac", "1");
+            if (deviceDriverObj) deviceDriverObj.destroy();
+            setTimeout(() => {
+                triggerSmartWhisper(true, false);
+            }, 300);
+        },
+
         doneBtnText: "Hoàn tất",
         steps: [
             { element: '[data-tour="ac-power"]', popover: { title: "Bật / Tắt nguồn", description: "Sử dụng nút này để bật hoặc tắt thiết bị máy lạnh.", side: "bottom" } },
@@ -41,8 +53,18 @@ export function startTVTour(force = false) {
     deviceDriverObj = driver({
         showProgress: true,
         allowClose: false,
-        nextBtnText: "Tiếp tục",
-        prevBtnText: "Quay lại",
+        nextBtnText: "Tiếp theo", // Đồng bộ text
+        
+        // 🟢 3. Sửa thành Bỏ qua và thêm hàm onPrevClick tương tự
+        prevBtnText: "Bỏ qua",
+        onPrevClick: () => {
+            if (typeof window !== 'undefined') localStorage.setItem("tour:tv", "1");
+            if (deviceDriverObj) deviceDriverObj.destroy();
+            setTimeout(() => {
+                triggerSmartWhisper(true, false);
+            }, 300);
+        },
+
         doneBtnText: "Hoàn tất",
         steps: [
             { element: '[data-tour="tv-power"]', popover: { title: "Bật / Tắt Tivi", description: "Nhấn vào đây để mở hoặc tắt nguồn Tivi của bạn.", side: "bottom" } },

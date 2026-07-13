@@ -151,3 +151,40 @@ html {
 html::-webkit-scrollbar {
   display: none !important;
 }
+/* Hiệu ứng Tooltip "Lời thì thầm" */
+.help-whisper-text {
+  position: fixed;
+  z-index: 2147483647; 
+  background-color: #3b82f6; /* Nền xanh dương */
+  color: white; 
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none; 
+  opacity: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Thêm đổ bóng cho nổi bật hẳn lên */
+  
+  /* Căn lề và tạo khoảng cách 8px để nhường chỗ cho mũi nhọn */
+  transform: translate(-100%, -50%) translateX(10px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap; 
+}
+
+/* VẼ MŨI NHỌN (ARROW) CHỈ VÀO NÚT */
+.help-whisper-text::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -5px; /* Đẩy mũi nhọn thò ra ngoài rìa bên phải 5px */
+  transform: translateY(-50%);
+  border-width: 5px 0 5px 6px; /* Kích thước tam giác */
+  border-style: solid;
+  border-color: transparent transparent transparent #3b82f6; /* Màu mũi nhọn khớp với màu nền */
+}
+
+/* Trạng thái hiển thị */
+.help-whisper-text.show {
+  opacity: 1;
+  transform: translate(-100%, -50%) translateX(0);
+}

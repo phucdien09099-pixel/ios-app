@@ -19,6 +19,7 @@ import { Room } from "@/db/types/room";
 import HelpButton from "@/components/common/HelpButton";
 import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 import { toast } from "sonner";
+import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 
 interface CreateSmartSceneDrawerProps {
     roomId: string;
@@ -111,6 +112,13 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
     useEffect(() => {
         loadData();
     }, [roomId]);
+
+    useEffect(() => {
+            pauseTourForDeviceDrawer();
+            return () => {
+                resumeTourAfterDeviceDrawer(); 
+            };
+        }, []);
 
     const handleSelectAutomation = async () => {
         setTimeout(() => {

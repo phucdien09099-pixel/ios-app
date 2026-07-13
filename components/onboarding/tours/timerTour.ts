@@ -1,5 +1,5 @@
 import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let timerDriverObj: any = null;
 
@@ -16,7 +16,7 @@ const isElementVisibleOnScreen = (selector: string) => {
     );
 };
 
-export const startTimerTour = (forceInside: boolean = false) => {
+export const startTimerTour = (forceInside: boolean = false, startIndex = 0) => {
     if (timerDriverObj) timerDriverObj.destroy();
 
     const isFormActuallyVisible = isElementVisibleOnScreen('[data-tour="timer-name"]');
@@ -34,6 +34,9 @@ export const startTimerTour = (forceInside: boolean = false) => {
             onPrevClick: () => {
                 sessionStorage.removeItem("timer_tour_active");
                 if (timerDriverObj) timerDriverObj.destroy();
+                setTimeout(() => {
+                    triggerSmartWhisper(true, false);
+                }, 300);
             },
             onDestroyStarted: () => {
                 sessionStorage.removeItem("timer_tour_active");
@@ -44,10 +47,11 @@ export const startTimerTour = (forceInside: boolean = false) => {
                 { element: '[data-tour="timer-time"]', popover: { title: "Thời gian", description: "Chọn giờ và phút bạn muốn kích hoạt." } },
                 { element: '[data-tour="timer-days"]', popover: { title: "Ngày lặp lại", description: "Chọn các ngày trong tuần. Bỏ trống nếu chỉ chạy 1 lần." } },
                 { element: '[data-tour="timer-device"]', popover: { title: "Chọn thiết bị", description: "Bấm vào thiết bị và cấu hình hành động mong muốn." } },
+                { element: '[data-tour="timer-repeat"]', popover: { title: "Chế độ lặp lại", description: "Bật nút này nếu bạn muốn lịch trình tự động lặp đi lặp lại vào các ngày đã chọn.",side: "top"} },
                 { element: '[data-tour="timer-save"]', popover: { title: "Lưu lại", description: "Hoàn tất thì nhấn vào đây để lưu nhé.", side: "top" } }
             ]
         });
-        timerDriverObj.drive();
+        timerDriverObj.drive(startIndex);
 
     } else {
         // --- KỊCH BẢN 2: Ở NGOÀI DANH SÁCH ---
@@ -78,4 +82,19 @@ export const startTimerTour = (forceInside: boolean = false) => {
         });
         timerDriverObj.drive();
     }
+};
+let savedStepIndex = 0;
+
+export const pauseTourForDrawer = () => {
+    if (timerDriverObj) {
+        const currentIndex = timerDriverObj.getActiveIndex();
+        if (currentIndex !== undefined) {
+            savedStepIndex = currentIndex;
+        }
+        timerDriverObj.destroy();
+    }
+};
+
+export const resumeTourAfterDrawer = () => {
+    startTimerTour(true, savedStepIndex + 1); 
 };

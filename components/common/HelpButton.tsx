@@ -32,6 +32,7 @@ export default function HelpButton({ onClick, className }: HelpButtonProps) {
                     setShowModal(true);
                 }}
                 className={cn(
+                    "target-help-btn",
                     "rounded-2xl! size-10!",
                     "size-8 rounded-full border-primary/40 text-primary font-bold bg-primary/10 hover:bg-primary/20 p-0 transition-colors flex-shrink-0 z-50",
                     className

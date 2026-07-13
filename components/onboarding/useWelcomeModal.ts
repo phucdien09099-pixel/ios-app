@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { startHomeTour } from "./tours/homeTour";
 import { ONBOARDING_KEYS } from "./onboardingKeys";
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export function useWelcomeModal() {
     const [showWelcome, setShowWelcome] = useState(false);
@@ -40,6 +41,9 @@ export function useWelcomeModal() {
         localStorage.removeItem("JUST_CREATED_ROOM_ID");
         localStorage.removeItem("JUST_ADDED_DEVICE");
         setShowWelcome(false);
+        setTimeout(() => {
+            triggerSmartWhisper(true, false);
+        }, 300);
 
     };
 

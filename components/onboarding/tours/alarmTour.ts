@@ -1,14 +1,12 @@
+import { triggerSmartWhisper } from "@/libs/whisperUtils";
 import { driver } from "driver.js";
 
 export let alarmDriverObj: ReturnType<typeof driver> | undefined;
 
-// Xóa bỏ tham số forceInside vì ta sẽ tự động nhận diện
 export const startAlarmTour = () => {
     if (alarmDriverObj) alarmDriverObj.destroy();
     sessionStorage.setItem("alarm_tour_active", "true");
 
-    // 🟢 TỰ ĐỘNG NHẬN DIỆN MÀN HÌNH: 
-    // Tìm thử xem thẻ select kiểu chuông có đang xuất hiện trên màn hình không
     const isInsideForm = document.querySelector('[data-tour="alarm-mode-select"]') !== null;
 
     if (isInsideForm) {
@@ -23,6 +21,9 @@ export const startAlarmTour = () => {
             onPrevClick: () => {
                 sessionStorage.removeItem("alarm_tour_active");
                 if (alarmDriverObj) alarmDriverObj.destroy();
+                setTimeout(() => {
+                    triggerSmartWhisper(true, false);
+                }, 300);
             },
             onDestroyStarted: () => {
                 sessionStorage.removeItem("alarm_tour_active");

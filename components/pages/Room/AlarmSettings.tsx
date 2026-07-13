@@ -34,6 +34,7 @@ import { ConfigDB } from "@/db/types/config";
 import { sendNotificationToMe } from "@/libs/fcmClient";
 import { startAlarmTour } from "@/components/onboarding/tours/alarmTour";
 import HelpButton from "@/components/common/HelpButton";
+import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 
 type AlarmMode =
     | "SHORT_BEEP"
@@ -151,6 +152,13 @@ export default function AlarmSettings({ roomId, roomName }: { roomId: string; ro
     useEffect(() => {
         void loadSavedAlarms();
     }, [loadSavedAlarms]);
+    
+    useEffect(() => {
+        pauseTourForDeviceDrawer();
+        return () => {
+            resumeTourAfterDeviceDrawer(); 
+        };
+    }, []);
 
     const openCreateAlarm = () => {
         open({

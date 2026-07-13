@@ -11,7 +11,7 @@ import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import { cn } from "@/libs/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, AiLearningIcon, ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp01Icon, BulbIcon, Cancel01Icon, CheckmarkCircle02Icon, Delete02Icon, Edit02Icon, Fan01Icon, Home01Icon, Menu01Icon, PauseIcon, PlayIcon, PowerIcon, RemoteControlIcon, SaveIcon, Settings02Icon, StopIcon, Tv01Icon, VolumeHighIcon, VolumeLowIcon, VolumeMute01Icon, } from "@hugeicons/core-free-icons";
-
+import { resumeTourAfterDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 import { Device } from "../Room/DeviceCard";
 import { deviceRemoteButtonsRepository } from "@/db/repository/DeviceRemoteButtonsRepository";
 
@@ -160,6 +160,13 @@ export default function LearningRemoteController({ data, roomName }: { data: Dev
         : editMode
             ? "Chọn nút để đổi tên, đổi mã hoặc xoá khỏi remote."
             : "Chạm vào nút đã học để phát lệnh điều khiển thiết bị.";
+            
+    useEffect(() => {
+        return () => {
+            resumeTourAfterDeviceDrawer(); 
+        };
+    }, []);
+    
     // 🔄 Tải cấu trúc nút từ SQLite cục bộ khi mở màn hình thiết bị
     useEffect(() => {
         const loadButtonsFromDB = async () => {

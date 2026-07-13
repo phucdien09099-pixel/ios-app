@@ -15,7 +15,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { cn } from "@/libs/utils";
-
+import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
     ColorsIcon,
@@ -70,6 +70,13 @@ export default function HubSettings({ roomName }: { roomName: any }) {
         return () => {
             if (ledSendTimerRef.current) clearTimeout(ledSendTimerRef.current);
             if (alarmSendTimerRef.current) clearTimeout(alarmSendTimerRef.current);
+        };
+    }, []);
+    
+    useEffect(() => {
+        pauseTourForDeviceDrawer();
+        return () => {
+            resumeTourAfterDeviceDrawer(); 
         };
     }, []);
 
