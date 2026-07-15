@@ -20,9 +20,14 @@ async fn api_request(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .plugin(tauri_plugin_blec::init())
+        .plugin(tauri_plugin_blec::init());
+
+    #[cfg(mobile)]
+    let builder = builder.plugin(tauri_plugin_fcm::init());
+
+    builder
         .invoke_handler(tauri::generate_handler![api_request])
         .setup(|app| {
             if cfg!(debug_assertions) {

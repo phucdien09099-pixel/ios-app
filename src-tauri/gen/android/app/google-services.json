@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1092698420388",
+    "project_id": "plasma-winter-481302-m9",
+    "storage_bucket": "plasma-winter-481302-m9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1092698420388:android:92799bd36c009e3a3f6231",
+        "android_client_info": {
+          "package_name": "com.tauri.testbuild"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq3KVda1SuQPd1xo5sic0Ey9YXMAkLpxk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1092698420388:android:e2c031669a5117c23f6231",
+        "android_client_info": {
+          "package_name": "com.tauri.testbuild.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq3KVda1SuQPd1xo5sic0Ey9YXMAkLpxk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

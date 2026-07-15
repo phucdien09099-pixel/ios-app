@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm, useWatch } from "react-hook-form";
 import { TimezoneCombobox } from "@/components/timezone-combobox";
+import { registerDeviceFcmToken } from "@/libs/fcmClient";
 
 type FormValues = {
   name: string;
@@ -27,6 +28,15 @@ type AccountResponse = {
   roles: string[];
   createdAt: string;
   updatedAt: string;
+};
+
+type AuthResponse = {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresInSeconds: number;
+  refreshExpiresInSeconds: number;
+  account: AccountResponse;
 };
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
@@ -89,6 +99,20 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         })
       );
       localStorage.setItem("auth_password", data.password);
+
+      // The register endpoint only returns an account. Authenticate first so
+      // the protected FCM endpoint receives a valid bearer token.
+      const auth = await apiClient.post<AuthResponse>("/api/auth/login", {
+        email: account.email,
+        password: data.password,
+      }, { auth: false });
+      await apiClient.setAuthSession(auth);
+
+      try {
+        await registerDeviceFcmToken();
+      } catch (fcmError) {
+        console.warn("Không thể đăng ký FCM token sau khi tạo tài khoản:", fcmError);
+      }
 
       toast.success("Tạo tài khoản thành công! 🎉");
       back();

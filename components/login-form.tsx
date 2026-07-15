@@ -10,6 +10,7 @@ import { cn } from "@/libs/utils";
 import { apiClient } from "@/utils/Tauri/HttpClient";
 import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 import { userRepo } from "@/db/repository/UserRepository";
+import { registerDeviceFcmToken } from "@/libs/fcmClient";
 
 type LoginFormValues = {
   email: string;
@@ -69,6 +70,12 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
 
       await apiClient.setAuthSession(data);
       localStorage.setItem("auth_password", values.password);
+
+      try {
+        await registerDeviceFcmToken();
+      } catch (fcmError) {
+        console.warn("Không thể đăng ký FCM token sau khi đăng nhập:", fcmError);
+      }
 
       try {
         const existingUser = await userRepo.findByEmail(data.account.email);
