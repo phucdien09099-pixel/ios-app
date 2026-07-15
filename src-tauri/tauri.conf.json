@@ -38,7 +38,9 @@
       "debugApplicationIdSuffix": ".debug"
     },
     "iOS": {
-      "frameworks": ["CoreBluetooth.framework"]
+      "frameworks": [
+        "CoreBluetooth.framework"
+      ]
     }
   }
 }
