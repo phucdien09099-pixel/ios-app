@@ -135,7 +135,6 @@ export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
       </button>
 
       {open && (
-        /* ✨ FIX 1: Đổi bottom-[calc(100%+4px)] để Menu hiển thị hất ngược lên trên thay vì đâm xuống dưới */
         <div className="absolute left-0 right-0 bottom-[calc(100%+4px)] z-99999 flex max-h-70 flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2">
 
           <div className="flex items-center border-b px-3">
@@ -150,7 +149,6 @@ export function TimezoneCombobox({ value, onChange }: TimezoneComboboxProps) {
             />
           </div>
 
-          {/* ✨ FIX 2: Thêm onWheel và onTouchMove để CHẶN Drawer cướp quyền cuộn danh sách */}
           <div
             className="overflow-y-auto p-1 flex-1 overscroll-contain"
             onWheel={(e) => e.stopPropagation()}
