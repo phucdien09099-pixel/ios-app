@@ -11,44 +11,34 @@ interface AuthSelectPageProps {
 }
 
 export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) {
-    const { open, back } = useNavDrawer();
+    const { open, closeAll } = useNavDrawer();
 
     return (
         <main className="flex flex-col min-h-dvh items-center justify-center bg-muted/30 p-4">
             <div className="flex flex-col items-center text-center">
                 <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
-                    <HugeiconsIcon
-                        icon={SmartPhone01Icon}
-                        size={42}
-                        className="text-primary" />
+                    <HugeiconsIcon icon={SmartPhone01Icon} size={42} className="text-primary" />
                 </div>
-
-                <h1 className="text-2xl font-bold tracking-tight">
-                    Smart Home
-                </h1>
-
+                <h1 className="text-2xl font-bold tracking-tight">Smart Home</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
                     Điều khiển và quản lý thiết bị của bạn mọi lúc mọi nơi
                 </p>
             </div>
 
-            <div className="mt-8 space-y-3">
+            <div className="mt-8 space-y-3 w-full max-w-sm">
                 <Button
                     onClick={() => open({
                         id: "login",
                         title: "",
                         component: LoginForm,
                         props: {
-                            onSuccess: () => { back(); onLoginSuccess() },
+                            onSuccess: () => { closeAll(); onLoginSuccess(); },
                             className: "h-[70vh]"
                         },
                     })}
-                    className="h-12 w-full rounded-2xl text-base"
-                    size="lg">
-                    <HugeiconsIcon
-                        icon={Login03Icon}
-                        size={20}
-                        className="mr-2" />
+                    className="h-12 w-full rounded-2xl text-base" size="lg"
+                >
+                    <HugeiconsIcon icon={Login03Icon} size={20} className="mr-2" />
                     Đăng nhập
                 </Button>
 
@@ -57,16 +47,13 @@ export default function AuthSelectPage({ onLoginSuccess }: AuthSelectPageProps) 
                     title: "",
                     component: SignupForm,
                     props: {
+                        onSuccess: () => { closeAll(); onLoginSuccess(); }, // THÊM DÒNG NÀY
                         className: "ring-0! h-[82vh]"
                     },
                 })}
-                    variant="outline"
-                    className="h-12 w-full rounded-2xl text-base"
-                    size="lg">
-                    <HugeiconsIcon
-                        icon={UserAdd01Icon}
-                        size={20}
-                        className="mr-2" />
+                    variant="outline" className="h-12 w-full rounded-2xl text-base" size="lg"
+                >
+                    <HugeiconsIcon icon={UserAdd01Icon} size={20} className="mr-2" />
                     Tạo tài khoản
                 </Button>
             </div>

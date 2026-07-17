@@ -13,6 +13,9 @@ import { useForm, useWatch } from "react-hook-form";
 import { TimezoneCombobox } from "@/components/timezone-combobox";
 import { registerDeviceFcmToken } from "@/libs/fcmClient";
 
+// Import thêm form OTP mới
+import { OtpForm } from "./otp-form";
+
 type FormValues = {
   name: string;
   email: string;
@@ -40,7 +43,8 @@ type AuthResponse = {
 };
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
-  const { back } = useNavDrawer();
+  // Lấy thêm open và closeAll từ hook
+  const { open, closeAll } = useNavDrawer();
   const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       name: "",
@@ -66,7 +70,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
     }
   }, [setValue]);
 
-  const onSubmit = async (data: FormValues) => {
+  // Hàm gọi API nguyên bản, sẽ được chạy KHI xác thực OTP thành công
+  const onSubmitAPI = async (data: FormValues) => {
     try {
       const account = await apiClient.post<AccountResponse>("/api/auth/register", {
         email: data.email.trim().toLowerCase(),
@@ -100,8 +105,6 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
       );
       localStorage.setItem("auth_password", data.password);
 
-      // The register endpoint only returns an account. Authenticate first so
-      // the protected FCM endpoint receives a valid bearer token.
       const auth = await apiClient.post<AuthResponse>("/api/auth/login", {
         email: account.email,
         password: data.password,
@@ -115,7 +118,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
       }
 
       toast.success("Tạo tài khoản thành công! 🎉");
-      back();
+      // Dùng closeAll() thay vì back() để đóng cả ngăn kéo OTP và ngăn kéo Đăng ký
+      closeAll(); 
     } catch (error) {
       console.error("Lỗi khi tạo tài khoản:", error);
       const message = error instanceof Error ? error.message : String(error);
@@ -127,6 +131,19 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         toast.error("Không thể kết nối đến máy chủ. Vui lòng thử lại!");
       }
     }
+  };
+
+  // Hàm chạy khi bấm Create Account: Mở ngăn kéo OTP đè lên
+  const onSubmit = (data: FormValues) => {
+    open({
+      id: "otp-verify",
+      title: "",
+      component: OtpForm,
+      props: {
+        email: data.email,
+        onVerifySuccess: () => onSubmitAPI(data),
+      }
+    });
   };
 
   return (
@@ -161,8 +178,8 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                 {...register("email", {
                   required: "Email is required",
                   pattern: {
-                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: "Invalid email address",
+                    value: /^[^\s@]+@gmail\.com$/i, // Thêm Regex bắt buộc đuôi @gmail.com
+                    message: "Vui lòng nhập đúng định dạng đuôi @gmail.com",
                   },
                 })}
               />
@@ -208,7 +225,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
             <Field>
               <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? "Creating..." : "Create Account"}
+                {isSubmitting ? "Creating..." : "Xác thực tài khoản"}
               </Button>
             </Field>
 
