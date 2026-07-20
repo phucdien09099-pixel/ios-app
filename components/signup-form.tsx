@@ -1,22 +1,18 @@
 "use client";
 import { useEffect } from "react";
-import { userRepo } from "@/db/repository/UserRepository";
-import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
-import { apiClient } from "@/utils/Tauri/HttpClient";
 import { toast } from "sonner";
-
+import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm, useWatch } from "react-hook-form";
 import { TimezoneCombobox } from "@/components/timezone-combobox";
-import { registerDeviceFcmToken } from "@/libs/fcmClient";
-
-// Import thêm form OTP mới
 import { OtpForm } from "./otp-form";
+import { apiClient } from "@/utils/Tauri/HttpClient";
 
-type FormValues = {
+// Export type này để file OTP có thể dùng chung
+export type FormValues = {
   name: string;
   email: string;
   password: string;
@@ -24,27 +20,13 @@ type FormValues = {
   timezone: string;
 };
 
-type AccountResponse = {
-  id: number;
-  email: string;
-  status: string;
-  roles: string[];
-  createdAt: string;
-  updatedAt: string;
-};
+// Đã fix lỗi "Unknown event handler property onSuccess" ở đây
+interface SignupFormProps extends React.ComponentProps<typeof Card> {
+  onSuccess?: () => void;
+}
 
-type AuthResponse = {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresInSeconds: number;
-  refreshExpiresInSeconds: number;
-  account: AccountResponse;
-};
-
-export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
-  // Lấy thêm open và closeAll từ hook
-  const { open, closeAll } = useNavDrawer();
+export function SignupForm({ onSuccess, ...props }: SignupFormProps) {
+  const { open } = useNavDrawer();
   const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     defaultValues: {
       name: "",
@@ -70,101 +52,54 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
     }
   }, [setValue]);
 
-  // Hàm gọi API nguyên bản, sẽ được chạy KHI xác thực OTP thành công
-  const onSubmitAPI = async (data: FormValues) => {
+  // Giờ hàm này gọi API xin OTP trước, gửi mã xong mới đẩy DATA sang OTP Form
+  const onSubmit = async (data: FormValues) => {
     try {
-      const account = await apiClient.post<AccountResponse>("/api/auth/register", {
-        email: data.email.trim().toLowerCase(),
-        password: data.password,
-      }, { auth: false });
-
-      const existingUser = await userRepo.findByEmail(account.email);
-      if (!existingUser) {
-        await userRepo.create({
-          id: String(account.id),
-          name: data.name,
-          email: account.email,
-          role: "owner",
-          parent_id: null,
-          is_owner: true,
-          timezone: data.timezone,
-          created_at: account.createdAt,
-        });
-      }
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: String(account.id),
-          accountId: String(account.id),
-          email: account.email,
-          name: data.name || account.email.split("@")[0],
-          parentId: null,
-          roles: account.roles,
-        })
+      await apiClient.post(
+        "/api/auth/otp/request",
+        { email: data.email.trim().toLowerCase() },
+        { auth: false }
       );
-      localStorage.setItem("auth_password", data.password);
 
-      const auth = await apiClient.post<AuthResponse>("/api/auth/login", {
-        email: account.email,
-        password: data.password,
-      }, { auth: false });
-      await apiClient.setAuthSession(auth);
-
-      try {
-        await registerDeviceFcmToken();
-      } catch (fcmError) {
-        console.warn("Không thể đăng ký FCM token sau khi tạo tài khoản:", fcmError);
-      }
-
-      toast.success("Tạo tài khoản thành công! 🎉");
-      // Dùng closeAll() thay vì back() để đóng cả ngăn kéo OTP và ngăn kéo Đăng ký
-      closeAll(); 
+      open({
+        id: "otp-verify",
+        title: "",
+        component: OtpForm,
+        props: {
+          signupData: data, // Ném nguyên cục dữ liệu sang đây
+          onSuccessCallback: onSuccess // Truyền onSuccess theo nếu có
+        }
+      });
     } catch (error) {
-      console.error("Lỗi khi tạo tài khoản:", error);
+      console.error("Lỗi khi gửi mã OTP:", error);
       const message = error instanceof Error ? error.message : String(error);
+
       if (message.includes("409") || message.includes("already exists")) {
         toast.error("Email này đã được đăng ký!");
-      } else if (message.includes("400")) {
-        toast.error("Email hoặc mật khẩu không hợp lệ.");
       } else {
-        toast.error("Không thể kết nối đến máy chủ. Vui lòng thử lại!");
+        toast.error("Không thể gửi mã xác thực. Vui lòng thử lại!");
       }
     }
-  };
-
-  // Hàm chạy khi bấm Create Account: Mở ngăn kéo OTP đè lên
-  const onSubmit = (data: FormValues) => {
-    open({
-      id: "otp-verify",
-      title: "",
-      component: OtpForm,
-      props: {
-        email: data.email,
-        onVerifySuccess: () => onSubmitAPI(data),
-      }
-    });
   };
 
   return (
     <Card {...props}>
       <CardHeader>
-        <CardTitle>Create an account</CardTitle>
+        <CardTitle>Tạo tài khoản</CardTitle>
         <CardDescription>
-          Enter your information below to create your account
+          Nhập thông tin của bạn bên dưới để tạo tài khoản
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <FieldGroup>
-
             <Field>
-              <FieldLabel htmlFor="name">Full Name</FieldLabel>
+              <FieldLabel htmlFor="name">Họ và tên</FieldLabel>
               <Input
                 id="name"
                 type="text"
                 placeholder="John Doe"
-                {...register("name", { required: "Name is required" })}
+                {...register("name", { required: "Vui lòng nhập họ và tên" })}
               />
               {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
             </Field>
@@ -176,9 +111,9 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                 type="email"
                 placeholder="m@example.com"
                 {...register("email", {
-                  required: "Email is required",
+                  required: "Vui lòng nhập địa chỉ email",
                   pattern: {
-                    value: /^[^\s@]+@gmail\.com$/i, // Thêm Regex bắt buộc đuôi @gmail.com
+                    value: /^[^\s@]+@gmail\.com$/i,
                     message: "Vui lòng nhập đúng định dạng đuôi @gmail.com",
                   },
                 })}
@@ -187,15 +122,15 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <FieldLabel htmlFor="password">Mật khẩu</FieldLabel>
               <Input
                 id="password"
                 type="password"
                 {...register("password", {
-                  required: "Password is required",
+                  required: "Vui lòng nhập mật khẩu",
                   minLength: {
                     value: 8,
-                    message: "Must be at least 8 characters",
+                    message: "Mật khẩu phải có ít nhất 8 ký tự",
                   },
                 })}
               />
@@ -203,13 +138,13 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
+              <FieldLabel htmlFor="confirm-password">Xác nhận Mật khẩu</FieldLabel>
               <Input
                 id="confirm-password"
                 type="password"
                 {...register("confirmPassword", {
-                  required: "Please confirm your password",
-                  validate: (value) => value === password || "Passwords do not match",
+                  required: "Vui lòng xác nhận mật khẩu",
+                  validate: (value) => value === password || "Mật khẩu không khớp",
                 })}
               />
               {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
@@ -225,10 +160,9 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
             <Field>
               <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? "Creating..." : "Xác thực tài khoản"}
+                Xác thực tài khoản
               </Button>
             </Field>
-
           </FieldGroup>
         </form>
       </CardContent>

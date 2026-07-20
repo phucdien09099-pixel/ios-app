@@ -11,6 +11,8 @@ import { apiClient } from "@/utils/Tauri/HttpClient";
 import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 import { userRepo } from "@/db/repository/UserRepository";
 import { registerDeviceFcmToken } from "@/libs/fcmClient";
+import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
+import { ForgotPasswordForm } from "@/components/forgot-password/forgot-password-form";
 
 type LoginFormValues = {
   email: string;
@@ -37,6 +39,7 @@ interface LoginFormProps extends React.ComponentProps<"div"> {
 
 export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
   const [serverError, setServerError] = React.useState("");
+  const { open } = useNavDrawer();
 
   const {
     register,
@@ -145,14 +148,14 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
 
   return (
     <div className={cn("flex flex-col gap-6 w-full max-w-md mx-auto p-4 sm:p-0", className)} {...props}>
-      {/* <Card className="w-full ring-0 focus-visible:ring-0 border shadow-md rounded-2xl"> */}
+      <div className={cn("flex flex-col gap-6 w-full h-full max-w-md mx-auto p-4 sm:p-0 justify-center", className)} {...props}>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold tracking-tight">Login to your account</CardTitle>
-        <CardDescription>Enter your email below to login to your account</CardDescription>
+        <CardTitle className="text-2xl font-bold tracking-tight text-center">Đăng nhập</CardTitle>
+        <CardDescription>Nhập email và mật khẩu của bạn để đăng nhập vào tài khoản</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <FieldGroup className="space-y-4">
+          <FieldGroup className="space-y-1">
             <Field className="flex flex-col gap-1.5 w-full">
               <FieldLabel htmlFor="email" className="text-sm font-medium">Email</FieldLabel>
               <Input
@@ -160,26 +163,46 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
                 type="email"
                 placeholder="m@example.com"
                 className="w-full rounded-xl h-10"
-                {...register("email", { required: "Email is required" })}
+                {...register("email", { required: "Vui lòng nhập địa chỉ email" })}
               />
               {errors.email && <FieldError className="text-xs text-red-500">{errors.email.message}</FieldError>}
             </Field>
 
-            <Field className="flex flex-col gap-1.5 w-full">
-              <div className="flex items-center justify-between w-full">
-                <FieldLabel htmlFor="password" className="text-sm font-medium">Password</FieldLabel>
-                <a href="#" className="text-xs text-primary underline-offset-4 hover:underline transition-colors">
-                  Forgot your password?
-                </a>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                className="w-full rounded-xl h-10"
-                {...register("password", { required: "Password is required" })}
-              />
-              {errors.password && <FieldError className="text-xs text-red-500">{errors.password.message}</FieldError>}
-            </Field>
+            <Field className="flex flex-col gap-1 w-full">
+            {/* Nhãn Mật khẩu giữ nguyên phía trên */}
+            <FieldLabel htmlFor="password" className="text-sm font-medium">Mật khẩu</FieldLabel>
+            
+            <Input
+              id="password"
+              type="password"
+              className="w-full rounded-xl h-10"
+              {...register("password", { required: "Vui lòng nhập mật khẩu" })}
+            />
+            
+            {/* Phần hiển thị lỗi và link quên mật khẩu nằm bên dưới Input */}
+            <div className="flex items-center justify-between w-full text-xs mt-1">
+              {errors.password ? (
+                <FieldError className="text-red-500">{errors.password.message}</FieldError>
+              ) : (
+                <div /> /* Thẻ trống để giữ khoảng trống đẩy link quên mật khẩu sang phải khi không có lỗi */
+              )}
+              
+              <a href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  open({
+                    id: "forgot-password",
+                    title: "",
+                    component: ForgotPasswordForm,
+                  });
+                }}
+                className="text-blue-600 underline-offset-4 hover:underline transition-colors ml-auto"
+              >
+                Quên mật khẩu?
+              </a>
+            </div>
+          </Field>
+
 
             {serverError && (
               <p className="text-sm font-medium text-red-500 bg-red-50/50 p-2.5 rounded-xl border border-red-100 text-center animate-in fade-in-50 duration-200">
@@ -189,13 +212,13 @@ export function LoginForm({ className, onSuccess, ...props }: LoginFormProps) {
 
             <Field className="pt-2 w-full">
               <Button type="submit" disabled={isSubmitting} className="w-full rounded-xl h-10 font-medium transition-all">
-                {isSubmitting ? "Logging in..." : "Login"}
+                {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
               </Button>
             </Field>
           </FieldGroup>
         </form>
       </CardContent>
-      {/* </Card> */}
+      </div>
     </div>
   );
 }

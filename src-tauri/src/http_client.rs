@@ -80,6 +80,18 @@ pub async fn put(url: &str, session_token: Option<String>, body: Option<Value>) 
     parse_response(response).await
 }
 
+// 🟠 PATCH (PATCH)
+pub async fn patch(url: &str, session_token: Option<String>, body: Option<Value>) -> Result<Value, String> {
+    let client = reqwest::Client::new();
+    let mut request = client.patch(url).headers(create_headers(session_token));
+
+    if let Some(b) = body {
+        request = request.json(&b);
+    }
+
+    let response = request.send().await.map_err(|e| e.to_string())?;
+    parse_response(response).await
+}
 // 🔴 DELETE (DELETE)
 pub async fn delete(url: &str, session_token: Option<String>) -> Result<Value, String> {
     let client = reqwest::Client::new();

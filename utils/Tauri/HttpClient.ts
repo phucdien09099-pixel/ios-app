@@ -139,7 +139,7 @@ class HttpClient {
         return true;
     }
 
-    private async request<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body?: unknown, options?: { auth?: boolean; retry?: boolean }): Promise<T> {
+    private async request<T>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", path: string, body?: unknown, options?: { auth?: boolean; retry?: boolean }): Promise<T> {
         const shouldAuth = options?.auth !== false;
         if (shouldAuth) {
             await this.ensureValidAccessToken();
@@ -171,6 +171,10 @@ class HttpClient {
 
     async put<T>(path: string, body?: unknown, options?: { auth?: boolean }): Promise<T> {
         return this.request<T>("PUT", path, body, options);
+    }
+
+    async patch<T>(path: string, body?: unknown, options?: { auth?: boolean }): Promise<T> {
+        return this.request<T>("PATCH", path, body, options);
     }
 
     async get<T>(path: string): Promise<T> {

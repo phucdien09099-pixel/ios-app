@@ -3,43 +3,21 @@ import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MailCheck, RefreshCw } from "lucide-react";
-import { apiClient } from "@/utils/Tauri/HttpClient";
-import { userRepo } from "@/db/repository/UserRepository";
-import { registerDeviceFcmToken } from "@/libs/fcmClient";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
-import type { FormValues } from "./signup-form";
+import { apiClient } from "@/utils/Tauri/HttpClient";
+import { ResetPasswordForm } from "./reset-password-form";
 
-type AccountResponse = {
-  id: number;
+interface ForgotPasswordOtpProps {
   email: string;
-  status: string;
-  roles: string[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-type AuthResponse = {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresInSeconds: number;
-  refreshExpiresInSeconds: number;
-  account: AccountResponse;
-};
-
-// Định nghĩa props mới nhận toàn bộ data
-interface OtpFormProps {
-  signupData: FormValues;
-  onSuccessCallback?: () => void;
 }
 
-export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
+export function ForgotPasswordOtp({ email }: ForgotPasswordOtpProps) {
   const [otp, setOtp] = useState<string>("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const otpInputRef = useRef<HTMLInputElement>(null);
-  const { closeAll } = useNavDrawer();
   const [countdown, setCountdown] = useState(60);
+  const { open } = useNavDrawer();
 
   useEffect(() => {
     if (otpInputRef.current) {
@@ -48,7 +26,6 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
   }, []);
   useEffect(() => {
     if (countdown <= 0) return;
-
     const timer = setInterval(() => {
       setCountdown((prev) => prev - 1);
     }, 1000);
@@ -64,88 +41,27 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
     }
 
     setIsVerifying(true);
-    toast.success("Mã hợp lệ! Đang khởi tạo tài khoản...");
 
     try {
-      // 1. GỌI API ĐĂNG KÝ TRỰC TIẾP Ở ĐÂY
-      const account = await apiClient.post<AccountResponse>("/api/auth/register", {
-        email: signupData.email.trim().toLowerCase(),
-        password: signupData.password,
-        otp: otp,
-      }, { auth: false });
-
-      // 2. Lưu Database cục bộ
-      const existingUser = await userRepo.findByEmail(account.email);
-      if (!existingUser) {
-        await userRepo.create({
-          id: String(account.id),
-          name: signupData.name,
-          email: account.email,
-          role: "owner",
-          parent_id: null,
-          is_owner: true,
-          timezone: signupData.timezone,
-          created_at: account.createdAt,
-        });
-      }
-
-      // 3. Lưu LocalStorage
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: String(account.id),
-          accountId: String(account.id),
-          email: account.email,
-          name: signupData.name || account.email.split("@")[0],
-          parentId: null,
-          roles: account.roles,
-        })
+      await apiClient.post(
+        "/api/auth/otp/verify",
+        { email, otp, purpose: "PASSWORD_RESET" },
+        { auth: false }
       );
-      localStorage.setItem("auth_password", signupData.password);
 
-      // 4. Gọi API Login lấy Token
-      const auth = await apiClient.post<AuthResponse>("/api/auth/login", {
-        email: account.email,
-        password: signupData.password,
-      }, { auth: false });
-      await apiClient.setAuthSession(auth);
-
-      // 5. Lưu hồ sơ người dùng (self-service) vào tài khoản vừa tạo
-      try {
-        await apiClient.patch("/api/users/me", {
-          fullName: signupData.name,
-        });
-      } catch (userError) {
-        console.warn("Không thể lưu hồ sơ người dùng sau khi tạo tài khoản:", userError);
-      }
-
-      // 6. Đăng ký nhận thông báo FCM
-      try {
-        await registerDeviceFcmToken();
-      } catch (fcmError) {
-        console.warn("Không thể đăng ký FCM token sau khi tạo tài khoản:", fcmError);
-      }
-
-      toast.success("Tạo tài khoản thành công! 🎉");
-      closeAll(); // Đóng mọi Drawer
-      if (onSuccessCallback) onSuccessCallback();
-
+      open({
+        id: "reset-password-form",
+        title: "",
+        component: ResetPasswordForm,
+        props: { email, otp },
+      });
     } catch (error) {
-      console.error("Lỗi khi tạo tài khoản:", error);
-      const message = error instanceof Error ? error.message : String(error);
-      
-      if (message.includes("409") || message.includes("already exists")) {
-        toast.error("Email này đã được đăng ký!");
-      } else if (message.includes("400")) {
-        toast.error("Mã xác thực không đúng hoặc đã hết hạn. Vui lòng thử lại!");
-      } else {
-        toast.error("Không thể kết nối đến máy chủ. Vui lòng thử lại!");
-      }
-      
-      // Lỗi thì dừng loading để người dùng thao tác lại
-      setIsVerifying(false);
+      console.error("Lỗi khi xác thực OTP quên mật khẩu:", error);
+      toast.error("Mã xác thực không đúng hoặc đã hết hạn. Vui lòng kiểm tra lại!");
       setOtp("");
       otpInputRef.current?.focus();
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -153,12 +69,8 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
     if (isResending) return;
     setIsResending(true);
     try {
-      await apiClient.post(
-        "/api/auth/otp/request",
-        { email: signupData.email.trim().toLowerCase() },
-        { auth: false }
-      );
-      toast.success(`Đã gửi lại mã xác thực mới!`);
+      await apiClient.post("/api/auth/password/forgot", { email }, { auth: false });
+      toast.success("Đã gửi lại mã xác thực mới!");
       setCountdown(60);
       setOtp("");
       otpInputRef.current?.focus();
@@ -174,7 +86,7 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
     <div className="w-full flex flex-col pt-0 px-2">
       <div className="w-full text-left mb-10">
         <p className="text-[14px] text-muted-foreground">
-          Đã gửi mã xác thực đến: <span className="font-semibold text-foreground">{signupData.email}</span>
+          Đã gửi mã xác thực đến: <span className="font-semibold text-foreground">{email}</span>
         </p>
       </div>
 
@@ -208,8 +120,8 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
                 <div
                   key={i}
                   className={`w-12 h-14 flex items-center justify-center text-2xl font-bold rounded-xl border bg-background transition-all duration-200 ${
-                    isFocused 
-                      ? "border-b-4 border-b-primary border-t-muted border-x-muted scale-110 shadow-sm" 
+                    isFocused
+                      ? "border-b-4 border-b-primary border-t-muted border-x-muted scale-110 shadow-sm"
                       : "border-muted-foreground/30"
                   }`}
                 >
@@ -232,9 +144,11 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
               disabled={isVerifying || isResending || countdown > 0}
               className={`
                 flex items-center gap-1 transition-all duration-200
-                ${countdown > 0
-                  ? "text-muted-foreground cursor-not-allowed"
-                  : "text-primary font-bold hover:text-primary/80"}
+                ${
+                  countdown > 0
+                    ? "text-muted-foreground cursor-not-allowed"
+                    : "text-primary font-bold hover:text-primary/80"
+                }
               `}
             >
               <RefreshCw
@@ -243,11 +157,10 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
 
               {countdown > 0 ? (
                 <>
-                  Gửi lại mã 
+                  Gửi lại{" "}
                   <span className="font-bold text-foreground">
                     ({countdown})
                   </span>
-                  
                 </>
               ) : (
                 <span className="font-bold">Gửi lại mã</span>
@@ -256,13 +169,13 @@ export function OtpForm({ signupData, onSuccessCallback }: OtpFormProps) {
           </div>
         </div>
 
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           size="lg"
           disabled={otp.length < 6 || isVerifying}
           className="w-full max-w-[340px] h-12 text-base font-semibold rounded-xl"
         >
-          {isVerifying ? "Đang xử lý..." : "Xác Thực"}
+          {isVerifying ? "Đang xử lý..." : "Xác thực"}
         </Button>
       </form>
     </div>

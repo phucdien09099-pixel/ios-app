@@ -13,8 +13,9 @@ async fn api_request(
         "GET" => http_client::get(&url, session_token).await,
         "POST" => http_client::post(&url, session_token, body).await,
         "PUT" => http_client::put(&url, session_token, body).await,
+        "PATCH" => http_client::patch(&url, session_token, body).await,
         "DELETE" => http_client::delete(&url, session_token).await,
-        _ => Err("Method không hợp lệ (Chỉ hỗ trợ GET, POST, PUT, DELETE)".to_string()),
+        _ => Err("Method không hợp lệ (Chỉ hỗ trợ GET, POST, PUT, PATCH, DELETE)".to_string()),
     }
 }
 

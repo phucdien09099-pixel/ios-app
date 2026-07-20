@@ -1,6 +1,6 @@
 import { Card, CardContent, } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage, } from "@/components/ui/avatar"
-import { ArrowRight01Icon, CustomerService01Icon, Message01Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, CustomerService01Icon, Message01Icon, UserGroupIcon,Settings01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import MemberList from "./MemberList"
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer"
@@ -10,8 +10,15 @@ import { Logout01Icon } from "@hugeicons/core-free-icons";
 import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 import { clearLocalSmartData } from "@/libs/smartSync";
 import { apiClient } from "@/utils/Tauri/HttpClient";
+import SettingsPage from "./SettingsPage";
+
 
 const menus = [
+    {
+        title: "Cài đặt",
+        icon: Settings01Icon,
+        element: SettingsPage,
+    },
     {
         title: "Quản lý người dùng",
         icon: UserGroupIcon,
@@ -86,7 +93,7 @@ export default function UserPage() {
             <div className="mx-auto max-w-md space-y-6">
 
                 <Card className="ring-0!">
-                    <CardContent className="flex flex-col items-center py-8">
+                    <CardContent className="flex flex-col items-center py-1">
                         <Avatar className="h-24 w-24 border-4 border-background shadow-md">
                             <AvatarImage src="/avatar.png" />
                             <AvatarFallback>
@@ -105,7 +112,7 @@ export default function UserPage() {
                 </Card>
 
                 {/* Menu */}
-                <Card className="ring-0!">
+                <Card className="ring-0! rounded-none -mx-4">
                     <CardContent className="p-0">
                         {menus.map((item, index) => {
                             const Icon = item.icon

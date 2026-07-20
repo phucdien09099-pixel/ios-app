@@ -300,8 +300,7 @@ export function RoomPage() {
                                 id: "user",
                                 title: "",
                                 component: UserPage,
-                                renderRightButtonHeader:
-                                    <></>
+
                             })}
                             variant="outline"
                             size="icon"
