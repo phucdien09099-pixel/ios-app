@@ -69,6 +69,30 @@ jobs:
             echo "Không tìm thấy file .entitlements, bỏ qua bước này."
           fi
 
+          # 2.6. Tạo file GoogleService-Info.plist placeholder để Firebase SDK không
+          # bị fatalError() lúc khởi động do thiếu file cấu hình (chỉ cần đủ key hợp lệ
+          # về hình thức, không cần đúng project Firebase thật - vì push vốn không nhận
+          # được trên bản build không có Apple Developer Program, chỉ cần app không crash)
+          if [ -n "$PLIST_TARGET" ]; then
+            GOOGLESERVICE_PATH="$(dirname "$PLIST_TARGET")/GoogleService-Info.plist"
+            plutil -create xml1 "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :CLIENT_ID string 0000000000-placeholder.apps.googleusercontent.com" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :REVERSED_CLIENT_ID string com.googleusercontent.apps.0000000000-placeholder" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :API_KEY string AIzaSyPlaceholderPlaceholderPlaceholder" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :GCM_SENDER_ID string 000000000000" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :PLIST_VERSION string 1" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :BUNDLE_ID string com.tauri.testbuild" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :PROJECT_ID string placeholder-project" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :STORAGE_BUCKET string placeholder-project.appspot.com" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :IS_ADS_ENABLED bool false" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :IS_ANALYTICS_ENABLED bool false" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :IS_APPINVITE_ENABLED bool false" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :IS_GCM_ENABLED bool true" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :IS_SIGNIN_ENABLED bool false" "$GOOGLESERVICE_PATH"
+            /usr/libexec/PlistBuddy -c "Add :GOOGLE_APP_ID string 1:000000000000:ios:0000000000000000000000" "$GOOGLESERVICE_PATH"
+            echo "Đã tạo GoogleService-Info.plist placeholder tại: $GOOGLESERVICE_PATH"
+          fi
+
           # 3. Ép cấu hình Manual Signing vào project.pbxproj để bypass tài khoản Apple Developer
           SED_TARGET=$(find src-tauri/gen/apple -name "project.pbxproj" | head -n 1)
           if [ -n "$SED_TARGET" ]; then
