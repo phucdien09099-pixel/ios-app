@@ -58,6 +58,17 @@ jobs:
             exit 1
           fi
 
+          # 2.5. Xóa aps-environment khỏi entitlements để tránh crash khi sideload
+          # (không có Apple Developer Program nên provisioning profile không đáp ứng
+          # được entitlement Push Notification -> iOS từ chối chạy app nếu binary vẫn khai báo nó)
+          ENTITLEMENTS_TARGET=$(find src-tauri/gen/apple -name "*.entitlements" | head -n 1)
+          if [ -n "$ENTITLEMENTS_TARGET" ]; then
+            echo "Đã tìm thấy Entitlements tại: $ENTITLEMENTS_TARGET"
+            /usr/libexec/PlistBuddy -c "Delete :aps-environment" "$ENTITLEMENTS_TARGET" || true
+          else
+            echo "Không tìm thấy file .entitlements, bỏ qua bước này."
+          fi
+
           # 3. Ép cấu hình Manual Signing vào project.pbxproj để bypass tài khoản Apple Developer
           SED_TARGET=$(find src-tauri/gen/apple -name "project.pbxproj" | head -n 1)
           if [ -n "$SED_TARGET" ]; then
