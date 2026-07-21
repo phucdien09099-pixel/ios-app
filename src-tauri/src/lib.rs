@@ -25,7 +25,7 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_blec::init());
 
-    #[cfg(mobile)]
+    #[cfg(target_os = "android")]
     let builder = builder.plugin(tauri_plugin_fcm::init());
 
     builder
