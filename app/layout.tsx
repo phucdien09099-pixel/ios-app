@@ -36,10 +36,10 @@ export default function RootLayout({
         <ThemeProvider>
           <DatabaseProvider>
             <TransportProvider>
-                <DrawerProvider>
-                  <WhisperTester />
+              <DrawerProvider>
+                <WhisperTester />
                 {children}
-                </DrawerProvider>
+              </DrawerProvider>
               <Toaster
                 position="bottom-center"
                 richColors={true}
