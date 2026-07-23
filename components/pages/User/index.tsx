@@ -11,6 +11,7 @@ import { userSessionRepo } from "@/db/repository/UserSessionRepository";
 import { clearLocalSmartData } from "@/libs/smartSync";
 import { apiClient } from "@/utils/Tauri/HttpClient";
 import SettingsPage from "./SettingsPage";
+import FAQPage from "./FAQPage";
 
 
 const menus = [
@@ -32,7 +33,7 @@ const menus = [
     {
         title: "Câu hỏi thường gặp và phản hồi",
         icon: CustomerService01Icon,
-        element: () => null
+        element: FAQPage,
     },
 ]
 
