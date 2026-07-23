@@ -56,6 +56,7 @@ export function ForgotPasswordForm() {
             <Input
               id="forgot-email"
               type="email"
+              className="h-10"
               placeholder="m@example.com"
               {...register("email", {
                 required: "Vui lòng nhập địa chỉ email",

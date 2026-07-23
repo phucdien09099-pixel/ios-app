@@ -13,4 +13,5 @@ export interface TransportsInterface<TConfig = any, TData = Uint8Array | string>
     onError?(callback: (err: Error) => void): void;
     scan(): Promise<TData[]>;
     subscribe(topic: string): Promise<void>
+    
 }

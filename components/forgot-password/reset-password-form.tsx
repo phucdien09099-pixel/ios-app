@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
 import { apiClient } from "@/utils/Tauri/HttpClient";
+import { PasswordInput } from "../ui/password-input";
 
 interface ResetPasswordFormProps {
   email: string;
@@ -41,12 +42,12 @@ export function ResetPasswordForm({ email, otp, onSuccessCallback }: ResetPasswo
 
   const newPassword = useWatch({ control, name: "newPassword" }) || "";
   const confirmPassword =
-  useWatch({ control, name: "confirmPassword" }) || "";
+    useWatch({ control, name: "confirmPassword" }) || "";
 
   const hasMinLength = newPassword.length >= 8;
   const passwordsMatch =
-  confirmPassword.length > 0 &&
-  newPassword === confirmPassword;
+    confirmPassword.length > 0 &&
+    newPassword === confirmPassword;
 
   const onSubmit = async (values: ResetPasswordValues) => {
     try {
@@ -86,13 +87,22 @@ export function ResetPasswordForm({ email, otp, onSuccessCallback }: ResetPasswo
             >
               Mật khẩu mới
             </FieldLabel>
-            <Input
+            {/* <Input
               id="new-password"
               type="password"
               {...register("newPassword", {
                 required: "Vui lòng nhập mật khẩu mới",
                 minLength: { value: 8, message: "Must be at least 8 characters" },
               })}
+            /> */}
+            <PasswordInput<ResetPasswordValues>
+              id="new-password"
+              name="newPassword"
+              register={register}
+              rules={{
+                required: "Vui lòng nhập mật khẩu mới",
+                minLength: { value: 8, message: "Must be at least 8 characters" },
+              }}
             />
             {errors.newPassword && <p className="text-sm text-red-500">{errors.newPassword.message}</p>}
           </Field>
@@ -104,28 +114,37 @@ export function ResetPasswordForm({ email, otp, onSuccessCallback }: ResetPasswo
             >
               Xác nhận mật khẩu mới
             </FieldLabel>
-            <Input
+            <PasswordInput<ResetPasswordValues>
+              id="confirm-new-password"
+              name="confirmPassword"
+              register={register}
+              rules={{
+                required: "Vui lòng xác nhận mật khẩu mới",
+                validate: (value) => value === newPassword || "Passwords do not match",
+              }}
+            />
+            {/* <Input
               id="confirm-new-password"
               type="password"
               {...register("confirmPassword", {
                 required: "Vui lòng xác nhận mật khẩu mới",
                 validate: (value) => value === newPassword || "Passwords do not match",
               })}
-            />
+            /> */}
             {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
           </Field>
 
           <div className="flex flex-col gap-1.5 pt-0">
-          <ChecklistItem
-            passed={hasMinLength}
-            label="Mật khẩu ít nhất 8 ký tự"
-          />
+            <ChecklistItem
+              passed={hasMinLength}
+              label="Mật khẩu ít nhất 8 ký tự"
+            />
 
-          <ChecklistItem
-            passed={passwordsMatch}
-            label="Hai mật khẩu khớp nhau"
-          />
-        </div>
+            <ChecklistItem
+              passed={passwordsMatch}
+              label="Hai mật khẩu khớp nhau"
+            />
+          </div>
 
           <Field className="pt-2">
             <Button type="submit" disabled={isSubmitting} className="w-full h-12 rounded-xl">

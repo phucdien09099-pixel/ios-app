@@ -1,5 +1,4 @@
 "use client";
-import { v4 as uuid } from "uuid";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,6 +16,7 @@ import QrScanner from "qr-scanner";
 import { createServerDevice, createServerRoom, upsertMqttOwner } from "@/libs/smartSync";
 
 import { startBackToHomeTour, startRoomTour, roomDriverObj, showHubNotFoundTour } from "@/components/onboarding/tours/roomTour";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type DataInit = {
     name: string,
@@ -223,7 +223,7 @@ export default function AddRoom() {
                     console.log("--- QUÁ THỜI GIAN CHỜ PHẢN HỒI (TIMEOUT) ---");
                     await bleService.unsubscribe(txCharacteristic).catch(console.error);
                     await bleService.disconnect().catch(console.error);
-                    reject(new Error("Quá thời gian chờ phản hồi từ thiết bị (Timeout 15s)"));
+                    reject(new Error("Quá thời gian chờ phản hồi từ thiết bị (Timeout 60s)"));
                 }, 60000);
 
                 console.log("--- TIẾN HÀNH GỬI CẤU HÌNH XUỐNG TX ---");
@@ -576,8 +576,8 @@ export default function AddRoom() {
 
                 {/* ROOM INFO */}
                 <div className="space-y-2" data-tour="room-name">
-                    <label className="text-sm font-medium">Room name:</label>
-                    <Input
+                    <label className="text-sm font-medium">Tên phòng:</label>
+                    <Input className="h-10"
                         id="input-room-name"
                         placeholder="Tên phòng (A101...)"
                         disabled={loading || hubSetupLocked}
@@ -594,8 +594,8 @@ export default function AddRoom() {
                 </div>
 
                 <div className="space-y-2" data-tour="room-note">
-                    <label className="text-sm font-medium">Room note (optional):</label>
-                    <Input
+                    <label className="text-sm font-medium">Ghi chú phòng (tuỳ chọn):</label>
+                    <Input className="h-10"
                         id="input-room-note"
                         placeholder="Ghi chú về phòng này"
                         disabled={loading || hubSetupLocked}
@@ -615,8 +615,8 @@ export default function AddRoom() {
                 {currentMode === "with_hub" && (
                     <div className="space-y-5 border-t pt-5 border-dashed">
                         <div className="space-y-2" data-tour="wifi-ssid">
-                            <label className="text-sm font-medium">SSID (Wi-Fi Name):</label>
-                            <Input
+                            <label className="text-sm font-medium">SSID (Tên Wi-Fi):</label>
+                            <Input className="h-10"
                                 id="input-wifi-ssid"
                                 placeholder="Tên Wi-Fi nhà khách cấp cho Hub"
                                 disabled={loading || hubSetupLocked}
@@ -633,7 +633,7 @@ export default function AddRoom() {
 
                         <div className="space-y-2" data-tour="wifi-password">
                             <label className="text-sm font-medium">Password:</label>
-                            <Input
+                            {/* <Input
                                 id="input-wifi-pass"
                                 type="password"
                                 placeholder="Mật khẩu băng tần 2.4Ghz"
@@ -644,6 +644,29 @@ export default function AddRoom() {
                                         e.preventDefault();
                                         // 🟢 Gõ xong Wifi Pass, bấm Enter nó quét luôn!
                                         document.getElementById("submit-room-button")?.focus();
+                                    }
+                                }}
+                            /> */}
+                            <PasswordInput<FormData>
+                                id="input-wifi-pass"
+                                name="pass"
+                                placeholder="Mật khẩu Wi-Fi băng tần 2.4 GHz"
+                                disabled={loading || hubSetupLocked}
+                                register={form.register}
+                                rules={{
+                                    required: "Vui lòng nhập mật khẩu Wi-Fi",
+                                    minLength: {
+                                        value: 8,
+                                        message: "Mật khẩu Wi-Fi phải có ít nhất 8 ký tự",
+                                    },
+                                }}
+                                autoComplete="new-password"
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        document
+                                            .getElementById("submit-room-button")
+                                            ?.focus();
                                     }
                                 }}
                             />

@@ -10,7 +10,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { TimezoneCombobox } from "@/components/timezone-combobox";
 import { OtpForm } from "./otp-form";
 import { apiClient } from "@/utils/Tauri/HttpClient";
-
+import { PasswordInput } from "./ui/password-input";
 // Export type này để file OTP có thể dùng chung
 export type FormValues = {
   name: string;
@@ -96,6 +96,7 @@ export function SignupForm({ onSuccess, ...props }: SignupFormProps) {
             <Field>
               <FieldLabel htmlFor="name">Họ và tên</FieldLabel>
               <Input
+                className="h-10"
                 id="name"
                 type="text"
                 placeholder="John Doe"
@@ -109,6 +110,7 @@ export function SignupForm({ onSuccess, ...props }: SignupFormProps) {
               <Input
                 id="email"
                 type="email"
+                className="h-10"
                 placeholder="m@example.com"
                 {...register("email", {
                   required: "Vui lòng nhập địa chỉ email",
@@ -123,7 +125,7 @@ export function SignupForm({ onSuccess, ...props }: SignupFormProps) {
 
             <Field>
               <FieldLabel htmlFor="password">Mật khẩu</FieldLabel>
-              <Input
+              {/* <Input
                 id="password"
                 type="password"
                 {...register("password", {
@@ -133,19 +135,37 @@ export function SignupForm({ onSuccess, ...props }: SignupFormProps) {
                     message: "Mật khẩu phải có ít nhất 8 ký tự",
                   },
                 })}
+              /> */}
+              <PasswordInput<FormValues>
+                id="password"
+                name="password"
+                register={register}
+                rules={{
+                  required: "Vui lòng nhập mật khẩu",
+                  minLength: 8
+                }}
               />
               {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </Field>
 
             <Field>
               <FieldLabel htmlFor="confirm-password">Xác nhận Mật khẩu</FieldLabel>
-              <Input
+              {/* <Input
                 id="confirm-password"
                 type="password"
                 {...register("confirmPassword", {
                   required: "Vui lòng xác nhận mật khẩu",
                   validate: (value) => value === password || "Mật khẩu không khớp",
                 })}
+              /> */}
+              <PasswordInput<FormValues>
+                id="confirm-password"
+                name="confirmPassword"
+                register={register}
+                rules={{
+                  required: "Vui lòng xác nhận mật khẩu",
+                  validate: (value) => value === password || "Mật khẩu không khớp",
+                }}
               />
               {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
             </Field>

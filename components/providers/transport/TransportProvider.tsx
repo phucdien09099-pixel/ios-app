@@ -128,6 +128,10 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     const [deviceStates, setDeviceStates] = useState<Record<string, DeviceState>>({});
 
     const initializedRef = useRef(false);
+    const connectionRunRef = useRef<Promise<void> | null>(null);
+    const backgroundedAtRef = useRef<number | null>(null);
+    const lastLifecycleReconnectAtRef = useRef(0);
+    const lifecycleReconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const entityNameMapRef = useRef<Map<string, string>>(new Map());
     const listTopicFeature = useMemo<TopicFeature[]>(() => [{ init: "init" }, { pair: "pair" }], []);
 
@@ -191,6 +195,17 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     }, [connectDual, syncConnectionMetadata]);
 
     const runSmartConnection = useCallback(async (resetConnection = false) => {
+        if (connectionRunRef.current) {
+            await connectionRunRef.current;
+            return;
+        }
+
+        let releaseConnectionRun: () => void = () => { };
+        connectionRunRef.current = new Promise<void>((resolve) => {
+            releaseConnectionRun = resolve;
+        });
+
+        try {
         if (resetConnection) {
             await transportManager.disconnect();
             syncConnectionMetadata();
@@ -278,6 +293,11 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         }
 
         await connectMqttFallback();
+        } finally {
+            releaseConnectionRun();
+            connectionRunRef.current = null;
+            syncConnectionMetadata();
+        }
     }, [connectDual, connectMqttFallback, syncConnectionMetadata]);
 
     const refreshConnection = useCallback(async () => {
@@ -292,6 +312,75 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             console.error("[Transport Provider]: Không thể khởi động transport:", error);
         });
     }, [runSmartConnection]);
+
+    useEffect(() => {
+        const reconnectAfterResume = (reason: string, force = false) => {
+            if (document.visibilityState === "hidden") return;
+
+            const now = Date.now();
+            if (!force && now - lastLifecycleReconnectAtRef.current < 3_000) return;
+
+            if (lifecycleReconnectTimerRef.current) {
+                clearTimeout(lifecycleReconnectTimerRef.current);
+            }
+
+            lifecycleReconnectTimerRef.current = setTimeout(() => {
+                lastLifecycleReconnectAtRef.current = Date.now();
+                console.log(`[Transport Provider]: App trở lại (${reason}), làm mới kết nối transport...`);
+                runSmartConnection(true).catch((error) => {
+                    console.error("[Transport Provider]: Không thể làm mới transport sau khi app trở lại:", error);
+                    syncConnectionMetadata();
+                });
+            }, 300);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "hidden") {
+                backgroundedAtRef.current = Date.now();
+                syncConnectionMetadata();
+                return;
+            }
+
+            const hiddenDuration = backgroundedAtRef.current
+                ? Date.now() - backgroundedAtRef.current
+                : 0;
+            backgroundedAtRef.current = null;
+
+            reconnectAfterResume(
+                `foreground sau ${Math.round(hiddenDuration / 1000)}s`,
+                hiddenDuration > 1_000 || !transportManager.isConnected()
+            );
+        };
+
+        const handleFocus = () => {
+            reconnectAfterResume("focus", !transportManager.isConnected());
+        };
+
+        const handleOnline = () => {
+            reconnectAfterResume("network-online", true);
+        };
+
+        const handlePageShow = (event: PageTransitionEvent) => {
+            reconnectAfterResume(event.persisted ? "pageshow-cache" : "pageshow", event.persisted || !transportManager.isConnected());
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("focus", handleFocus);
+        window.addEventListener("online", handleOnline);
+        window.addEventListener("pageshow", handlePageShow);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("focus", handleFocus);
+            window.removeEventListener("online", handleOnline);
+            window.removeEventListener("pageshow", handlePageShow);
+
+            if (lifecycleReconnectTimerRef.current) {
+                clearTimeout(lifecycleReconnectTimerRef.current);
+                lifecycleReconnectTimerRef.current = null;
+            }
+        };
+    }, [runSmartConnection, syncConnectionMetadata]);
 
     useEffect(() => {
         transportManager.onNormalizedReceive((data: TransportMessage) => {
