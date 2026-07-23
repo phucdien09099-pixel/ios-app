@@ -279,7 +279,6 @@ export default function AddRoom() {
                     } else {
                         // Nếu CÓ thiết bị:
                         if (roomDriverObj) {
-                            // 🟢 Đợi 1 nhịp ngắn (~100ms) để React cập nhật DOM (đổi css từ hidden sang block)
                             setTimeout(() => {
                                 roomDriverObj.moveNext(); // Chuyển sang bước highlight [data-tour="hub-list-container"]
                             }, 100);
@@ -301,82 +300,177 @@ export default function AddRoom() {
         });
     }, []);
 
+    const submittingRef = useRef(false);
+
     const onSubmit = async (data: FormData) => {
-        if (data.mode === "with_hub" && !selectedHub) {
+        if (submittingRef.current) return;
+
+        const isWithHub = data.mode === "with_hub";
+
+        if (isWithHub && !selectedHub) {
             toast.error("Vui lòng tìm và chọn Hub để kết nối!");
             return;
         }
 
+        submittingRef.current = true;
         setLoading(true);
-        try {
-            await bleService.stopScan();
-            let newRoomId = uuid();
 
-            if (data.mode === "with_hub" && selectedHub) {
-                toast.info("Đang nạp thông tin mạng xuống Hub...");
+        let createdRoomId: string | null = null;
+
+        try {
+            try {
+                await bleService.stopScan();
+            } catch (error) {
+                console.warn("Không thể dừng BLE scan:", error);
+            }
+
+            const roomName = data.name.trim();
+            const roomNote = data.note?.trim() || null;
+
+            if (!roomName) {
+                throw new Error("Tên phòng không được để trống");
+            }
+
+            /*
+             * Server là nguồn dữ liệu chính.
+             * Tạo phòng trước để có roomId chính thức.
+             */
+            const serverRoom = await createServerRoom({
+                name: roomName,
+                note: roomNote,
+            });
+
+            if (!serverRoom?.id) {
+                throw new Error("Server không trả về ID phòng");
+            }
+
+            createdRoomId = serverRoom.id;
+
+            const mqttOwner =
+                serverRoom.ownerMqttUser || serverRoom.ownerEmail;
+
+            if (mqttOwner) {
+                try {
+                    await Promise.resolve(
+                        upsertMqttOwner(serverRoom.name, mqttOwner)
+                    );
+                } catch (error) {
+                    console.warn("Không thể cập nhật MQTT owner:", error);
+                }
+            }
+
+            /*
+             * Local database nên được xem như cache.
+             * Lỗi local không nhất thiết làm thao tác server thất bại.
+             */
+            try {
+                await roomRepo.create({
+                    id: createdRoomId,
+                    name: roomName,
+                    ...(roomNote ? { note: roomNote } : {}),
+                });
+            } catch (error) {
+                console.warn("Không thể lưu phòng vào local database:", error);
+            }
+
+            if (isWithHub && selectedHub) {
                 const authPayload = getSavedAuthPayload();
 
                 if (!authPayload.user || !authPayload.user_pass) {
-                    throw new Error("Chưa có thông tin tài khoản đăng nhập để cấu hình Hub");
+                    throw new Error(
+                        "Chưa có thông tin tài khoản đăng nhập để cấu hình Hub"
+                    );
                 }
 
+                const hubSerial =
+
+                    selectedHub.address;
+
+                if (!hubSerial) {
+                    throw new Error(
+                        "Không xác định được mã định danh của Hub"
+                    );
+                }
+
+                toast.info("Đang nạp thông tin mạng xuống Hub...");
+
                 const hubConfigPayload: DataInit = {
-                    name: data.name,
-                    ssid: data.ssid || "",
+                    name: roomName,
+                    ssid: data.ssid?.trim() || "",
                     ssid_pass: data.pass || "",
                     user: authPayload.user,
                     user_pass: authPayload.user_pass,
-                    time_zone: "Asia/Ho_Chi_Minh"
+                    time_zone: "Asia/Ho_Chi_Minh",
                 };
 
                 await pairDevice(selectedHub, hubConfigPayload);
-            }
 
-            const roomNote = data.note?.trim();
-            const serverRoom = await createServerRoom({
-                name: data.name,
-                note: roomNote || null,
-            });
-            newRoomId = serverRoom.id;
-            upsertMqttOwner(serverRoom.name, serverRoom.ownerMqttUser || serverRoom.ownerEmail);
-
-            await roomRepo.create({
-                id: newRoomId,
-                name: data.name,
-                ...(roomNote ? { note: roomNote } : {}),
-            });
-
-            if (data.mode === "with_hub" && selectedHub) {
                 const serverHub = await createServerDevice({
-                    roomId: newRoomId,
+                    roomId: createdRoomId,
                     parentId: null,
-                    name: `${data.name}`,
-                    status: "online",
+                    name: roomName,
+                    status: "provisioning",
                     type: "HUB",
-                    serial: selectedHub.address || selectedHub.name,
+                    serial: hubSerial,
                     brand: "SmartHub",
                 });
 
-                await deviceRepo.createDevice({
-                    id: serverHub.id,
-                    room_id: newRoomId,
-                    parent_id: null,
-                    name: `${data.name}`,
-                    status: "online",
-                    type: "HUB",
-                    serial: selectedHub.address || selectedHub.name,
-                    brand: "SmartHub",
-                });
+                if (!serverHub?.id) {
+                    throw new Error("Server không trả về ID Hub");
+                }
+
+                try {
+                    await deviceRepo.createDevice({
+                        id: serverHub.id,
+                        room_id: createdRoomId,
+                        parent_id: null,
+                        name: roomName,
+                        status: "provisioning",
+                        type: "HUB",
+                        serial: hubSerial,
+                        brand: "SmartHub",
+                    });
+                } catch (error) {
+                    console.warn(
+                        "Không thể lưu Hub vào local database:",
+                        error
+                    );
+                }
             }
 
-            localStorage.setItem("JUST_CREATED_ROOM_ID", newRoomId);
-            window.dispatchEvent(new Event("room-created"));
-            toast.success("Tạo phòng và thiết lập Hub thành công");
-            setTimeout(() => startBackToHomeTour(), 500);
+            localStorage.setItem(
+                "JUST_CREATED_ROOM_ID",
+                createdRoomId
+            );
+
+            window.dispatchEvent(new CustomEvent("room-created", {
+                detail: {
+                    roomId: createdRoomId,
+                },
+            }));
+
+            toast.success(
+                isWithHub
+                    ? "Tạo phòng và gửi cấu hình xuống Hub thành công"
+                    : "Tạo phòng thành công"
+            );
+
+            window.setTimeout(() => {
+                startBackToHomeTour();
+            }, 500);
         } catch (error) {
-            console.error("Không thể tạo phòng:", error);
-            toast.error(error instanceof Error ? error.message : "Không thể tạo phòng. Vui lòng thử lại!");
+            console.error("Không thể tạo phòng:", {
+                error,
+                createdRoomId,
+            });
+
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Không thể tạo phòng. Vui lòng thử lại!"
+            );
         } finally {
+            submittingRef.current = false;
             setLoading(false);
         }
     };

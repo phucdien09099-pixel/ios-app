@@ -128,7 +128,6 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     const [deviceStates, setDeviceStates] = useState<Record<string, DeviceState>>({});
 
     const initializedRef = useRef(false);
-    const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
     const entityNameMapRef = useRef<Map<string, string>>(new Map());
     const listTopicFeature = useMemo<TopicFeature[]>(() => [{ init: "init" }, { pair: "pair" }], []);
 
@@ -155,8 +154,6 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     );
 
     const disconnect = useCallback(async () => {
-        Object.values(timeoutsRef.current).forEach(clearTimeout);
-        timeoutsRef.current = {};
         await transportManager.disconnect();
         setDeviceStates({});
         syncConnectionMetadata();
@@ -195,8 +192,6 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
 
     const runSmartConnection = useCallback(async (resetConnection = false) => {
         if (resetConnection) {
-            Object.values(timeoutsRef.current).forEach(clearTimeout);
-            timeoutsRef.current = {};
             await transportManager.disconnect();
             syncConnectionMetadata();
         }
@@ -326,7 +321,8 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             const deviceName = entityNameMapRef.current.get(normalizeBleName(rawDeviceName)) ?? rawDeviceName;
             if (!deviceName) return;
 
-            const onlineStatus = readOnlineStatus(data.payload);
+            const isStatusChannel = channelParts.at(-1) === "status";
+            const onlineStatus = isStatusChannel ? readOnlineStatus(data.payload) : null;
             let extractedTemp: number | undefined;
 
             if (data.payload) {
@@ -343,39 +339,30 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
                 }
             }
 
-            if (onlineStatus !== null || data.payload) {
+            if (isStatusChannel && onlineStatus !== null) {
                 setDeviceStates((prev) => {
                     const oldDeviceState = prev[deviceName] || {};
                     return {
                         ...prev,
                         [deviceName]: {
                             id: deviceName,
-                            isOnline: onlineStatus ?? true,
+                            isOnline: onlineStatus,
                             temp: extractedTemp !== undefined ? extractedTemp : oldDeviceState.temp,
                             updatedAt: new Date().toISOString(),
                         },
                     };
                 });
 
-                if (timeoutsRef.current[deviceName]) {
-                    clearTimeout(timeoutsRef.current[deviceName]);
-                }
-
-                if (onlineStatus !== false) {
-                    timeoutsRef.current[deviceName] = setTimeout(() => {
-                        setDeviceStates((prev) => {
-                            if (!prev[deviceName]) return prev;
-                            return {
-                                ...prev,
-                                [deviceName]: {
-                                    ...prev[deviceName],
-                                    isOnline: false,
-                                },
-                            };
-                        });
-                        delete timeoutsRef.current[deviceName];
-                    }, 15000);
-                }
+            } else if (extractedTemp !== undefined) {
+                setDeviceStates((prev) => ({
+                    ...prev,
+                    [deviceName]: {
+                        ...(prev[deviceName] || {}),
+                        id: deviceName,
+                        temp: extractedTemp,
+                        updatedAt: new Date().toISOString(),
+                    },
+                }));
             }
         });
 
@@ -383,10 +370,7 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             syncConnectionMetadata();
         });
 
-        return () => {
-            Object.values(timeoutsRef.current).forEach(clearTimeout);
-            timeoutsRef.current = {};
-        };
+        return undefined;
     }, [syncConnectionMetadata]);
 
     const value = useMemo(

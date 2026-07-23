@@ -25,16 +25,9 @@ class TransportManager {
     // Trạng thái kết nối riêng biệt cho từng cổng mạng
     private connectionStatuses = new Map<TransportType, ConnectionStatus>();
 
-    private STORAGE_KEY = "vdtas_hybrid_config";
-    private lastUpdatedMap = new Map<string, number>();
-
     // Callbacks cho UI lắng nghe
     private globalReceiveCallback: ((msg: any) => void) | null = null;
     private statusCallback: ((status: Map<TransportType, ConnectionStatus>) => void) | null = null;
-
-    private lastSeenMap = new Map<string, number>();
-    private heartbeatTimeout = 15000;
-    private deadmanTimerId: NodeJS.Timeout | null = null;
 
     constructor() {
         // Khởi tạo sẵn cả 2 driver phần cứng mạng
@@ -49,45 +42,14 @@ class TransportManager {
         }
     }
 
-    private startHeartbeatMonitor() {
-        if (this.deadmanTimerId) clearInterval(this.deadmanTimerId);
-
-        this.deadmanTimerId = setInterval(() => {
-            const now = Date.now();
-            for (const [entityId, lastSeenTime] of this.lastSeenMap.entries()) {
-                if (now - lastSeenTime > this.heartbeatTimeout) {
-                    this.lastSeenMap.delete(entityId);
-                    const [type, id] = entityId.split("_");
-
-                    const offlineData: any = {
-                        id: id,
-                        type: type as "ROOM" | "DEVICE",
-                        isOnline: false,
-                        timestamp: now,
-                    };
-
-                    if (this.globalReceiveCallback) {
-                        this.globalReceiveCallback(offlineData);
-                    }
-                }
-            }
-        }, 5000);
-    }
-
     // ==========================================
     // 1. KẾT NỐI SONG SONG TẤT CẢ CÁC CỔNG MẠNG
     // ==========================================
     public async connectDual(configs: Partial<TransportConfigMap>) {
-        this.startHeartbeatMonitor();
-
         // Lưu trữ và cache cấu hình
         Object.entries(configs).forEach(([key, cfg]) => {
             this.configs.set(key as TransportType, cfg);
         });
-
-        // if (typeof window !== "undefined") {
-        //     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
-        // }
 
         // Đăng ký nhận tin & xử lý tái kết nối tự động cho từng cổng độc lập
         const connectTasks: Promise<boolean>[] = [];
@@ -171,39 +133,7 @@ class TransportManager {
     // 3. ĐỒNG BỘ DỮ LIỆU & BỘ LỌC CHỐNG TRÙNG TIN
     // ==========================================
     private handleIncomingRawData(msg: any, source: TransportType) {
-        // Vì nhận song song từ cả MQTT và BLE, gói tin trùng lặp gửi về là bình thường.
-        // Hệ thống sẽ dựa vào `lastUpdatedMap` (timestamp) bên dưới để loại bỏ tin cũ / tin trùng.
-
-        const topic = msg.channel || "/";
-        const rawPayload = typeof msg.payload === "string" ? msg.payload.trim() : "";
-
-        if (rawPayload !== "ping" && rawPayload !== "online") {
-            // Nếu là dữ liệu điều khiển thông thường, vẫn cho qua hoặc xử lý theo nhu cầu của bạn
-            if (this.globalReceiveCallback) this.globalReceiveCallback(msg);
-            return;
-        }
-
-        const topicParts = topic.split("/");
-        if (topicParts.length < 3) return;
-
-        const isUserDeviceTopic = topicParts[0] === "users" && topicParts[2] === "devices";
-        const entityType = "DEVICE";
-        const entityId = isUserDeviceTopic ? topicParts[3] : topicParts[1];
-        if (!entityId) return;
-
-        const uniqueEntityId = `${entityType}_${entityId}`;
-        const currentTimestamp = Date.now();
-
-        // Chống lặp tin nhận trùng lặp từ cả 2 kênh bằng Timestamp vật lý
-        const lastUpdated = this.lastUpdatedMap.get(uniqueEntityId) || 0;
-        if (currentTimestamp <= lastUpdated) return;
-
-        this.lastUpdatedMap.set(uniqueEntityId, currentTimestamp);
-        this.lastSeenMap.set(uniqueEntityId, currentTimestamp);
-
-        if (this.globalReceiveCallback) {
-            this.globalReceiveCallback(msg);
-        }
+        this.globalReceiveCallback?.({ ...msg, transport: source });
     }
 
     // ==========================================
@@ -266,12 +196,6 @@ class TransportManager {
     }
 
     public async disconnect() {
-        if (this.deadmanTimerId) {
-            clearInterval(this.deadmanTimerId);
-            this.deadmanTimerId = null;
-        }
-        this.lastSeenMap.clear();
-
         this.transports.forEach((_, type) => this.updateStatus(type, "disconnected"));
 
         const disconnectPromises: Promise<void>[] = [];
