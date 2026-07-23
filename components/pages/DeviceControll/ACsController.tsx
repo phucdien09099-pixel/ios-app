@@ -1,215 +1,354 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/libs/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ChevronDown, ChevronUp, PowerIcon } from "@hugeicons/core-free-icons";
+import {
+  ChevronDown,
+  ChevronUp,
+  PowerIcon,
+} from "@hugeicons/core-free-icons";
 import { Device } from "../Room/DeviceCard";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
-import { deviceRepo } from "@/db/repository/DeviceRepository";
-import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
+import {
+  pauseTourForDeviceDrawer,
+  resumeTourAfterDeviceDrawer,
+} from "@/components/onboarding/tours/afterAddDeviceTour";
+import { LocalStorage } from "@/libs/local-storage";
 
-type ModeAC = "COOL" | "DRY" | "FAN" | "SLEEP"
+type ModeAC = "COOL" | "DRY" | "FAN" | "SLEEP";
+
+type ACState = {
+  power: boolean;
+  temperature: number;
+  fanSpeed: number;
+  mode: ModeAC;
+};
+
+const DEFAULT_AC_STATE: ACState = {
+  power: true,
+  temperature: 24,
+  fanSpeed: 0,
+  mode: "COOL",
+};
 
 const MODES = [
-    { key: "COOL", label: "Cool" },
-    { key: "DRY", label: "Dry" },
-    { key: "FAN", label: "Fan" },
-    { key: "SLEEP", label: "Sleep" },
+  { key: "COOL", label: "Cool" },
+  { key: "DRY", label: "Dry" },
+  { key: "FAN", label: "Fan" },
+  { key: "SLEEP", label: "Sleep" },
 ] as const;
 
-export default function ACsController({ data, roomName }: { roomName: string, data: Device }) {
-    const [power, setPower] = useState(true);
-    const [temperature, setTemperature] = useState(24);
-    const [fanSpeed, setFanSpeed] = useState(0); // Mặc định về 0 để khớp với firmware mẫu
-    const [mode, setMode] = useState<ModeAC>("COOL");
+export default function ACsController({
+  data,
+  roomName,
+}: {
+  roomName: string;
+  data: Device;
+}) {
+  const { send } = useTransport();
 
-    useEffect(() => {
-        pauseTourForDeviceDrawer();
-        return () => {
-            resumeTourAfterDeviceDrawer(); 
-        };
-    }, []);
+  const storageKey = useMemo(
+    () => `ac-state:${roomName}:${data.id}`,
+    [roomName, data.id]
+  );
 
-    const topic = deviceRepo.getMqttTopic(data.id);
-    const { send } = useTransport();
+  const [power, setPower] = useState(DEFAULT_AC_STATE.power);
+  const [temperature, setTemperature] = useState(
+    DEFAULT_AC_STATE.temperature
+  );
+  const [fanSpeed, setFanSpeed] = useState(
+    DEFAULT_AC_STATE.fanSpeed
+  );
+  const [mode, setMode] = useState<ModeAC>(
+    DEFAULT_AC_STATE.mode
+  );
 
-    // Ánh xạ chuỗi Mode sang dạng số nguyên (int) khớp với firmware ESP32 (Cool=1, Dry=2, Fan/Auto=0)
-    const getModeNumber = (currentMode: ModeAC) => {
-        if (currentMode === "COOL") return 1;
-        if (currentMode === "DRY") return 2;
-        if (currentMode === "SLEEP") return 3;
-        return 0; // FAN / AUTO
+  useEffect(() => {
+    pauseTourForDeviceDrawer();
+
+    return () => {
+      resumeTourAfterDeviceDrawer();
     };
+  }, []);
 
-    const sendFullState = async (overrideStates?: {
-        power?: boolean;
-        temperature?: number;
-        mode?: ModeAC;
-        fanSpeed?: number;
-    }) => {
-        // Sử dụng giá trị mới nhất vừa thay đổi (override) hoặc fallback về state hiện tại
-        const nextPower = overrideStates?.power !== undefined ? overrideStates.power : power;
-        const nextTemp = overrideStates?.temperature !== undefined ? overrideStates.temperature : temperature;
-        const nextMode = overrideStates?.mode !== undefined ? overrideStates.mode : mode;
-        const nextFan = overrideStates?.fanSpeed !== undefined ? overrideStates.fanSpeed : fanSpeed;
-
-        const payload = {
-            type: data.type,
-            deviceName: data.name,
-            brand: data.brand || "UNKNOWN",
-            action: {
-                power: nextPower ? "ON" : "OFF",
-                temp: nextTemp,
-                mode: getModeNumber(nextMode),
-                fan: nextFan
-            },
-        };
-
-        console.log("Sending Full State Payload:", payload);
-        await send(payload, `device/${roomName}/control/set`);
-    };
-
-    return (
-        <CardContent className="p-4 md:p-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-                <div className="space-y-6">
-                    {/* HEADER & POWER BUTTON */}
-                    <div className="flex items-center justify-between" data-tour="ac-power">
-                        <div>
-                            <h1 className="text-xl font-semibold">{data.name}</h1>
-                            <p className="text-sm text-muted-foreground">Điều hoà</p>
-                        </div>
-
-                        <Button
-                            size="icon"
-                            className={cn(
-                                "rounded-2xl size-14",
-                                power ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
-                            )}
-                            onClick={async () => {
-                                const next = !power;
-                                setPower(next);
-                                // Truyền trạng thái power mới trực tiếp để tránh độ trễ bất đồng bộ của useState
-                                await sendFullState({ power: next });
-                            }}
-                        >
-                            <HugeiconsIcon icon={PowerIcon} size={26} />
-                        </Button>
-                    </div>
-
-                    {/* TEMPERATURE CONTROLLER */}
-                    <div className="rounded-3xl border bg-muted/30 p-6" data-tour="ac-temp">
-                        <div className="flex items-center justify-between">
-                            <Button
-                                size="icon"
-                                variant="outline"
-                                className="rounded-2xl size-14"
-                                onClick={async () => {
-                                    if (temperature <= 16) return;
-                                    const next = temperature - 1;
-                                    setTemperature(next);
-                                    await sendFullState({ temperature: next });
-                                }}
-                            >
-                                <HugeiconsIcon icon={ChevronDown} />
-                            </Button>
-
-                            <div className="text-center">
-                                <div className="text-6xl lg:text-7xl font-bold">{temperature}°</div>
-                                <div className="text-sm text-muted-foreground">Temperature</div>
-                            </div>
-
-                            <Button
-                                size="icon"
-                                variant="outline"
-                                className="rounded-2xl size-14"
-                                onClick={async () => {
-                                    if (temperature >= 30) return; const next = temperature + 1;
-                                    setTemperature(next);
-                                    await sendFullState({ temperature: next });
-                                }}>
-                                <HugeiconsIcon icon={ChevronUp} />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="space-y-3" data-tour="ac-mode">
-                        <div className="text-sm font-medium">Mode</div>
-                        <div className="grid grid-cols-4 gap-3">
-                            {MODES.map((item) => {
-                                const active = mode === item.key;
-                                return (
-                                    <button
-                                        key={item.key}
-                                        onClick={async () => {
-                                            setMode(item.key);
-                                            await sendFullState({ mode: item.key });
-                                        }}
-                                        className={cn(
-                                            "rounded-2xl border h-24 flex items-center justify-center text-sm font-medium transition",
-                                            active ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
-                                        )}>
-                                        {item.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* FAN SPEED LEVEL */}
-                    <div className="space-y-3" data-tour="ac-fan">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Fan Speed</span>
-                            <span className="text-xs text-muted-foreground">Level {fanSpeed}</span>
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-3">
-                            {[0, 1, 2, 3].map((level) => (
-                                <button
-                                    key={level}
-                                    onClick={async () => {
-                                        setFanSpeed(level);
-                                        await sendFullState({ fanSpeed: level });
-                                    }}
-                                    className={cn(
-                                        "h-14 rounded-2xl border text-sm font-medium transition",
-                                        fanSpeed === level ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
-                                    )}
-                                >
-                                    {level === 0 ? "Auto" : level}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* QUICK INTERACTIONS */}
-                    <div className="grid grid-cols-2 gap-3" data-tour="ac-quick">
-                        <Button
-                            variant="outline"
-                            className="h-14 rounded-2xl"
-                            onClick={async () => {
-                                await sendFullState();
-                                console.log("Triggered Swing command with current state context");
-                            }}>
-                            Swing
-                        </Button>
-
-                        <Button
-                            variant="outline"
-                            className="h-14 rounded-2xl"
-                            onClick={async () => {
-                                await sendFullState();
-                            }}>
-                            Timer
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </CardContent>
+  useEffect(() => {
+    const savedState = LocalStorage.get<ACState>(
+      storageKey,
+      DEFAULT_AC_STATE
     );
+
+    if (!savedState) return;
+
+    setPower(savedState.power);
+    setTemperature(savedState.temperature);
+    setFanSpeed(savedState.fanSpeed);
+    setMode(savedState.mode);
+  }, [storageKey]);
+
+  const saveState = (state: ACState) => {
+    LocalStorage.set(storageKey, state);
+  };
+
+  const getModeNumber = (currentMode: ModeAC): number => {
+    switch (currentMode) {
+      case "COOL":
+        return 1;
+
+      case "DRY":
+        return 2;
+
+      case "SLEEP":
+        return 3;
+
+      case "FAN":
+      default:
+        return 0;
+    }
+  };
+
+  const sendFullState = async (
+    overrideStates: Partial<ACState> = {}
+  ) => {
+    const nextState: ACState = {
+      power: overrideStates.power ?? power,
+      temperature:
+        overrideStates.temperature ?? temperature,
+      mode: overrideStates.mode ?? mode,
+      fanSpeed: overrideStates.fanSpeed ?? fanSpeed,
+    };
+
+    saveState(nextState);
+
+    const payload = {
+      type: data.type,
+      deviceName: data.name,
+      brand: data.brand || "UNKNOWN",
+      action: {
+        power: nextState.power ? "ON" : "OFF",
+        temp: nextState.temperature,
+        mode: getModeNumber(nextState.mode),
+        fan: nextState.fanSpeed,
+      },
+    };
+
+    console.log("Sending Full State Payload:", payload);
+
+    await send(
+      payload,
+      `device/${roomName}/control/set`
+    );
+  };
+
+  const changePower = async () => {
+    const nextPower = !power;
+
+    setPower(nextPower);
+
+    await sendFullState({
+      power: nextPower,
+    });
+  };
+
+  const changeTemperature = async (delta: number) => {
+    const nextTemperature = Math.min(
+      30,
+      Math.max(16, temperature + delta)
+    );
+
+    if (nextTemperature === temperature) return;
+
+    setTemperature(nextTemperature);
+
+    await sendFullState({
+      temperature: nextTemperature,
+    });
+  };
+
+  const changeFanSpeed = async (nextFanSpeed: number) => {
+    setFanSpeed(nextFanSpeed);
+
+    await sendFullState({
+      fanSpeed: nextFanSpeed,
+    });
+  };
+
+  const changeMode = async (nextMode: ModeAC) => {
+    setMode(nextMode);
+
+    await sendFullState({
+      mode: nextMode,
+    });
+  };
+
+  return (
+    <CardContent className="p-4 md:p-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          <div
+            className="flex items-center justify-between"
+            data-tour="ac-power"
+          >
+            <div>
+              <h1 className="text-xl font-semibold">
+                {data.name}
+              </h1>
+
+              <p className="text-sm text-muted-foreground">
+                Điều hoà
+              </p>
+            </div>
+
+            <Button
+              size="icon"
+              className={cn(
+                "size-14 rounded-2xl",
+                power
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-red-600 hover:bg-red-700"
+              )}
+              onClick={changePower}
+            >
+              <HugeiconsIcon
+                icon={PowerIcon}
+                size={26}
+              />
+            </Button>
+          </div>
+
+          <div
+            className="rounded-3xl border bg-muted/30 p-6"
+            data-tour="ac-temp"
+          >
+            <div className="flex items-center justify-between">
+              <Button
+                size="icon"
+                variant="outline"
+                className="size-14 rounded-2xl"
+                disabled={temperature <= 16}
+                onClick={() => void changeTemperature(-1)}
+              >
+                <HugeiconsIcon icon={ChevronDown} />
+              </Button>
+
+              <div className="text-center">
+                <div className="text-6xl font-bold lg:text-7xl">
+                  {temperature}°
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  Temperature
+                </div>
+              </div>
+
+              <Button
+                size="icon"
+                variant="outline"
+                className="size-14 rounded-2xl"
+                disabled={temperature >= 30}
+                onClick={() => void changeTemperature(1)}
+              >
+                <HugeiconsIcon icon={ChevronUp} />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div
+            className="space-y-3"
+            data-tour="ac-mode"
+          >
+            <div className="text-sm font-medium">
+              Mode
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {MODES.map((item) => {
+                const active = mode === item.key;
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() =>
+                      void changeMode(item.key)
+                    }
+                    className={cn(
+                      "flex h-24 items-center justify-center rounded-2xl border text-sm font-medium transition",
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div
+            className="space-y-3"
+            data-tour="ac-fan"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                Fan Speed
+              </span>
+
+              <span className="text-xs text-muted-foreground">
+                {fanSpeed === 0
+                  ? "Auto"
+                  : `Level ${fanSpeed}`}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {[0, 1, 2, 3].map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() =>
+                    void changeFanSpeed(level)
+                  }
+                  className={cn(
+                    "h-14 rounded-2xl border text-sm font-medium transition",
+                    fanSpeed === level
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  {level === 0 ? "Auto" : level}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="grid grid-cols-2 gap-3"
+            data-tour="ac-quick"
+          >
+            <Button
+              variant="outline"
+              className="h-14 rounded-2xl"
+              onClick={() => void sendFullState()}
+            >
+              Swing
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-14 rounded-2xl"
+              onClick={() => void sendFullState()}
+            >
+              Timer
+            </Button>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  );
 }
