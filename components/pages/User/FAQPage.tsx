@@ -9,6 +9,7 @@ import {
   Search01Icon,
   Cancel01Icon,
 } from "@hugeicons/core-free-icons";
+import { Badge } from "@/components/ui/badge";
 
 // ============================================================================
 // Types
@@ -105,7 +106,7 @@ function buildItemKey(groupId: string, itemId: string): string {
 
 function SignsBlock({ text }: { text: string }) {
   return (
-    <p className="text-[14px] leading-7 text-neutral-700">
+    <p className="text-[14px] leading-7 text-muted-foreground">
       <span className="font-semibold text-primary underline decoration-primary underline-offset-4">
         Dấu hiệu:
       </span>{" "}
@@ -117,14 +118,14 @@ function SignsBlock({ text }: { text: string }) {
 function CausesBlock({ items }: { items: string[] }) {
   return (
     <div className="space-y-2">
-      <p className="font-semibold text-base text-neutral-900">
+      <p className="font-semibold text-base text-foreground">
         Nguyên nhân có thể
       </p>
       <ul className="space-y-1.5">
         {items.map((item, index) => (
           <li
             key={index}
-            className="flex gap-2 text-[14px] leading-7 text-neutral-700"
+            className="flex gap-2 text-[14px] leading-7 text-muted-foreground"
           >
             <span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
             <span>{item}</span>
@@ -138,16 +139,16 @@ function CausesBlock({ items }: { items: string[] }) {
 function StepsBlock({ heading, items }: { heading?: string; items: string[] }) {
   return (
     <div className="space-y-2">
-      <p className="font-semibold text-base text-neutral-900">
+      <p className="font-semibold text-base text-foreground">
         {heading ?? "Cách khắc phục"}
       </p>
       <ol className="space-y-2.5">
         {items.map((item, index) => (
           <li
             key={index}
-            className="flex gap-3 text-[14px] leading-7 text-neutral-700"
+            className="flex gap-3 text-[14px] leading-7 text-muted-foreground"
           >
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-white">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
               {index + 1}
             </span>
             <span>{item}</span>
@@ -160,14 +161,14 @@ function StepsBlock({ heading, items }: { heading?: string; items: string[] }) {
 
 function FlowBlock({ steps }: { steps: string[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/40 px-4 py-3">
       {steps.map((step, index) => (
         <span key={index} className="flex items-center gap-2">
-          <span className="text-[13px] font-medium text-neutral-800">
+          <span className="text-[13px] font-medium text-foreground">
             {step}
           </span>
           {index < steps.length - 1 && (
-            <span className="text-neutral-400">→</span>
+            <span className="text-muted-foreground">→</span>
           )}
         </span>
       ))}
@@ -177,8 +178,8 @@ function FlowBlock({ steps }: { steps: string[] }) {
 
 function WarningBlock({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-      <p className="text-[14px] leading-7 text-amber-900">
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/40">
+      <p className="text-[14px] leading-7 text-amber-900 dark:text-amber-200">
         <span className="mr-1.5">⚠️</span>
         <span className="font-semibold">Lưu ý:</span> {text}
       </p>
@@ -189,7 +190,7 @@ function WarningBlock({ text }: { text: string }) {
 function TipBlock({ text }: { text: string }) {
   return (
     <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-      <p className="text-[14px] leading-7 text-neutral-800">
+      <p className="text-[14px] leading-7 text-foreground">
         <span className="mr-1.5">💡</span>
         <span className="font-semibold">Mẹo:</span> {text}
       </p>
@@ -201,15 +202,15 @@ function NoteBlock({ heading, items }: { heading?: string; items: string[] }) {
   return (
     <div className="space-y-2">
       {heading && (
-        <p className="font-semibold text-base text-neutral-900">{heading}</p>
+        <p className="font-semibold text-base text-foreground">{heading}</p>
       )}
       <ul className="space-y-1.5">
         {items.map((item, index) => (
           <li
             key={index}
-            className="flex gap-2 text-[14px] leading-7 text-neutral-700"
+            className="flex gap-2 text-[14px] leading-7 text-muted-foreground"
           >
-            <span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-300" />
+            <span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/30" />
             <span>{item}</span>
           </li>
         ))}
@@ -220,11 +221,11 @@ function NoteBlock({ heading, items }: { heading?: string; items: string[] }) {
 
 function ImageBlock({ src, caption }: { src: string; caption: string }) {
   return (
-    <figure className="overflow-hidden rounded-xl border border-neutral-200">
-      <div className="flex items-center justify-center bg-neutral-100 py-10">
+    <figure className="overflow-hidden rounded-xl border bg-card">
+      <div className="flex items-center justify-center bg-muted py-10">
         <img src={src} alt={caption} className="max-h-56 w-auto object-contain" />
       </div>
-      <figcaption className="border-t border-neutral-200 bg-white px-4 py-2 text-[13px] text-neutral-500">
+      <figcaption className="border-t border bg-card px-4 py-2 text-[13px] text-muted-foreground">
         {caption}
       </figcaption>
     </figure>
@@ -235,9 +236,9 @@ function ParagraphBlock({ heading, text }: { heading?: string; text: string }) {
   return (
     <div className="space-y-1.5">
       {heading && (
-        <p className="font-semibold text-base text-neutral-900">{heading}</p>
+        <p className="font-semibold text-base text-foreground">{heading}</p>
       )}
-      <p className="text-[14px] leading-7 text-neutral-700">{text}</p>
+      <p className="text-[14px] leading-7 text-muted-foreground">{text}</p>
     </div>
   );
 }
@@ -433,8 +434,8 @@ const FAQ_GROUPS: FAQGroup[] = [
           },
           {
             type: "image",
-            src: "/faq/hub-learning-remote.png",
-            caption: "Hình 1. Hướng Remote vào Hub khi học lệnh.",
+            src: "/remote.jpg",
+            caption: "Hình 3. Hướng Remote vào Hub khi học lệnh.",
           },
         ],
       },
@@ -664,15 +665,11 @@ function submitContact() {
 }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="w-full px-4 py-6">
-        {/* Header */}
-        
-
+      <div className="w-full px-4 pt-4 pb-24">
           {/* Search */}
           <div className="mx-auto mt-8 max-w-lg">
-            <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 transition-colors focus-within:border-primary/40 focus-within:bg-white">
-              <span className="shrink-0 text-neutral-400">
+            <div className="flex items-center gap-3 rounded-2xl border bg-muted/40 px-4 py-3 transition-colors focus-within:border-primary/40 focus-within:bg-background">
+              <span className="shrink-0 text-muted-foreground">
                 <HugeiconsIcon
                   icon={Search01Icon}
                   size={18}
@@ -685,14 +682,14 @@ function submitContact() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Tìm kiếm câu hỏi..."
-                className="w-full bg-transparent text-[14px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+                className="w-full bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
               {isSearching && (
                 <button
                   type="button"
                   onClick={clearSearch}
                   aria-label="Xóa tìm kiếm"
-                  className="shrink-0 rounded-full p-1 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
+                  className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-muted-foreground"
                 >
                   <HugeiconsIcon
                     icon={Cancel01Icon}
@@ -704,17 +701,17 @@ function submitContact() {
               )}
             </div>
             {!isSearching && (
-              <p className="mt-3 text-[13px] text-neutral-400">
+              <p className="mt-3 text-[13px] text-muted-foreground">
                 {totalQuestions} câu hỏi trong {FAQ_GROUPS.length} nhóm
               </p>
             )}
-            <div className="mt-5 m-6 flex flex-wrap justify-center gap-2">
+            <div className="mt-5 mb-6 flex flex-wrap justify-center gap-2">
             {QUICK_CATEGORIES.map((category) => (
               <button
                 key={category.id}
                 type="button"
                 onClick={() => scrollToGroup(category.id)}
-                className="rounded-full bg-neutral-100 px-4 py-1.5 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-primary/10 hover:text-primary"
+                className="rounded-full bg-muted px-4 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
               >
                 {category.label}
               </button>
@@ -729,7 +726,7 @@ function submitContact() {
               <div
                     key={group.id}
                     id={group.id}
-                    className="scroll-mt-6 border-b border-neutral-100 pb-8 last:border-b-0"
+                    className="scroll-mt-6 border-b pb-8 last:border-b-0"
                     >
                     <div className="py-8 first:pt-0">
                   {/* Group header */}
@@ -744,21 +741,21 @@ function submitContact() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-base font-semibold text-neutral-900">
+                        <h2 className="text-base font-semibold text-foreground">
                           {group.title}
                         </h2>
-                        <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[12px] font-medium text-neutral-500">
+                        <Badge variant="outline" className="rounded-full">
                           {group.items.length} câu hỏi
-                        </span>
+                        </Badge>
                       </div>
-                      <p className="mt-1 text-[14px] leading-6 text-neutral-500">
+                      <p className="mt-1 text-[14px] leading-6 text-muted-foreground">
                         {group.description}
                       </p>
                     </div>
                   </div>
 
                   {/* Accordion items */}
-                  <div className="divide-y divide-neutral-100 border-t border-neutral-100">
+                  <div className="divide-y divide-border border-t">
                     {group.items.map((item) => {
                       const key = buildItemKey(group.id, item.id);
                       const isOpen = openKeys.has(key);
@@ -769,14 +766,14 @@ function submitContact() {
                             onClick={() => toggleItem(key)}
                             aria-expanded={isOpen}
                             className={`flex w-full items-center justify-between gap-4 rounded-xl px-2 py-4 text-left transition-colors ${
-                              isOpen ? "bg-neutral-50" : "hover:bg-neutral-50"
+                              isOpen ? "bg-muted/40" : "hover:bg-muted/40"
                             }`}
                           >
-                            <span className="text-[15px] font-medium text-neutral-900">
+                            <span className="text-[15px] font-medium text-foreground">
                               {item.question}
                             </span>
                             <span
-                              className={`inline-flex shrink-0 text-neutral-400 transition-transform duration-300 ease-out ${
+                              className={`inline-flex shrink-0 text-muted-foreground transition-transform duration-300 ease-out ${
                                 isOpen ? "rotate-180" : "rotate-0"
                               }`}
                             >
@@ -797,7 +794,7 @@ function submitContact() {
                             }`}
                           >
                             <div className="min-h-0">
-                              <div className="space-y-4 rounded-xl bg-neutral-50 px-4 py-5 sm:px-5">
+                              <div className="space-y-4 rounded-xl bg-muted/40 px-4 py-5 sm:px-5">
                                 {item.blocks.map((block, index) =>
                                   renderFAQBlock(block, `${key}-${index}`)
                                 )}
@@ -816,16 +813,16 @@ function submitContact() {
         ) : (
           <div className="py-16 text-center">
             <p className="text-4xl">😥</p>
-            <p className="mt-3 text-[15px] font-medium text-neutral-700">
+            <p className="mt-3 text-[15px] font-medium text-muted-foreground">
               Không tìm thấy câu hỏi phù hợp.
             </p>
-            <p className="mt-1 text-[14px] text-neutral-400">
+            <p className="mt-1 text-[14px] text-muted-foreground">
               Hãy thử từ khóa khác.
             </p>
             <button
               type="button"
               onClick={clearSearch}
-              className="mt-5 rounded-full border border-neutral-200 px-4 py-2 text-[13px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+              className="mt-5 rounded-full border px-4 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted/40"
             >
               Xóa tìm kiếm
             </button>
@@ -833,19 +830,19 @@ function submitContact() {
         )}
 
         {/* Bạn cần hỗ trợ? */}
-        <div className="mt-10 rounded-3xl bg-neutral-50 p-6 text-center sm:p-8">
+        <div className="mt-10 rounded-3xl bg-muted/40 p-6 text-center sm:p-8">
           {contactSubmitted ? (
             <div>
-              <p className="text-[15px] font-medium text-neutral-900">
+              <p className="text-[15px] font-medium text-foreground">
                 Đã gửi yêu cầu của bạn.
               </p>
-              <p className="mt-1 text-[14px] text-neutral-500">
+              <p className="mt-1 text-[14px] text-muted-foreground">
                 Chúng tôi sẽ liên hệ lại với bạn sớm nhất có thể.
               </p>
             </div>
           ) : contactOpen ? (
             <div className="mx-auto max-w-md text-left">
-              <p className="text-[15px] font-medium text-neutral-900">
+              <p className="text-[15px] font-medium text-foreground">
                 Mô tả vấn đề của bạn
               </p>
               <textarea
@@ -853,7 +850,7 @@ function submitContact() {
                 onChange={(event) => setContactMessage(event.target.value)}
                 placeholder="Nhập vấn đề bạn đang gặp phải..."
                 rows={4}
-                className="mt-3 w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-[14px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-primary/40"
+                className="mt-3 w-full rounded-2xl border bg-background px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
               />
               <div className="mt-3 flex justify-end gap-2">
                 <button
@@ -862,7 +859,7 @@ function submitContact() {
                     setContactOpen(false);
                     setContactMessage("");
                   }}
-                  className="rounded-full px-4 py-2 text-[13px] font-medium text-neutral-500 hover:bg-neutral-100"
+                  className="rounded-full px-4 py-2 text-[13px] font-medium text-muted-foreground hover:bg-muted"
                 >
                   Huỷ
                 </button>
@@ -870,7 +867,7 @@ function submitContact() {
                   type="button"
                   onClick={submitContact}
                   disabled={!contactMessage.trim()}
-                  className="rounded-full bg-primary px-5 py-2 text-[13px] font-medium text-white transition-opacity disabled:opacity-40"
+                  className="rounded-full bg-primary px-5 py-2 text-[13px] font-medium text-primary-foreground transition-opacity disabled:opacity-40"
                 >
                   Gửi
                 </button>
@@ -878,13 +875,13 @@ function submitContact() {
             </div>
           ) : (
             <div>
-              <p className="text-[15px] font-medium text-neutral-900">
+              <p className="text-[15px] font-medium text-foreground">
                 Không tìm thấy câu trả lời?
               </p>
               <button
                 type="button"
                 onClick={() => setContactOpen(true)}
-                className="mt-3 rounded-full bg-primary px-5 py-2 text-[13px] font-medium text-white"
+                className="mt-3 rounded-full bg-primary px-5 py-2 text-[13px] font-medium text-primary-foreground"
               >
                 Liên hệ chúng tôi
               </button>
@@ -892,6 +889,5 @@ function submitContact() {
           )}
         </div>
       </div>
-    </div>
   );
 }
