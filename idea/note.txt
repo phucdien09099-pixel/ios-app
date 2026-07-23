@@ -108,6 +108,7 @@ RS485
 
 => connect(var1,var2,...);
 =======================================
+
 prority connect ble with rssi higher at mode ble
 =======================================
 Thêm Room =  Pair Device Hub + Add Room

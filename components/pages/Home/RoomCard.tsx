@@ -29,19 +29,9 @@ import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/
 import AlarmSettings from "../Room/AlarmSettings";
 import { deleteServerRoom } from "@/libs/smartSync";
 import { startEmptyRoomTour } from "@/components/onboarding/tours/emptyRoomTour";
-export function RoomCard({
-    room,
-    onDeleted,
-    onRefresh,
-    isRefreshing = false,
-    dataTour
-}: {
-    room: Room,
-    onDeleted: () => Promise<void>;
-    onRefresh?: () => Promise<void>;
-    isRefreshing?: boolean;
-    dataTour?: string;
-}) {
+
+
+export function RoomCard({ room, onDeleted, onRefresh, isRefreshing = false, dataTour }: { room: Room, onDeleted: () => Promise<void>; onRefresh?: () => Promise<void>; isRefreshing?: boolean; dataTour?: string; }) {
     const { open } = useNavDrawer();
     const { deviceStates, getDeviceStatus } = useTransport();
     const currentRoomState = deviceStates[room.name];
@@ -164,6 +154,7 @@ export function RoomCard({
 
                     <div className="grid grid-cols-2 gap-2" >
                         <Button
+                            disabled={!isOnline}
                             data-tour={`detail-btn-${room.id}`}
                             className="h-11 w-full rounded-2xl"
                             size="lg"
@@ -185,14 +176,14 @@ export function RoomCard({
                                     },
                                     direction: "right",
                                     renderHelpButtonHeader: (
-                                        <HelpButton 
+                                        <HelpButton
                                             onClick={() => {
                                                 if (deviceCount === 0) {
                                                     startEmptyRoomTour(true);
                                                 } else {
                                                     startAfterAddDeviceTour(true);
                                                 }
-                                            }} 
+                                            }}
                                         />
                                     ),
                                     renderRightButtonHeader: (
@@ -221,7 +212,7 @@ export function RoomCard({
                                             </Button>
 
                                             <Button
-                                            data-tour="alarm-settings-btn"
+                                                data-tour="alarm-settings-btn"
                                                 size="lg"
                                                 className="text-md shrink-0 rounded-xl!"
                                                 onClick={() =>

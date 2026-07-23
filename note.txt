@@ -1,4 +1,4 @@
 [ ]fcm on IOS
-[ ]hide/show password on mobile
+[x]hide/show password on mobile
 [x] save local value controll
-[ ] reconnect if app was running at background
+[x] reconnect if app was running at background
