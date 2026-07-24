@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeftIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
@@ -8,11 +9,71 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { usePreventExit } from "@/hooks/usePreventExit";
 import { cn } from "@/libs/utils";
+import { useTransport } from "@/components/providers/transport/TransportProvider";
 import { useDrawer } from "./DrawerProvider";
 
 export function NestedDrawers() {
     const [closingId, setClosingId] = useState<string | null>(null);
-    const { stack, pop } = useDrawer();
+    const [disconnectWarning, setDisconnectWarning] = useState<{ label: string } | null>(null);
+    const [mounted, setMounted] = useState(false);
+    const { stack, pop, reset } = useDrawer();
+    const { deviceStates } = useTransport();
+    const watchedOnlineRef = useRef<boolean | null>(null);
+    const watchedKeyRef = useRef("");
+
+    const watchedConnection = useMemo(() => {
+        const page = [...stack].reverse().find((item) => item.monitorConnection);
+        return page?.monitorConnection ?? null;
+    }, [stack]);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const watchedConnectionKey = useMemo(() => {
+        if (!watchedConnection) return "";
+        return [
+            watchedConnection.id,
+            watchedConnection.name,
+            ...(watchedConnection.fallbackIds ?? []),
+        ].filter(Boolean).join("|");
+    }, [watchedConnection]);
+
+    const watchedConnectionOnline = useMemo(() => {
+        if (!watchedConnection) return null;
+
+        const ids = [
+            watchedConnection.id,
+            watchedConnection.name,
+            ...(watchedConnection.fallbackIds ?? []),
+        ].filter((value): value is string => Boolean(value));
+
+        if (ids.length === 0) return null;
+        return ids.some((id) => deviceStates[id]?.isOnline === true);
+    }, [deviceStates, watchedConnection]);
+
+    useEffect(() => {
+        if (!watchedConnection || !watchedConnectionKey) {
+            watchedOnlineRef.current = null;
+            watchedKeyRef.current = "";
+            return;
+        }
+
+        if (watchedKeyRef.current !== watchedConnectionKey) {
+            watchedKeyRef.current = watchedConnectionKey;
+            watchedOnlineRef.current = watchedConnectionOnline;
+            return;
+        }
+
+        const wasOnline = watchedOnlineRef.current;
+        watchedOnlineRef.current = watchedConnectionOnline;
+
+        if (wasOnline === true && watchedConnectionOnline === false && !disconnectWarning) {
+            setDisconnectWarning({
+                label: watchedConnection.label || watchedConnection.name || watchedConnection.id || "thiết bị",
+            });
+        }
+    }, [disconnectWarning, watchedConnection, watchedConnectionKey, watchedConnectionOnline]);
 
     const handleClose = (pageId: string, isTop: boolean) => {
         if (!isTop) return;
@@ -27,6 +88,18 @@ export function NestedDrawers() {
         });
     };
 
+    const handleConfirmDisconnect = () => {
+        watchedOnlineRef.current = null;
+        watchedKeyRef.current = "";
+        setDisconnectWarning(null);
+        setClosingId(null);
+        reset();
+        window.dispatchEvent(new CustomEvent("drawer-closed", { detail: { pageId: "connection-lost" } }));
+
+        requestAnimationFrame(() => reset());
+        setTimeout(() => reset(), 80);
+    };
+
     usePreventExit(stack.length > 0, () => {
         const current = stack[stack.length - 1];
         if (!current) return false;
@@ -37,6 +110,55 @@ export function NestedDrawers() {
 
     return (
         <>
+            {mounted && disconnectWarning && createPortal(
+                <div
+                    className="fixed inset-0 flex items-center justify-center bg-black/70 px-6 backdrop-blur-[2px]"
+                    style={{
+                        zIndex: 2147483647,
+                        pointerEvents: "auto",
+                        touchAction: "none",
+                    }}
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="connection-lost-title"
+                    aria-describedby="connection-lost-description"
+                    onPointerDown={(event) => {
+                        event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                    }}
+                >
+                    <div
+                        className="w-full max-w-[300px] rounded-[24px] bg-white p-5 text-gray-900 shadow-2xl"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="text-center">
+                            <h2 id="connection-lost-title" className="text-[17px] font-semibold">
+                                Mất kết nối thiết bị
+                            </h2>
+                            <p id="connection-lost-description" className="mt-2 text-[13px] leading-relaxed text-gray-500">
+                                {disconnectWarning.label || "Thiết bị"} hiện không còn phản hồi. Vui lòng kiểm tra nguồn, Internet hoặc Bluetooth rồi thử lại.
+                            </p>
+                        </div>
+
+                        <Button
+                            type="button"
+                            className="mt-5 h-10 w-full rounded-full bg-gray-900 text-white hover:bg-gray-800"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                handleConfirmDisconnect();
+                            }}
+                        >
+                            OK
+                        </Button>
+                    </div>
+                </div>,
+                document.body
+            )}
+
             {stack.map((page, index) => {
                 const isTop = index === stack.length - 1;
                 const isClosing = closingId === page.id;

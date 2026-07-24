@@ -169,6 +169,11 @@ export function RoomCard({ room, onDeleted, onRefresh, isRefreshing = false, dat
                                     id: room.id,
                                     title: room.name,
                                     component: DevicesRoom,
+                                    monitorConnection: {
+                                        id: room.name,
+                                        name: room.name,
+                                        label: room.name,
+                                    },
                                     props: {
                                         onLoad: onDeleted,
                                         roomId: room.id,

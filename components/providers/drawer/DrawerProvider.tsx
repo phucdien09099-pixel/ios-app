@@ -9,6 +9,12 @@ export type DrawerPage = {
 
     component: React.ComponentType<any>;
     props?: any;
+    monitorConnection?: {
+        id?: string;
+        name?: string;
+        label?: string;
+        fallbackIds?: string[];
+    };
 
     renderRightButtonHeader?: React.ReactNode;
     renderHelpButtonHeader?: React.ReactNode;

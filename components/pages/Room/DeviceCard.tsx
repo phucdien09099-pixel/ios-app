@@ -166,6 +166,12 @@ export default function DeviceCard({ roomName, device, onDeleted }: { roomName: 
                             id: device.id,
                             title: device.name,
                             component: DeviceControll,
+                            monitorConnection: {
+                                id: device.id,
+                                name: device.name,
+                                label: device.name,
+                                fallbackIds: [device.serial, roomName].filter(Boolean),
+                            },
                             props: {
                                 device,
                                 roomName
