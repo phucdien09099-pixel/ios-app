@@ -25,7 +25,7 @@ import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/compone
 type DeviceType = "LIGHT" | "AC" | "TV" | "SWITCH";
 
 interface TimerAction {
-    type: "power" | "temp" | "brightness" | "color" | "volume" | "channel" | "autoTemp" | "LEARNING_REMOTE";
+    type: "power" | "temp" | "brightness" | "color" | "volume" | "channel" | "mode" | "fan" | "command" | "autoTemp" | "LEARNING_REMOTE";
     value: string | number | boolean;
     label: string;
     command?: string;
@@ -144,7 +144,7 @@ function buildConfigAndPayload(data: any, devices: Device[], roomId: string, exi
     return { config, payload };
 }
 
-export function TimerUI({ roomId }: { roomId: string }) {
+export function TimerUI({ roomId, targetDevice }: { roomId: string; targetDevice?: Device | null }) {
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const { open, back } = useNavDrawer();
     const { send } = useTransport();
@@ -156,10 +156,11 @@ export function TimerUI({ roomId }: { roomId: string }) {
     const loadData = async () => {
         if (!roomId) return;
 
-        const [roomDevices, roomInfo] = await Promise.all([
+        const [loadedRoomDevices, roomInfo] = await Promise.all([
             deviceRepo.getByRoom(roomId),
             roomRepo.getById(roomId)
         ]);
+        const roomDevices = targetDevice ? [targetDevice] : loadedRoomDevices;
         setDevices(roomDevices);
         setRoom(roomInfo);
 
@@ -207,7 +208,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
 
     useEffect(() => {
         loadData();
-    }, [roomId]);
+    }, [roomId, targetDevice?.id]);
 
     const getDeviceIcon = (type: DeviceType) => {
         return IcoIcon;
@@ -230,6 +231,7 @@ export function TimerUI({ roomId }: { roomId: string }) {
             renderHelpButtonHeader: <HelpButton onClick={() => startTimerTour()} />,
             props: {
                 devices,
+                lockedDevice: targetDevice ?? null,
                 ...(timer && { initialData: timer }),
                 onCreateTimer: async (data: any) => {
                     const { config, payload } = buildConfigAndPayload(data, devices, roomId, timer?.id);

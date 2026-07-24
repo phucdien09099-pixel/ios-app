@@ -39,6 +39,7 @@ export interface TimerAction {
 export interface CreateTimerDrawerProps {
     form?: UseFormReturn<TimerFormValues>;
     devices: Device[];
+    lockedDevice?: Device | null;
     onSelectDevice: (device: Device) => void;
     onCreateTimer: (finalData: any) => void;
     onCancel: () => void;
@@ -72,6 +73,7 @@ export const DAYS_LABELS: Record<DayOfWeek, string> = {
 
 export default function CreateTimerDrawer({
     devices,
+    lockedDevice,
     onSelectDevice,
     onCreateTimer,
     onCancel,
@@ -84,7 +86,7 @@ export default function CreateTimerDrawer({
             time: "",
             days: [],
             repeat: false,
-            deviceId: "",
+            deviceId: lockedDevice?.id ?? "",
             action: undefined,
         } as any,
     });
@@ -136,6 +138,12 @@ export default function CreateTimerDrawer({
         }, 400); // 400ms an toàn cho animation đóng drawer
     }
     };
+
+    useEffect(() => {
+        if (!lockedDevice) return;
+        setValue("deviceId", lockedDevice.id);
+        setSelectedDevice(lockedDevice);
+    }, [lockedDevice, setValue]);
 
     const handleSelectAction = (selectedAction: TimerAction) => {
         setValue("action", selectedAction as any);
@@ -198,9 +206,9 @@ export default function CreateTimerDrawer({
 
             {/* Chọn thiết bị */}
             <div data-tour="timer-device">
-                <div className="mb-2 text-sm font-medium">Chọn thiết bị</div>
+                <div className="mb-2 text-sm font-medium">{lockedDevice ? "Thiết bị áp dụng" : "Chọn thiết bị"}</div>
                 <div className="grid gap-2">
-                    {devices.map((device) => {
+                    {(lockedDevice ? [lockedDevice] : devices).map((device) => {
                         const active = deviceId === device.id;
                         return (
                             <button

@@ -127,7 +127,7 @@ export default function ACsController({
       deviceName: data.name,
       brand: data.brand || "UNKNOWN",
       action: {
-        power: nextState.power ? "ON" : "OFF",
+        power: nextState.power ? "OFF" : "ON",
         temp: nextState.temperature,
         mode: getModeNumber(nextState.mode),
         fan: nextState.fanSpeed,
@@ -206,8 +206,8 @@ export default function ACsController({
               className={cn(
                 "size-14 rounded-2xl",
                 power
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-red-600 hover:bg-red-700"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-green-600 hover:bg-green-700"
               )}
               onClick={changePower}
             >

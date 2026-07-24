@@ -23,10 +23,26 @@ import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/compone
 
 interface CreateSmartSceneDrawerProps {
     roomId: string;
+    targetDevice?: Device | null;
 }
 
 const buildEsp32TaskPayload = (finalData: any, existingId?: string) => {
     const isSleepMode = finalData.automationMode === "sleep";
+    const selectedAction = finalData.action || {};
+    const actionType = isSleepMode ? "autoTemp" : (selectedAction.type || finalData.type || "autoTemp");
+    const actionPayload: Record<string, unknown> = {
+        type: actionType,
+        value: actionType === "autoTemp" ? "ON" : (selectedAction.value ?? "ON"),
+    };
+
+    if (actionType === "autoTemp" || typeof selectedAction.temp !== "undefined") {
+        actionPayload.temp = Number(selectedAction.temp ?? finalData.comfortTemperature ?? finalData.conditionValue ?? 26);
+    }
+
+    if (selectedAction.command) actionPayload.command = selectedAction.command;
+    if (selectedAction.key) actionPayload.key = selectedAction.key;
+    if (selectedAction.name) actionPayload.name = selectedAction.name;
+    if (selectedAction.remoteButtonId) actionPayload.remoteButtonId = selectedAction.remoteButtonId;
 
     return {
         id: existingId || `task_${Math.floor(Date.now() / 1000)}`,
@@ -35,13 +51,7 @@ const buildEsp32TaskPayload = (finalData: any, existingId?: string) => {
         repeat: finalData.repeat ?? true,
         days: [],
         deviceName: finalData.deviceName, // Thường ID từ Form/Select là String, ép sang số nguyên (Number) giống mẫu của bạn
-        actions: [
-            {
-                type: isSleepMode ? "autoTemp" : (finalData.type || "autoTemp"),
-                value: finalData.action?.value || "ON",
-                temp: Number(finalData.comfortTemperature ?? finalData.conditionValue ?? 26)
-            }
-        ]
+        actions: [actionPayload]
     };
 };
 
@@ -62,7 +72,7 @@ const getAutomationConditionLabel = (triggerConfig: any, fallbackLabel: string) 
     return fallbackLabel;
 };
 
-export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawerProps) {
+export default function CreateSmartSceneDrawer({ roomId, targetDevice }: CreateSmartSceneDrawerProps) {
     const { open, replace, back } = useNavDrawer();
     const [devices, setDevices] = useState<Device[]>([]);
     const [automations, setAutomations] = useState<any[]>([]);
@@ -94,11 +104,15 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
         if (!roomId) return;
 
         // Sử dụng Destructuring để hứng thêm kết quả từ roomRepo
-        const [roomDevices, roomAutomations, roomInfo] = await Promise.all([
+        const [loadedRoomDevices, loadedRoomAutomations, roomInfo] = await Promise.all([
             deviceRepo.getByRoom(roomId),
             automationRepo.getByRoom(roomId),
             roomRepo.getById(roomId),
         ]);
+        const roomDevices = targetDevice ? [targetDevice] : loadedRoomDevices;
+        const roomAutomations = targetDevice
+            ? loadedRoomAutomations.filter((automation) => automation.deviceId === targetDevice.id)
+            : loadedRoomAutomations;
 
         // console.log("Devices:", roomDevices);
         // console.log("Room Info:", roomInfo);
@@ -111,7 +125,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
 
     useEffect(() => {
         loadData();
-    }, [roomId]);
+    }, [roomId, targetDevice?.id]);
 
     useEffect(() => {
         pauseTourForDeviceDrawer();
@@ -132,6 +146,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                 props: {
                     roomName: room?.name,
                     devices,
+                    lockedDevice: targetDevice ?? null,
                     getDeviceIcon,
                     onCancel: back,
                     onCreateAutomation: async (finalData: any) => {
@@ -168,6 +183,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
             component: CreateAutomation,
             props: {
                 devices,
+                lockedDevice: targetDevice ?? devices.find((device) => device.id === automation.deviceId) ?? null,
                 getDeviceIcon,
                 initialData: {
                     name: automation.name,
@@ -178,7 +194,8 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     comfortTemperature: triggerConfig.comfortTemperature || "26",
                     operator: triggerConfig.operator || "",
                     conditionValue: triggerConfig.conditionValue || "28",
-                    actionDeviceId: automation.deviceId,
+                    deviceId: automation.deviceId,
+                    deviceName: devices.find((device) => device.id === automation.deviceId)?.name ?? triggerConfig.deviceName ?? "",
                     action: actionObj,
                 },
                 onCancel: back,
@@ -189,7 +206,7 @@ export default function CreateSmartSceneDrawer({ roomId }: CreateSmartSceneDrawe
                     await automationRepo.update(automation.id, {
                         name: finalData.name || "Tự động hóa",
                         trigger_config: JSON.stringify(triggerConfigObj),
-                        deviceId: finalData.actionDeviceId,
+                        deviceId: finalData.deviceId,
                         action: JSON.stringify(finalData.action || { value: "ON" }),
                     });
 

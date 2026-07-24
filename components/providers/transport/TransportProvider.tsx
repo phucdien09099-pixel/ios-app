@@ -1,13 +1,25 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, } from "react";
+import React, {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { ConnectionStatus } from "@/core/connection/connections";
 import { transportManager } from "@/core/connection/TransportManager";
-import { TransportConfigMap, TransportType } from "@/core/connection/TransportConfigMap";
+import {
+    TransportConfigMap,
+    TransportType,
+} from "@/core/connection/TransportConfigMap";
 import { roomRepo } from "@/db/repository/RoomRepository";
 import { bleService } from "@/utils/Tauri/BluetoothSerial";
 
 type TopicFeature = { init: string } | { pair: string };
+
 type DeviceState = {
     id?: string;
     isOnline?: boolean;
@@ -16,6 +28,7 @@ type DeviceState = {
     updatedAt?: string;
     [key: string]: unknown;
 };
+
 type TransportMessage = {
     id?: string;
     channel?: string;
@@ -28,7 +41,11 @@ type TransportContextType = {
     connectDual: (configs: Partial<TransportConfigMap>) => Promise<void>;
     disconnect: () => Promise<void>;
     refreshConnection: () => Promise<void>;
-    send: (data: unknown, channel: string, strategy?: "smart" | "broadcast") => Promise<unknown>;
+    send: (
+        data: unknown,
+        channel: string,
+        strategy?: "smart" | "broadcast"
+    ) => Promise<unknown>;
     scan: (targetTransport?: TransportType) => Promise<unknown[]>;
     subscribe: (topic: string) => void;
 
@@ -41,6 +58,15 @@ type TransportContextType = {
 };
 
 const TransportContext = createContext<TransportContextType | null>(null);
+
+/**
+ * Nếu app chỉ chạy nền ngắn và transport vẫn báo connected thì không reconnect.
+ * Khi chạy nền lâu hơn mốc này, provider sẽ dựng lại transport để tránh socket/BLE
+ * đã chết ngầm nhưng trạng thái nội bộ vẫn còn connected.
+ */
+const LONG_BACKGROUND_RECONNECT_MS = 30_000;
+const LIFECYCLE_DEBOUNCE_MS = 250;
+const LIFECYCLE_THROTTLE_MS = 2_000;
 
 const getCurrentMqttUser = () => {
     if (typeof window === "undefined") return "anonymous";
@@ -66,17 +92,17 @@ const getMqttTopics = (user: string) => {
         `users/${user}/devices/+/sensor/info`,
         `users/${user}/devices/+/control/set`,
 
-        // Member accounts need to see status published by the owner account,
-        // for example users/admin@gmail.com/devices/<room>/status.
-        // The smart API filters rooms/devices by permission; this wildcard only
-        // lets the UI receive MQTT heartbeats for synced rooms.
+        // Member account có thể nhận heartbeat/status do owner publish.
         "users/+/devices/+/info",
         "users/+/devices/+/status",
         "users/+/devices/+/sensor",
         "users/+/devices/+/sensor/info",
     ];
 
-    return Array.from(new Set(topics)).map((topic) => ({ topic, qos: 0 as const }));
+    return Array.from(new Set(topics)).map((topic) => ({
+        topic,
+        qos: 0 as const,
+    }));
 };
 
 const normalizeBleName = (value?: string | null) =>
@@ -90,8 +116,14 @@ const readOnlineStatus = (payload: unknown): boolean | null => {
 
     if (typeof payload === "string") {
         const normalized = payload.trim().toLowerCase();
-        if (["ping", "online", "on", "true", "1", "connected"].includes(normalized)) return true;
-        if (["offline", "off", "false", "0", "disconnected"].includes(normalized)) return false;
+
+        if (["ping", "online", "on", "true", "1", "connected"].includes(normalized)) {
+            return true;
+        }
+
+        if (["offline", "off", "false", "0", "disconnected"].includes(normalized)) {
+            return false;
+        }
 
         try {
             return readOnlineStatus(JSON.parse(payload));
@@ -121,7 +153,9 @@ const readOnlineStatus = (payload: unknown): boolean | null => {
 export function TransportProvider({ children }: { children: React.ReactNode }) {
     const [isConnected, setIsConnected] = useState(false);
     const [lastMessage, setLastMessage] = useState<TransportMessage | null>(null);
-    const [connectionStatuses, setConnectionStatuses] = useState<Partial<Record<TransportType, ConnectionStatus>>>({
+    const [connectionStatuses, setConnectionStatuses] = useState<
+        Partial<Record<TransportType, ConnectionStatus>>
+    >({
         MQTT: "idle",
         Bluetooth: "idle",
     });
@@ -133,7 +167,11 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     const lastLifecycleReconnectAtRef = useRef(0);
     const lifecycleReconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const entityNameMapRef = useRef<Map<string, string>>(new Map());
-    const listTopicFeature = useMemo<TopicFeature[]>(() => [{ init: "init" }, { pair: "pair" }], []);
+
+    const listTopicFeature = useMemo<TopicFeature[]>(
+        () => [{ init: "init" }, { pair: "pair" }],
+        []
+    );
 
     const getDeviceStatus = useCallback(
         (id: string) => deviceStates[id]?.isOnline ?? false,
@@ -142,8 +180,11 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
 
     const syncConnectionMetadata = useCallback(() => {
         setIsConnected(transportManager.isConnected());
+
         const currentStatuses = transportManager.getStatuses?.() || new Map();
-        setConnectionStatuses(Object.fromEntries(currentStatuses) as Record<TransportType, ConnectionStatus>);
+        setConnectionStatuses(
+            Object.fromEntries(currentStatuses) as Record<TransportType, ConnectionStatus>
+        );
     }, []);
 
     const connectDual = useCallback(
@@ -157,6 +198,10 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         [syncConnectionMetadata]
     );
 
+    /**
+     * Disconnect do người dùng/chức năng gọi trực tiếp mới xoá trạng thái thiết bị.
+     * Reconnect nội bộ khi resume không dùng hàm này, vì cần giữ UI hiện trạng thái cũ.
+     */
     const disconnect = useCallback(async () => {
         await transportManager.disconnect();
         setDeviceStates({});
@@ -164,7 +209,8 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     }, [syncConnectionMetadata]);
 
     const scan = useCallback(
-        async (targetTransport?: TransportType) => transportManager.scan(targetTransport),
+        async (targetTransport?: TransportType) =>
+            transportManager.scan(targetTransport),
         []
     );
 
@@ -174,131 +220,251 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
     );
 
     const send = useCallback(
-        async (data: unknown, channel: string, strategy: "smart" | "broadcast" = "smart") =>
-            transportManager.send(data, channel, strategy),
+        async (
+            data: unknown,
+            channel: string,
+            strategy: "smart" | "broadcast" = "smart"
+        ) => transportManager.send(data, channel, strategy),
         []
     );
 
-    const connectMqttFallback = useCallback(async () => {
-        const mqttUser = getCurrentMqttUser();
-
-        await connectDual({
-            MQTT: {
-                topicsToSubscribe: getMqttTopics(mqttUser),
-            },
-        });
-
-        getMqttTopics(mqttUser).forEach(({ topic }) => {
-            transportManager.subscribe(topic);
-        });
-        syncConnectionMetadata();
-    }, [connectDual, syncConnectionMetadata]);
-
-    const runSmartConnection = useCallback(async (resetConnection = false) => {
-        if (connectionRunRef.current) {
-            await connectionRunRef.current;
-            return;
-        }
-
-        let releaseConnectionRun: () => void = () => { };
-        connectionRunRef.current = new Promise<void>((resolve) => {
-            releaseConnectionRun = resolve;
-        });
-
-        try {
-        if (resetConnection) {
-            await transportManager.disconnect();
-            syncConnectionMetadata();
-        }
-
-        // console.log("[Transport Provider]: Có Bluetooth thì ưu tiên BLE, không có thì dùng MQTT.");
-
+    const loadRooms = useCallback(async () => {
         const rooms = await roomRepo.getRooms();
-        const roomNames = rooms.map((room) => room.name).filter(Boolean);
-        entityNameMapRef.current = new Map(roomNames.map((name) => [normalizeBleName(name), name]));
+        const roomNames = rooms
+            .map((room) => room.name)
+            .filter((name): name is string => Boolean(name));
 
+        entityNameMapRef.current = new Map(
+            roomNames.map((name) => [normalizeBleName(name), name])
+        );
+
+        // Chỉ bổ sung room chưa có. Không reset isOnline và không ghi đè dữ liệu cũ.
         setDeviceStates((prev) => {
-            const nextStates = resetConnection ? {} : { ...prev };
+            const nextStates = { ...prev };
+
             roomNames.forEach((name) => {
-                nextStates[name] = {
-                    ...nextStates[name],
-                    id: name,
-                    isOnline: false,
-                    updatedAt: new Date().toISOString(),
-                };
+                if (!nextStates[name]) {
+                    nextStates[name] = {
+                        id: name,
+                        isOnline: false,
+                    };
+                }
             });
+
             return nextStates;
         });
 
-        const bluetoothReady = await bleService.hasUsableBluetooth(false);
-        if (!bluetoothReady) {
-            console.log("[Transport Provider]: Bluetooth đang tắt/chưa cấp quyền, dùng MQTT mặc định.");
-            await connectMqttFallback();
+        return roomNames;
+    }, []);
+
+    const connectMqttFallback = useCallback(async () => {
+        // Nếu MQTT thực sự đang connected thì chỉ đồng bộ metadata.
+        if (transportManager.isConnected("MQTT")) {
+            syncConnectionMetadata();
             return;
         }
 
-        const roomNameMap = entityNameMapRef.current;
-        const scannedBleDevices = await transportManager.scan("Bluetooth");
-        const matchedBleDevices = scannedBleDevices
-            .map((bleDevice) => {
-                const deviceRecord = bleDevice && typeof bleDevice === "object"
-                    ? bleDevice as Record<string, unknown>
-                    : {};
-                const deviceName = typeof deviceRecord.name === "string" ? deviceRecord.name : "";
-                const deviceAddress = typeof deviceRecord.address === "string" ? deviceRecord.address : "";
-                const bleName = normalizeBleName(deviceName);
-                if (!bleName || !deviceAddress) return null;
+        const mqttUser = getCurrentMqttUser();
+        const mqttTopics = getMqttTopics(mqttUser);
 
-                const matchedRoom = Array.from(roomNameMap.entries()).find(([normalizedRoomName]) =>
-                    bleName.includes(normalizedRoomName) || normalizedRoomName.includes(bleName)
-                );
+        await connectDual({
+            MQTT: {
+                topicsToSubscribe: mqttTopics,
+            },
+        });
 
-                if (!matchedRoom) return null;
+        // Giữ tương thích với TransportManager hiện tại.
+        // Nếu adapter đã tự subscribe qua topicsToSubscribe thì thao tác này nên idempotent.
+        mqttTopics.forEach(({ topic }) => {
+            transportManager.subscribe(topic);
+        });
 
-                return {
-                    deviceId: deviceAddress,
-                    name: matchedRoom[1],
-                };
-            })
-            .filter(Boolean) as { deviceId: string; name: string }[];
+        syncConnectionMetadata();
+    }, [connectDual, syncConnectionMetadata]);
 
-        if (matchedBleDevices.length > 0) {
+    const connectBluetoothOrFallbackMqtt = useCallback(
+        async (roomNames: string[]) => {
+            let bluetoothReady = false;
+
             try {
-                await connectDual({
-                    Bluetooth: {
-                        devices: matchedBleDevices,
-                    },
-                });
+                // Chỉ chạy scan khi Bluetooth máy đang bật và có thể sử dụng.
+                bluetoothReady = await bleService.hasUsableBluetooth(false);
+            } catch (error) {
+                console.warn(
+                    "[Transport Provider]: Không kiểm tra được Bluetooth, fallback MQTT WS.",
+                    error
+                );
+            }
 
-                if (transportManager.isConnected("Bluetooth")) {
-                    setDeviceStates((prev) => {
-                        const nextStates = { ...prev };
-                        matchedBleDevices.forEach((device) => {
-                            nextStates[device.name] = {
-                                id: device.name,
-                                isOnline: true,
-                                transport: "Bluetooth",
-                                updatedAt: new Date().toISOString(),
-                            };
-                        });
-                        return nextStates;
+            if (!bluetoothReady) {
+                console.log(
+                    "[Transport Provider]: Bluetooth đang tắt/không khả dụng, fallback MQTT WS."
+                );
+                await connectMqttFallback();
+                return;
+            }
+
+            // Bluetooth đang bật: nếu BLE đã connected thì không scan lại.
+            if (transportManager.isConnected("Bluetooth")) {
+                syncConnectionMetadata();
+                return;
+            }
+
+            try {
+                const scannedBleDevices = await transportManager.scan("Bluetooth");
+                const roomNameMap = entityNameMapRef.current;
+
+                const matchedBleDevices = scannedBleDevices
+                    .map((bleDevice) => {
+                        const deviceRecord =
+                            bleDevice && typeof bleDevice === "object"
+                                ? (bleDevice as Record<string, unknown>)
+                                : {};
+
+                        const deviceName =
+                            typeof deviceRecord.name === "string"
+                                ? deviceRecord.name
+                                : "";
+                        const deviceAddress =
+                            typeof deviceRecord.address === "string"
+                                ? deviceRecord.address
+                                : "";
+                        const bleName = normalizeBleName(deviceName);
+
+                        if (!bleName || !deviceAddress) return null;
+
+                        const matchedRoom = Array.from(roomNameMap.entries()).find(
+                            ([normalizedRoomName]) =>
+                                bleName.includes(normalizedRoomName) ||
+                                normalizedRoomName.includes(bleName)
+                        );
+
+                        if (!matchedRoom) return null;
+
+                        return {
+                            deviceId: deviceAddress,
+                            name: matchedRoom[1],
+                        };
+                    })
+                    .filter(
+                        (device): device is { deviceId: string; name: string } =>
+                            Boolean(device)
+                    );
+
+                if (matchedBleDevices.length > 0) {
+                    await connectDual({
+                        Bluetooth: {
+                            devices: matchedBleDevices,
+                        },
                     });
+
+                    if (transportManager.isConnected("Bluetooth")) {
+                        const connectedAt = new Date().toISOString();
+
+                        setDeviceStates((prev) => {
+                            const nextStates = { ...prev };
+
+                            matchedBleDevices.forEach((device) => {
+                                nextStates[device.name] = {
+                                    ...nextStates[device.name],
+                                    id: device.name,
+                                    isOnline: true,
+                                    transport: "Bluetooth",
+                                    updatedAt: connectedAt,
+                                };
+                            });
+
+                            return nextStates;
+                        });
+
+                        syncConnectionMetadata();
+                        console.log(
+                            "[Transport Provider]: Đã kết nối BLE, không cần MQTT WS."
+                        );
+                        return;
+                    }
+                }
+
+                console.log(
+                    `[Transport Provider]: Bluetooth bật nhưng không tìm thấy thiết bị phù hợp (${roomNames.length} room), fallback MQTT WS.`
+                );
+            } catch (error) {
+                console.warn(
+                    "[Transport Provider]: Quét/kết nối BLE thất bại, fallback MQTT WS.",
+                    error
+                );
+            }
+
+            await connectMqttFallback();
+        },
+        [connectDual, connectMqttFallback, syncConnectionMetadata]
+    );
+
+    /**
+     * forceReconnect = true:
+     * - Dựng lại transport sau khi app chạy nền lâu hoặc network vừa online.
+     * - Không xoá deviceStates, vì UI được phép giữ trạng thái cuối cùng trong lúc reconnect.
+     *
+     * forceReconnect = false:
+     * - Nếu BLE hoặc MQTT vẫn connected thì không làm lại kết nối.
+     */
+    const runSmartConnection = useCallback(
+        async (forceReconnect = false) => {
+            if (connectionRunRef.current) {
+                await connectionRunRef.current;
+                return;
+            }
+
+            let releaseConnectionRun: () => void = () => undefined;
+            connectionRunRef.current = new Promise<void>((resolve) => {
+                releaseConnectionRun = resolve;
+            });
+
+            try {
+                const hasActiveTransport =
+                    transportManager.isConnected("Bluetooth") ||
+                    transportManager.isConnected("MQTT");
+
+                if (!forceReconnect && hasActiveTransport) {
                     syncConnectionMetadata();
-                    console.log("[Transport Provider]: Đã kết nối BLE, không bật MQTT.");
                     return;
                 }
-            } catch (error) {
-                console.warn("[Transport Provider]: BLE không khả dụng, chuyển sang MQTT.", error);
-            }
-        }
 
-        await connectMqttFallback();
-        } finally {
-            releaseConnectionRun();
-            connectionRunRef.current = null;
-            syncConnectionMetadata();
-        }
-    }, [connectDual, connectMqttFallback, syncConnectionMetadata]);
+                const roomNames = await loadRooms();
+
+                if (forceReconnect) {
+                    // Chỉ reset lớp kết nối; tuyệt đối không reset deviceStates.
+                    try {
+                        await transportManager.disconnect();
+                    } catch (error) {
+                        console.warn(
+                            "[Transport Provider]: Disconnect transport cũ không hoàn tất, tiếp tục reconnect.",
+                            error
+                        );
+                    } finally {
+                        syncConnectionMetadata();
+                    }
+                }
+
+                await connectBluetoothOrFallbackMqtt(roomNames);
+
+                if (!transportManager.isConnected()) {
+                    throw new Error(
+                        "Không thể kết nối Bluetooth hoặc MQTT WebSocket."
+                    );
+                }
+            } finally {
+                releaseConnectionRun();
+                connectionRunRef.current = null;
+                syncConnectionMetadata();
+            }
+        },
+        [
+            connectBluetoothOrFallbackMqtt,
+            loadRooms,
+            syncConnectionMetadata,
+        ]
+    );
 
     const refreshConnection = useCallback(async () => {
         await runSmartConnection(true);
@@ -309,29 +475,54 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         initializedRef.current = true;
 
         runSmartConnection(false).catch((error) => {
-            console.error("[Transport Provider]: Không thể khởi động transport:", error);
+            console.error(
+                "[Transport Provider]: Không thể khởi động transport:",
+                error
+            );
         });
     }, [runSmartConnection]);
 
     useEffect(() => {
-        const reconnectAfterResume = (reason: string, force = false) => {
+        const ensureConnectionAfterResume = (
+            reason: string,
+            forceReconnect: boolean
+        ) => {
             if (document.visibilityState === "hidden") return;
 
             const now = Date.now();
-            if (!force && now - lastLifecycleReconnectAtRef.current < 3_000) return;
+            if (
+                !forceReconnect &&
+                now - lastLifecycleReconnectAtRef.current <
+                LIFECYCLE_THROTTLE_MS
+            ) {
+                return;
+            }
 
             if (lifecycleReconnectTimerRef.current) {
                 clearTimeout(lifecycleReconnectTimerRef.current);
             }
 
             lifecycleReconnectTimerRef.current = setTimeout(() => {
+                lifecycleReconnectTimerRef.current = null;
                 lastLifecycleReconnectAtRef.current = Date.now();
-                console.log(`[Transport Provider]: App trở lại (${reason}), làm mới kết nối transport...`);
-                runSmartConnection(true).catch((error) => {
-                    console.error("[Transport Provider]: Không thể làm mới transport sau khi app trở lại:", error);
+
+                const transportStillConnected = transportManager.isConnected();
+                const shouldForceReconnect =
+                    forceReconnect || !transportStillConnected;
+
+                console.log(
+                    `[Transport Provider]: App trở lại (${reason}). ` +
+                    `connected=${transportStillConnected}, force=${shouldForceReconnect}`
+                );
+
+                runSmartConnection(shouldForceReconnect).catch((error) => {
+                    console.error(
+                        "[Transport Provider]: Không thể đảm bảo transport sau khi app trở lại:",
+                        error
+                    );
                     syncConnectionMetadata();
                 });
-            }, 300);
+            }, LIFECYCLE_DEBOUNCE_MS);
         };
 
         const handleVisibilityChange = () => {
@@ -346,22 +537,33 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
                 : 0;
             backgroundedAtRef.current = null;
 
-            reconnectAfterResume(
+            const wasBackgroundedForLongTime =
+                hiddenDuration >= LONG_BACKGROUND_RECONNECT_MS;
+
+            ensureConnectionAfterResume(
                 `foreground sau ${Math.round(hiddenDuration / 1000)}s`,
-                hiddenDuration > 1_000 || !transportManager.isConnected()
+                wasBackgroundedForLongTime || !transportManager.isConnected()
             );
         };
 
         const handleFocus = () => {
-            reconnectAfterResume("focus", !transportManager.isConnected());
+            // focus thường đi cùng visibilitychange, debounce/throttle sẽ gộp lại.
+            ensureConnectionAfterResume(
+                "focus",
+                !transportManager.isConnected()
+            );
         };
 
         const handleOnline = () => {
-            reconnectAfterResume("network-online", true);
+            // Network vừa trở lại: dựng lại transport để MQTT WS chắc chắn usable.
+            ensureConnectionAfterResume("network-online", true);
         };
 
         const handlePageShow = (event: PageTransitionEvent) => {
-            reconnectAfterResume(event.persisted ? "pageshow-cache" : "pageshow", event.persisted || !transportManager.isConnected());
+            ensureConnectionAfterResume(
+                event.persisted ? "pageshow-cache" : "pageshow",
+                event.persisted || !transportManager.isConnected()
+            );
         };
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -370,7 +572,10 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
         window.addEventListener("pageshow", handlePageShow);
 
         return () => {
-            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
             window.removeEventListener("focus", handleFocus);
             window.removeEventListener("online", handleOnline);
             window.removeEventListener("pageshow", handlePageShow);
@@ -401,47 +606,70 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
                 return;
             }
 
-            if (!data?.channel) return;
+            if (!data.channel) return;
 
             const channelParts = data.channel.split("/");
-            const rawDeviceName = channelParts[0] === "users"
-                ? channelParts[3]
-                : channelParts[1];
-            const deviceName = entityNameMapRef.current.get(normalizeBleName(rawDeviceName)) ?? rawDeviceName;
+            const rawDeviceName =
+                channelParts[0] === "users"
+                    ? channelParts[3]
+                    : channelParts[1];
+            const deviceName =
+                entityNameMapRef.current.get(normalizeBleName(rawDeviceName)) ??
+                rawDeviceName;
+
             if (!deviceName) return;
 
             const isStatusChannel = channelParts.at(-1) === "status";
-            const onlineStatus = isStatusChannel ? readOnlineStatus(data.payload) : null;
+            const onlineStatus = isStatusChannel
+                ? readOnlineStatus(data.payload)
+                : null;
             let extractedTemp: number | undefined;
 
             if (data.payload) {
                 try {
-                    const parsedPayload = typeof data.payload === "string"
-                        ? JSON.parse(data.payload)
-                        : data.payload;
+                    const parsedPayload =
+                        typeof data.payload === "string"
+                            ? JSON.parse(data.payload)
+                            : data.payload;
 
-                    if (parsedPayload && typeof parsedPayload.temp !== "undefined") {
-                        extractedTemp = Number(parsedPayload.temp);
+                    if (
+                        parsedPayload &&
+                        typeof parsedPayload === "object" &&
+                        "temp" in parsedPayload &&
+                        typeof (parsedPayload as Record<string, unknown>).temp !==
+                        "undefined"
+                    ) {
+                        const parsedTemp = Number(
+                            (parsedPayload as Record<string, unknown>).temp
+                        );
+
+                        if (Number.isFinite(parsedTemp)) {
+                            extractedTemp = parsedTemp;
+                        }
                     }
                 } catch {
-                    // Non-JSON payloads such as "ping" are valid status messages.
+                    // Payload status như "ping" không phải JSON vẫn hợp lệ.
                 }
             }
 
             if (isStatusChannel && onlineStatus !== null) {
                 setDeviceStates((prev) => {
                     const oldDeviceState = prev[deviceName] || {};
+
                     return {
                         ...prev,
                         [deviceName]: {
+                            ...oldDeviceState,
                             id: deviceName,
                             isOnline: onlineStatus,
-                            temp: extractedTemp !== undefined ? extractedTemp : oldDeviceState.temp,
+                            temp:
+                                extractedTemp !== undefined
+                                    ? extractedTemp
+                                    : oldDeviceState.temp,
                             updatedAt: new Date().toISOString(),
                         },
                     };
                 });
-
             } else if (extractedTemp !== undefined) {
                 setDeviceStates((prev) => ({
                     ...prev,
@@ -459,6 +687,8 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
             syncConnectionMetadata();
         });
 
+        // TransportManager hiện tại không cung cấp hàm unsubscribe listener.
+        // Nếu API có trả cleanup function, nên gọi cleanup tại đây.
         return undefined;
     }, [syncConnectionMetadata]);
 
@@ -502,6 +732,10 @@ export function TransportProvider({ children }: { children: React.ReactNode }) {
 
 export function useTransport() {
     const ctx = useContext(TransportContext);
-    if (!ctx) throw new Error("useTransport must be used inside TransportProvider");
+
+    if (!ctx) {
+        throw new Error("useTransport must be used inside TransportProvider");
+    }
+
     return ctx;
 }

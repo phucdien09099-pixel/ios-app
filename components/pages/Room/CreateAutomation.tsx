@@ -46,6 +46,7 @@ export interface AutomationFormValues {
 export interface CreateAutomationDrawerProps {
     roomName?: string;
     devices: Device[];
+    lockedDevice?: Device | null;
     onCreateAutomation: (finalData: any) => void;
     onCancel: () => void;
     initialData?: Partial<AutomationFormValues>;
@@ -69,6 +70,7 @@ const DEFAULT_VALUES: AutomationFormValues = {
 export default function CreateAutomation({
     roomName,
     devices = [],
+    lockedDevice,
     onCreateAutomation,
     onCancel,
     initialData,
@@ -79,6 +81,8 @@ export default function CreateAutomation({
             ...DEFAULT_VALUES,
             ...initialData,
             automationMode: initialData?.automationMode || DEFAULT_VALUES.automationMode,
+            deviceId: initialData?.deviceId ?? lockedDevice?.id ?? "",
+            deviceName: initialData?.deviceName ?? lockedDevice?.name ?? "",
         },
     });
     const { register, watch, setValue, handleSubmit } = form;
@@ -109,6 +113,13 @@ export default function CreateAutomation({
         const device = devices.find((item) => item.id === initialData.deviceId);
         if (device) setSelectedActionDevice(device);
     }, [initialData, devices]);
+
+    useEffect(() => {
+        if (!lockedDevice || initialData?.deviceId) return;
+        setValue("deviceId", lockedDevice.id);
+        setValue("deviceName", lockedDevice.name || "");
+        setSelectedActionDevice(lockedDevice);
+    }, [initialData?.deviceId, lockedDevice, setValue]);
 
     const handleDecrement = (field: "conditionValue" | "currentTemperature" | "comfortTemperature") => {
         const current = parseInt(watch(field), 10) || 0;
@@ -283,7 +294,7 @@ export default function CreateAutomation({
             <div className="flex flex-col gap-2" data-tour="scene-action">
                 <div className="text-sm font-medium">Chọn thiết bị và hành động</div>
                 <div className="grid gap-2">
-                    {devices.map((device) => {
+                    {(lockedDevice ? [lockedDevice] : devices).map((device) => {
                         const isActive = watchActionDeviceId === device.id;
 
                         return (

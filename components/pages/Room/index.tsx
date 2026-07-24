@@ -6,11 +6,8 @@ import AppPullToRefresh from "@/components/common/AppPull2Refresh";
 import { useEffect, useState } from "react";
 import { deviceRepo } from "@/db/repository/DeviceRepository";
 import { Device } from "@/db/types/devive";
-import BottomNavBar from "./BottomNavBar";
 import { startAfterAddDeviceTour } from "@/components/onboarding/tours/afterAddDeviceTour";
 import PullDownGuide from "@/components/onboarding/PullDownGuide";
-
-// 🟢 TÍCH HỢP HOOK VÀ MODAL TỪ BƯỚC TRƯỚC VÀO ĐÂY
 import WelcomeRoomModal from "@/components/onboarding/WelcomeRoomModal";
 import { useWelcomeRoomModal } from "@/components/onboarding/useWelcomeRoomModal";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +24,6 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
         setDevice(data);
         await onLoad?.();
 
-        // 🟢 CHẠY KIỂM TRA ĐỂ HIỆN MODAL HỎI ĐÁP
         checkWelcomeRoom(data.length);
 
         if (isManual) {
@@ -141,8 +137,6 @@ export default function DevicesRoom({ roomId, onLoad, roomName }: { roomName: st
             </AppPullToRefresh >
 
             {showGuide && <PullDownGuide type="device" />}
-            <BottomNavBar roomId={roomId} />
-
             {/* 🟢 GẮN MODAL XUỐNG DƯỚI CÙNG GIAO DIỆN */}
             <WelcomeRoomModal
                 open={showWelcomeRoom}

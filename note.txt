@@ -2,3 +2,6 @@
 [x]hide/show password on mobile
 [x] save local value controll
 [x] reconnect if app was running at background
+[x] move "kịch bản" + "hẹn giờ"
+[x] hạn chế bật tắt máy lạnh ở kịch bản
+[x] chuyển nút bật/tắt điều khiển máy lạnh thành trạng thái on/off máy lạnh
