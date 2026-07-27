@@ -7,6 +7,12 @@ import {
     IcoIcon,
     AddCircleIcon,
 } from "@hugeicons/core-free-icons";
+import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+} from "@/components/ui/drawer";
 import { useRef, useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { useNavDrawer } from "@/components/providers/drawer/useNavDrawer";
@@ -152,6 +158,7 @@ export function TimerUI({ roomId, targetDevice }: { roomId: string; targetDevice
     const [devices, setDevices] = useState<Device[]>([]);
     const [timers, setTimers] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
+    const [muteDialogTimer, setMuteDialogTimer] = useState<any | null>(null);
 
     const loadData = async () => {
         if (!roomId) return;
@@ -195,6 +202,7 @@ export function TimerUI({ roomId, targetDevice }: { roomId: string; targetDevice
             toast.warning("Đã lưu hẹn giờ, nhưng chưa có thông tin Hub để gửi xuống thiết bị.");
             return false;
         }
+        console.log("Sending Timer Payload:", topic, payload);
 
         try {
             await send(payload, topic);
@@ -204,6 +212,51 @@ export function TimerUI({ roomId, targetDevice }: { roomId: string; targetDevice
             toast.warning("Đã lưu hẹn giờ. Thiết bị đang offline nên chưa gửi xuống Hub.");
             return false;
         }
+    };
+    const handleTimerMuteSelect = async (option: "next_only" | "indefinite") => {
+        if (!muteDialogTimer) return;
+        const timer = muteDialogTimer;
+        const device = devices.find((d) => d.id === timer.deviceId);
+        const days = (timer.days || [])
+            .map((day: DayOfWeek) => DAY_TO_ESP_VALUE[day])
+            .filter((d: number | undefined) => d !== undefined);
+
+        // Switch luôn chuyển OFF trong DB, bất kể chọn kiểu nào
+        const nextAction =
+            option === "next_only"
+                ? { ...timer.action, disableMode: "next_only" }
+                : (() => {
+                    const { disableMode, ...rest } = timer.action;
+                    return rest;
+                })();
+
+        await configRepo.update(timer.id, {
+            is_active: 0,
+            action: JSON.stringify(nextAction),
+        });
+
+        if (option === "next_only") {
+            // Vẫn gửi "set" kèm cờ disableMode ở gốc payload để Hub biết bỏ qua đúng 1 lần rồi tự xoá cờ
+            const payload = {
+                id: timer.id,
+                deviceName: device?.name ?? timer.deviceId,
+                time: timer.time,
+                repeat: timer.repeat,
+                days,
+                actions: [normalizeActionForEsp(nextAction)],
+                disableMode: "next_only",
+            };
+            await sendTimerPayload(payload, `device/${room?.name}/auto/set`);
+        } else {
+            // Tắt hẳn: gửi "delete" để Hub xoá lịch này
+            await sendTimerPayload({ id: timer.id }, `device/${room?.name}/auto/delete`);
+        }
+
+        setTimers((prev) =>
+            prev.map((t) => (t.id === timer.id ? { ...t, enabled: false, action: nextAction } : t))
+        );
+
+        setMuteDialogTimer(null);
     };
 
     useEffect(() => {
@@ -391,9 +444,34 @@ export function TimerUI({ roomId, targetDevice }: { roomId: string; targetDevice
                                             <Switch
                                                 checked={timer.enabled}
                                                 onCheckedChange={async (checked) => {
-                                                    await configRepo.update(timer.id, { is_active: checked ? 1 : 0 });
+                                                    if (!checked) {
+                                                        setMuteDialogTimer(timer);
+                                                        return;
+                                                    }
+
+                                                    const nextAction = { ...timer.action };
+                                                    delete nextAction.disableMode;
+
+                                                    await configRepo.update(timer.id, {
+                                                        is_active: 1,
+                                                        action: JSON.stringify(nextAction),
+                                                    });
+
+                                                    const days = (timer.days || [])
+                                                        .map((day: DayOfWeek) => DAY_TO_ESP_VALUE[day])
+                                                        .filter((d: number | undefined) => d !== undefined);
+                                                    const payload = {
+                                                        id: timer.id,
+                                                        deviceName: device?.name ?? timer.deviceId,
+                                                        time: timer.time,
+                                                        repeat: timer.repeat,
+                                                        days,
+                                                        actions: [normalizeActionForEsp(nextAction)],
+                                                    };
+                                                    await sendTimerPayload(payload, `device/${room?.name}/auto/set`);
+
                                                     setTimers((prev) =>
-                                                        prev.map((t) => t.id === timer.id ? { ...t, enabled: checked } : t)
+                                                        prev.map((t) => t.id === timer.id ? { ...t, enabled: true, action: nextAction } : t)
                                                     );
                                                 }}
                                             />
@@ -406,6 +484,34 @@ export function TimerUI({ roomId, targetDevice }: { roomId: string; targetDevice
                     )}
                 </div>
             </div>
+
+            <Drawer
+                open={!!muteDialogTimer}
+                onOpenChange={(open) => !open && setMuteDialogTimer(null)}
+            >
+                <DrawerContent className="w-full bg-background rounded-t-2xl mt-[62vh]! z-9999 [&>div:first-child]:hidden">
+                    <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-muted-foreground/20 shrink-0" />
+                    <DrawerHeader className="pb-2 shrink-0">
+                        <DrawerTitle className="text-lg font-bold text-center">Tắt hẹn giờ</DrawerTitle>
+                    </DrawerHeader>
+                    <div className="pb-8">
+                        <button
+                            type="button"
+                            onClick={() => void handleTimerMuteSelect("next_only")}
+                            className="w-full border-b p-4 text-left hover:bg-muted/40 transition"
+                        >
+                            <div className="font-medium">Tắt cho lần kích hoạt tiếp theo</div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void handleTimerMuteSelect("indefinite")}
+                            className="w-full p-4 text-left hover:bg-muted/40 transition"
+                        >
+                            <div className="font-medium">Tắt đến khi được bật lại</div>
+                        </button>
+                    </div>
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 }

@@ -20,6 +20,13 @@ import HelpButton from "@/components/common/HelpButton";
 import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 import { toast } from "sonner";
 import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
+import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerDescription,
+} from "@/components/ui/drawer";
 
 interface CreateSmartSceneDrawerProps {
     roomId: string;
@@ -79,6 +86,7 @@ export default function CreateSmartSceneDrawer({ roomId, targetDevice }: CreateS
     const [isEditing, setIsEditing] = useState(false);
     const [room, setRoom] = useState<Room | null>();
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [muteDialogAutomation, setMuteDialogAutomation] = useState<any | null>(null);
 
     const { send } = useTransport();
 
@@ -89,6 +97,7 @@ export default function CreateSmartSceneDrawer({ roomId, targetDevice }: CreateS
             toast.warning("Đã lưu kịch bản, nhưng chưa có thông tin Hub để gửi xuống thiết bị.");
             return false;
         }
+        console.log("Sending Automation Payload:", payload);
 
         try {
             await send(payload, `device/${room.name}/auto/${action}`);
@@ -169,6 +178,42 @@ export default function CreateSmartSceneDrawer({ roomId, targetDevice }: CreateS
                 }
             });
         }, 250);
+    };
+    const handleAutomationMuteSelect = async (option: "next_only" | "indefinite") => {
+        if (!muteDialogAutomation) return;
+        const automation = muteDialogAutomation;
+        const triggerConfig = automation.trigger_config ? JSON.parse(automation.trigger_config) : {};
+
+        // Switch luôn chuyển OFF trong DB, bất kể chọn kiểu nào
+        const nextTriggerConfig =
+            option === "next_only"
+                ? { ...triggerConfig, disableMode: "next_only" }
+                : (() => {
+                    const { disableMode, ...rest } = triggerConfig;
+                    return rest;
+                })();
+
+        await automationRepo.update(automation.id, {
+            is_active: 0,
+            trigger_config: JSON.stringify(nextTriggerConfig),
+        });
+
+        // "next_only": vẫn gửi "set" kèm cờ disableMode để Hub biết bỏ qua đúng 1 lần rồi tự xoá cờ
+        // "indefinite": gửi "delete" để Hub xoá hẳn lịch này
+        await sendAutomationPayload(
+            { ...nextTriggerConfig, id: nextTriggerConfig.id ?? automation.id },
+            option === "next_only" ? "set" : "delete"
+        );
+
+        setAutomations((prev) =>
+            prev.map((a) =>
+                a.id === automation.id
+                    ? { ...a, is_active: 0, trigger_config: JSON.stringify(nextTriggerConfig) }
+                    : a
+            )
+        );
+
+        setMuteDialogAutomation(null);
     };
 
     const handleOpenEdit = (automation: any) => {
@@ -363,11 +408,23 @@ export default function CreateSmartSceneDrawer({ roomId, targetDevice }: CreateS
                                             <Switch
                                                 checked={automation.is_active === 1}
                                                 onCheckedChange={async (checked) => {
-                                                    await automationRepo.update(automation.id, { is_active: checked ? 1 : 0 });
+                                                    if (!checked) {
+                                                        // Đang bật -> tắt: hỏi tắt 1 lần hay tắt hẳn
+                                                        setMuteDialogAutomation(automation);
+                                                        return;
+                                                    }
+
+                                                    // Bật lại: xoá cờ disableMode nếu còn sót từ lần "tắt 1 lần" trước đó
                                                     const triggerConfig = automation.trigger_config ? JSON.parse(automation.trigger_config) : {};
-                                                    await sendAutomationPayload({ ...triggerConfig, id: triggerConfig.id ?? automation.id }, checked ? "set" : "delete");
+                                                    delete triggerConfig.disableMode;
+
+                                                    await automationRepo.update(automation.id, {
+                                                        is_active: 1,
+                                                        trigger_config: JSON.stringify(triggerConfig),
+                                                    });
+                                                    await sendAutomationPayload({ ...triggerConfig, id: triggerConfig.id ?? automation.id }, "set");
                                                     setAutomations(prev =>
-                                                        prev.map(a => a.id === automation.id ? { ...a, is_active: checked ? 1 : 0 } : a)
+                                                        prev.map(a => a.id === automation.id ? { ...a, is_active: 1, trigger_config: JSON.stringify(triggerConfig) } : a)
                                                     );
                                                 }}
                                             />
@@ -380,6 +437,34 @@ export default function CreateSmartSceneDrawer({ roomId, targetDevice }: CreateS
                     )}
                 </div>
             </div>
+
+            <Drawer
+                open={!!muteDialogAutomation}
+                onOpenChange={(open) => !open && setMuteDialogAutomation(null)}
+            >
+                <DrawerContent className="w-full bg-background rounded-t-2xl mt-[62vh]! z-9999 [&>div:first-child]:hidden">
+                    <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-muted-foreground/20 shrink-0" />
+                    <DrawerHeader className="pb-2 shrink-0">
+                        <DrawerTitle className="text-lg font-bold text-center">Tắt kịch bản</DrawerTitle>
+                    </DrawerHeader>
+                    <div className="pb-8">
+                        <button
+                            type="button"
+                            onClick={() => void handleAutomationMuteSelect("next_only")}
+                            className="w-full border-b p-4 text-left hover:bg-muted/40 transition"
+                        >
+                            <div className="font-medium">Tắt cho lần kích hoạt tiếp theo</div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void handleAutomationMuteSelect("indefinite")}
+                            className="w-full p-4 text-left hover:bg-muted/40 transition"
+                        >
+                            <div className="font-medium">Tắt đến khi được bật lại</div>
+                        </button>
+                    </div>
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 }
