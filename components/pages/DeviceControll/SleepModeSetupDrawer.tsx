@@ -8,19 +8,11 @@ import {
     DrawerTitle,
     DrawerDescription,
 } from "@/components/ui/drawer";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Moon02Icon, UserIcon, Baby02Icon } from "@hugeicons/core-free-icons";
+import { Moon02Icon, UserIcon, Baby02Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/libs/utils";
 
 // ============================================================================
@@ -34,6 +26,7 @@ export type SleepConfig = {
     wakeTime: string;
     target: SleepTarget | null;
     temperature: number;
+    configured: boolean; // true = người dùng đã tự lưu cấu hình, false = chưa từng set (kể cả đã chạy mặc định)
 };
 
 export const DEFAULT_SLEEP_CONFIG: SleepConfig = {
@@ -41,6 +34,7 @@ export const DEFAULT_SLEEP_CONFIG: SleepConfig = {
     wakeTime: "06:30",
     target: null,
     temperature: 25,
+    configured: false,
 };
 
 function ElderlyIcon({ size = 20 }: { size?: number }) {
@@ -200,38 +194,53 @@ interface SleepConfirmDefaultDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onConfirm: () => void;
+    onOpenSetup: () => void;
 }
 
 export function SleepConfirmDefaultDrawer({
     open,
     onOpenChange,
     onConfirm,
+    onOpenSetup,
 }: SleepConfirmDefaultDrawerProps) {
+    if (!open) return null;
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="rounded-2xl sm:max-w-sm">
-                <DialogHeader>
-                    <DialogTitle className="text-xl font-bold text-center sm:text-left">
-                        Chưa thiết lập chế độ ngủ ngon
-                    </DialogTitle>
-                    <DialogDescription className="text-sm text-center sm:text-left">
-                        Bạn chưa cấu hình chế độ này. Nếu tiếp tục, hệ thống sẽ chạy theo cấu
-                        hình mặc định (06:30, Adult, 25°C). Bạn có chắc chứ?
-                    </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="flex-row gap-3 sm:justify-stretch">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center px-4">
+            <div
+                className="absolute inset-0 bg-black/50"
+                onClick={() => onOpenChange(false)}
+            />
+
+            <div className="relative w-full max-w-sm rounded-2xl bg-background p-5 shadow-lg">
+                <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+                    aria-label="Đóng"
+                >
+                    <HugeiconsIcon icon={Cancel01Icon} size={18} />
+                </button>
+
+                <h2 className="pr-6 text-lg font-bold">Chưa thiết lập chế độ ngủ ngon</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    Bạn chưa cấu hình chế độ này. Nếu tiếp tục, hệ thống sẽ chạy theo cấu
+                    hình mặc định (06:30, Adult, 25°C). Bạn có chắc chứ?
+                </p>
+
+                <div className="mt-5 flex gap-3">
                     <Button
                         variant="outline"
                         className="flex-1 h-11 rounded-2xl"
-                        onClick={() => onOpenChange(false)}
+                        onClick={onOpenSetup}
                     >
                         Huỷ, để tôi thiết lập
                     </Button>
                     <Button className="flex-1 h-11 rounded-2xl" onClick={onConfirm}>
                         Đồng ý, chạy mặc định
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </div>
+            </div>
+        </div>
     );
 }

@@ -174,7 +174,7 @@ export default function ACsController({ data, roomName }: { roomName: string; da
     target: SleepTarget;
     temperature: number;
   }) => {
-    const nextConfig: SleepConfig = { sleep: true, ...values };
+    const nextConfig: SleepConfig = { sleep: true, configured: true, ...values };
     setSleepConfig(nextConfig);
     setSleepSetupOpen(false);
     await sendSleepState(nextConfig);
@@ -182,8 +182,8 @@ export default function ACsController({ data, roomName }: { roomName: string; da
 
   const handleToggleSleep = async (checked: boolean) => {
     if (checked) {
-      if (!sleepConfig.target) {
-        setSleepConfirmOpen(true); // Chưa từng thiết lập -> hỏi xác nhận chạy mặc định
+      if (!sleepConfig.configured) {
+        setSleepConfirmOpen(true); // Chưa tự cấu hình lần nào -> luôn hỏi lại
         return;
       }
 
@@ -206,6 +206,7 @@ export default function ACsController({ data, roomName }: { roomName: string; da
       wakeTime: DEFAULT_SLEEP_CONFIG.wakeTime,
       target: defaultTarget.key,
       temperature: defaultTarget.recommendedTemp,
+      configured: false, // vẫn chưa tự set -> lần bật sau vẫn phải hỏi lại
     };
 
     setSleepConfig(nextConfig);
@@ -362,6 +363,10 @@ export default function ACsController({ data, roomName }: { roomName: string; da
         open={sleepConfirmOpen}
         onOpenChange={setSleepConfirmOpen}
         onConfirm={() => void handleConfirmDefaultSleep()}
+        onOpenSetup={() => {
+          setSleepConfirmOpen(false);
+          setSleepSetupOpen(true);
+        }}
       />
     </CardContent>
   );
