@@ -305,18 +305,18 @@ export default function ACsController({ data, roomName }: { roomName: string; da
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-background/60 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={FastWindIcon} size={18} className="shrink-0 text-muted-foreground" />
+              <div className="flex items-start gap-2">
+                <HugeiconsIcon icon={FastWindIcon} size={18} className="mt-0.5 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <div className="text-xs text-muted-foreground">Hướng quạt</div>
-                  <div className="text-sm font-semibold leading-tight">{SWING_LABEL[swing]}</div>
+                  <div className="min-h-[2.5rem] text-sm font-semibold leading-tight">{SWING_LABEL[swing]}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 border-l pl-3">
-                <HugeiconsIcon icon={Fan01Icon} size={18} className="shrink-0 text-muted-foreground" />
+              <div className="flex items-start gap-2 border-l pl-3">
+                <HugeiconsIcon icon={Fan01Icon} size={18} className="mt-0.5 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <div className="text-xs text-muted-foreground">Tốc độ quạt</div>
-                  <div className="text-sm font-semibold leading-tight">{FAN_SPEED_LABEL[fanSpeed]}</div>
+                  <div className="min-h-[2.5rem] text-sm font-semibold leading-tight">{FAN_SPEED_LABEL[fanSpeed]}</div>
                 </div>
               </div>
             </div>
