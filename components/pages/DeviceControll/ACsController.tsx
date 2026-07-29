@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/libs/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ChevronDown, ChevronUp, PowerIcon, Moon02Icon } from "@hugeicons/core-free-icons";
+import {
+  ChevronDown,
+  ChevronUp,
+  PowerIcon,
+  Moon02Icon,
+  FastWindIcon,
+  Fan01Icon,
+} from "@hugeicons/core-free-icons";
 import { Device } from "../Room/DeviceCard";
 import { useTransport } from "@/components/providers/transport/TransportProvider";
 import {
@@ -25,27 +32,55 @@ import SleepModeSetupDrawer, {
 
 export type { SleepConfig, SleepTarget };
 
-type ModeAC = "COOL" | "DRY" | "FAN";
-
 type ACState = {
   power: boolean;
   temperature: number;
-  fanSpeed: number;
-  mode: ModeAC;
+  fanSpeed: number; // 0-5, gửi y nguyên xuống backend
+  swing: number; // 0-7 (raw value backend), gửi y nguyên xuống backend
+  mode: number; // 0-4, gửi y nguyên xuống backend
 };
 
 const DEFAULT_AC_STATE: ACState = {
   power: true,
   temperature: 24,
   fanSpeed: 0,
-  mode: "COOL",
+  swing: 0,
+  mode: 1, // Cool
 };
 
+// mode: 0 Auto, 1 Cool, 2 Heat, 3 Dry, 4 Fan
 const MODES = [
-  { key: "COOL", label: "Cool" },
-  { key: "DRY", label: "Dry" },
-  { key: "FAN", label: "Fan" },
+  { value: 0, label: "Tự động" },
+  { value: 1, label: "Làm mát" },
+  { value: 2, label: "Sưởi ấm" },
+  { value: 3, label: "Hút ẩm" },
+  { value: 4, label: "Quạt gió" },
 ] as const;
+
+// fan: 0 Auto,1 Low,2 Medium,3 High,4 Min,5 Max -> UI cycle đi đúng thứ tự số
+const FAN_SPEED_MAX = 5;
+const FAN_SPEED_LABEL: Record<number, string> = {
+  0: "Tự động",
+  1: "Thấp",
+  2: "Trung bình",
+  3: "Cao",
+  4: "Thấp nhất",
+  5: "Cao nhất",
+};
+
+// swing raw: 0 Off,1 Auto,2 Highest,3 High,4 Middle,5 Low,6 Lowest,7 UpperMiddle
+// UI cycle đi theo thứ tự hợp lý: Off -> Auto -> Lowest -> Low -> Middle -> High -> Highest
+const SWING_UI_ORDER = [0, 1, 6, 5, 4, 3, 2] as const;
+const SWING_LABEL: Record<number, string> = {
+  0: "Tắt",
+  1: "Tự động",
+  2: "Hướng Cao nhất",
+  3: "Hướng Cao",
+  4: "Hướng Giữa",
+  5: "Hướng Thấp",
+  6: "Hướng Thấp nhất",
+  7: "Hướng Giữa trên",
+};
 
 export default function ACsController({ data, roomName }: { roomName: string; data: Device }) {
   const { send } = useTransport();
@@ -56,7 +91,8 @@ export default function ACsController({ data, roomName }: { roomName: string; da
   const [power, setPower] = useState(DEFAULT_AC_STATE.power);
   const [temperature, setTemperature] = useState(DEFAULT_AC_STATE.temperature);
   const [fanSpeed, setFanSpeed] = useState(DEFAULT_AC_STATE.fanSpeed);
-  const [mode, setMode] = useState<ModeAC>(DEFAULT_AC_STATE.mode);
+  const [swing, setSwing] = useState(DEFAULT_AC_STATE.swing);
+  const [mode, setMode] = useState<number>(DEFAULT_AC_STATE.mode);
 
   const [sleepConfig, setSleepConfig] = useState<SleepConfig>(DEFAULT_SLEEP_CONFIG);
   const [sleepSetupOpen, setSleepSetupOpen] = useState(false);
@@ -74,6 +110,7 @@ export default function ACsController({ data, roomName }: { roomName: string; da
     setPower(savedState.power);
     setTemperature(savedState.temperature);
     setFanSpeed(savedState.fanSpeed);
+    setSwing(savedState.swing ?? DEFAULT_AC_STATE.swing);
     setMode(savedState.mode);
   }, [storageKey]);
 
@@ -83,24 +120,13 @@ export default function ACsController({ data, roomName }: { roomName: string; da
     setSleepConfig(savedSleep);
   }, [sleepStorageKey]);
 
-  const getModeNumber = (currentMode: ModeAC): number => {
-    switch (currentMode) {
-      case "COOL":
-        return 1;
-      case "DRY":
-        return 2;
-      case "FAN":
-      default:
-        return 0;
-    }
-  };
-
   const sendFullState = async (overrideStates: Partial<ACState> = {}) => {
     const nextState: ACState = {
       power: overrideStates.power ?? power,
       temperature: overrideStates.temperature ?? temperature,
       mode: overrideStates.mode ?? mode,
       fanSpeed: overrideStates.fanSpeed ?? fanSpeed,
+      swing: overrideStates.swing ?? swing,
     };
 
     LocalStorage.set(storageKey, nextState);
@@ -112,8 +138,9 @@ export default function ACsController({ data, roomName }: { roomName: string; da
       action: {
         power: nextState.power ? "OFF" : "ON",
         temp: nextState.temperature,
-        mode: getModeNumber(nextState.mode),
+        mode: nextState.mode,
         fan: nextState.fanSpeed,
+        swing: nextState.swing,
       },
     };
 
@@ -135,14 +162,23 @@ export default function ACsController({ data, roomName }: { roomName: string; da
     await sendFullState({ temperature: nextTemperature });
   };
 
-  const changeFanSpeed = async (nextFanSpeed: number) => {
+  const changeMode = async (nextMode: number) => {
+    setMode(nextMode);
+    await sendFullState({ mode: nextMode });
+  };
+
+  const cycleFanSpeed = async () => {
+    const nextFanSpeed = fanSpeed >= FAN_SPEED_MAX ? 0 : fanSpeed + 1;
     setFanSpeed(nextFanSpeed);
     await sendFullState({ fanSpeed: nextFanSpeed });
   };
 
-  const changeMode = async (nextMode: ModeAC) => {
-    setMode(nextMode);
-    await sendFullState({ mode: nextMode });
+  const cycleSwing = async () => {
+    const currentIndex = SWING_UI_ORDER.indexOf(swing as (typeof SWING_UI_ORDER)[number]);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % SWING_UI_ORDER.length;
+    const nextSwing = SWING_UI_ORDER[nextIndex];
+    setSwing(nextSwing);
+    await sendFullState({ swing: nextSwing });
   };
 
   // ============== Sleep mode ==============
@@ -254,7 +290,7 @@ export default function ACsController({ data, roomName }: { roomName: string; da
 
               <div className="text-center">
                 <div className="text-6xl font-bold lg:text-7xl">{temperature}°</div>
-                <div className="text-sm text-muted-foreground">Temperature</div>
+                <div className="text-sm text-muted-foreground">Nhiệt độ hiện tại</div>
               </div>
 
               <Button
@@ -267,22 +303,39 @@ export default function ACsController({ data, roomName }: { roomName: string; da
                 <HugeiconsIcon icon={ChevronUp} />
               </Button>
             </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-background/60 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon icon={FastWindIcon} size={18} className="shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Hướng quạt</div>
+                  <div className="text-sm font-semibold leading-tight">{SWING_LABEL[swing]}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 border-l pl-3">
+                <HugeiconsIcon icon={Fan01Icon} size={18} className="shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Tốc độ quạt</div>
+                  <div className="text-sm font-semibold leading-tight">{FAN_SPEED_LABEL[fanSpeed]}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="space-y-3" data-tour="ac-mode">
-            <div className="text-sm font-medium">Mode</div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="text-sm font-medium">Chế độ</div>
+            <div className="grid grid-cols-5 gap-2">
               {MODES.map((item) => {
-                const active = mode === item.key;
+                const active = mode === item.value;
                 return (
                   <button
-                    key={item.key}
+                    key={item.value}
                     type="button"
-                    onClick={() => void changeMode(item.key)}
+                    onClick={() => void changeMode(item.value)}
                     className={cn(
-                      "flex h-24 items-center justify-center rounded-2xl border text-sm font-medium transition",
+                      "flex h-16 items-center justify-center rounded-2xl border text-xs font-medium transition sm:text-sm",
                       active ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
                     )}
                   >
@@ -293,37 +346,21 @@ export default function ACsController({ data, roomName }: { roomName: string; da
             </div>
           </div>
 
-          <div className="space-y-3" data-tour="ac-fan">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Fan Speed</span>
-              <span className="text-xs text-muted-foreground">
-                {fanSpeed === 0 ? "Auto" : `Level ${fanSpeed}`}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-3">
-              {[0, 1, 2, 3].map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => void changeFanSpeed(level)}
-                  className={cn(
-                    "h-14 rounded-2xl border text-sm font-medium transition",
-                    fanSpeed === level ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
-                  )}
-                >
-                  {level === 0 ? "Auto" : level}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 gap-3" data-tour="ac-quick">
-            <Button variant="outline" className="h-14 rounded-2xl" onClick={() => void sendFullState()}>
-              Swing
+            <Button
+              variant="outline"
+              className="h-16 rounded-2xl"
+              onClick={() => void cycleSwing()}
+            >
+              <span className="text-sm font-medium">Hướng quạt</span>
             </Button>
-            <Button variant="outline" className="h-14 rounded-2xl" onClick={() => void sendFullState()}>
-              Timer
+
+            <Button
+              variant="outline"
+              className="h-16 rounded-2xl"
+              onClick={() => void cycleFanSpeed()}
+            >
+              <span className="text-sm font-medium">Tốc độ quạt</span>
             </Button>
           </div>
         </div>
