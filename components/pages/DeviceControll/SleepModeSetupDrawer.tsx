@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Drawer,
     DrawerContent,
@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Moon02Icon, UserIcon, Baby02Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import { Moon02Icon, UserIcon, Baby02Icon, Cancel01Icon, ArrowLeftIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/libs/utils";
+import { pauseACTourForDrawer, resumeACTourAfterDrawer } from "@/components/onboarding/tours/devicecontrolTour";
+import { pauseTourForDeviceDrawer, resumeTourAfterDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
 
 // ============================================================================
 // Type + constant dùng chung cho toàn bộ Sleep mode (ACsController import từ đây)
@@ -98,6 +100,19 @@ export default function SleepModeSetupDrawer({
     const [wakeTime, setWakeTime] = useState(initial.wakeTime);
     const [target, setTarget] = useState<SleepTarget | null>(initial.target);
 
+    useEffect(() => {
+        if (open) {
+            pauseTourForDeviceDrawer();
+            pauseACTourForDrawer();
+        }
+        return () => {
+            if (open) {
+                resumeTourAfterDeviceDrawer();
+                resumeACTourAfterDrawer();
+            }
+        };
+    }, [open]);
+
     const canSave = Boolean(wakeTime && target);
 
     return (
@@ -105,11 +120,23 @@ export default function SleepModeSetupDrawer({
             <DrawerContent className="w-full bg-background rounded-t-2xl mt-[8vh]! max-h-dvh flex flex-col z-9999 [&>div:first-child]:hidden">
                 <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-muted-foreground/20 shrink-0" />
 
-                <DrawerHeader className="text-center sm:text-left pb-2">
-                    <DrawerTitle className="text-xl font-bold">
-                        Thiết lập chế độ ngủ ngon
-                    </DrawerTitle>
-                    <DrawerDescription className="text-sm mt-1">
+                <DrawerHeader className="pb-2">
+                    <div className="relative flex items-center">
+                        <Button
+                            onClick={() => onOpenChange(false)}
+                            variant="outline"
+                            size="icon"
+                            aria-label="Quay lại"
+                            className="size-10! shrink-0 rounded-2xl!"
+                        >
+                            <HugeiconsIcon icon={ArrowLeftIcon} />
+                        </Button>
+
+                        <DrawerTitle className="pointer-events-none absolute left-1/2 max-w-[70%] -translate-x-1/2 truncate text-center text-xl font-bold">
+                            Thiết lập chế độ ngủ ngon
+                        </DrawerTitle>
+                    </div>
+                    <DrawerDescription className="text-sm mt-1 text-center sm:text-left">
                         Máy lạnh sẽ tự điều chỉnh nhiệt độ theo đối tượng đến giờ thức dậy.
                     </DrawerDescription>
                 </DrawerHeader>
@@ -203,6 +230,19 @@ export function SleepConfirmDefaultDrawer({
     onConfirm,
     onOpenSetup,
 }: SleepConfirmDefaultDrawerProps) {
+    useEffect(() => {
+        if (open) {
+            pauseTourForDeviceDrawer();
+            pauseACTourForDrawer();
+        }
+        return () => {
+            if (open) {
+                resumeTourAfterDeviceDrawer();
+                resumeACTourAfterDrawer();
+            }
+        };
+    }, [open]);
+
     if (!open) return null;
 
     return (

@@ -20,6 +20,7 @@ import HelpButton from "@/components/common/HelpButton";
 import { startAutomationTour } from "@/components/onboarding/tours/automationTour";
 import { toast } from "sonner";
 import { resumeTourAfterDeviceDrawer, pauseTourForDeviceDrawer } from "@/components/onboarding/tours/afterAddDeviceTour";
+import { pauseACTourForDrawer, resumeACTourAfterDrawer } from "@/components/onboarding/tours/devicecontrolTour";
 import {
     Drawer,
     DrawerContent,
@@ -138,8 +139,10 @@ export default function CreateSmartSceneDrawer({ roomId, targetDevice }: CreateS
 
     useEffect(() => {
         pauseTourForDeviceDrawer();
+        pauseACTourForDrawer();
         return () => {
             resumeTourAfterDeviceDrawer();
+            resumeACTourAfterDrawer();
         };
     }, []);
 

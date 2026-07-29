@@ -60,8 +60,6 @@ export const startAfterAddDeviceTour = (force = false, startIndex = 0) => {
             { element: '[data-tour="device-delete-btn"]', popover: { title: "Xóa thiết bị", description: "Nếu không dùng nữa, bạn có thể xóa thiết bị nhanh bằng nút này.", side: "left", align: "center" } },
             { element: '[data-tour="alarm-settings-btn"]', popover: { title: "Báo thức", description: "Thiết lập các mốc thời gian báo thức cho phòng tại đây.", side: "left", align: "center" } },
             { element: '[data-tour="detail-btn-inside"]', popover: { title: "Cài đặt nâng cao", description: "Mở bảng cài đặt và tinh chỉnh đèn/thiết bị cho phòng này.", side: "left", align: "center" } },
-            { element: '[data-tour="nav-smart"]', popover: { title: "Kịch bản thông minh", description: "Thiết lập tự động hóa.", side: "top", align: "center" } },
-            { element: '[data-tour="nav-timer"]', popover: { title: "Hẹn giờ", description: "Cài đặt thời gian tự động bật/tắt dễ dàng.", side: "top", align: "center" } },
             { element: '[data-tour="device-control-btn"]', popover: { title: "Khám phá ngay! 🚀", description: "Bây giờ, hãy tự mình nhấn vào đây để trải nghiệm nhé!", side: "top", align: "center" } }
         ];
 

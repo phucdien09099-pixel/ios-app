@@ -83,6 +83,7 @@ export default function DeviceControll({ device, roomName }: { roomName: string,
                         className="h-11 rounded-2xl shadow-sm"
                         disabled={!roomId}
                         onClick={openDeviceAutomation}
+                        data-tour="nav-smart"
                     >
                         <HugeiconsIcon icon={DeviceAccessIcon} data-icon="inline-start" />
                         Kịch bản
@@ -92,6 +93,7 @@ export default function DeviceControll({ device, roomName }: { roomName: string,
                         className="h-11 rounded-2xl shadow-sm"
                         disabled={!roomId}
                         onClick={openDeviceTimer}
+                        data-tour="nav-timer"
                     >
                         <HugeiconsIcon icon={Clock01Icon} data-icon="inline-start" />
                         Hẹn giờ

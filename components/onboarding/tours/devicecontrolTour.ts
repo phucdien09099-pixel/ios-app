@@ -5,12 +5,19 @@ import { triggerSmartWhisper } from "@/libs/whisperUtils";
 
 export let deviceDriverObj: any = null;
 
+let savedACStepIndex = 0;
+let isACTourPausedForDrawer = false;
+let resumeACTimeoutId: NodeJS.Timeout | null = null;
+
 // --- TOUR MÁY LẠNH ---
-export function startACTour(force = false) { 
-    if (!force && typeof window !== 'undefined' && localStorage.getItem("tour:ac") === "1") {
+export function startACTour(force = false, startIndex = 0) { 
+    if (isACTourPausedForDrawer) {
         return;
     }
-    if (deviceDriverObj) deviceDriverObj.destroy(); 
+    if (!force && startIndex === 0 && typeof window !== 'undefined' && localStorage.getItem("tour:ac") === "1") {
+        return;
+    }
+    if (deviceDriverObj) deviceDriverObj.destroy();
 
     deviceDriverObj = driver({
         showProgress: true,
@@ -30,18 +37,65 @@ export function startACTour(force = false) {
         doneBtnText: "Hoàn tất",
         steps: [
             { element: '[data-tour="ac-power"]', popover: { title: "Bật / Tắt nguồn", description: "Sử dụng nút này để bật hoặc tắt thiết bị máy lạnh.", side: "bottom" } },
-            { element: '[data-tour="ac-temp"]', popover: { title: "Điều chỉnh nhiệt độ", description: "Tăng hoặc giảm nhiệt độ phòng bằng hai nút mũi tên hai bên.", side: "bottom" } },
-            { element: '[data-tour="ac-mode"]', popover: { title: "Chế độ hoạt động", description: "Lựa chọn chế độ làm mát: Cool (Làm lạnh), Dry (Hút ẩm) hoặc Fan (Quạt gió).", side: "top" } },
-            { element: '[data-tour="ac-fan"]', popover: { title: "Tốc độ gió", description: "Thay đổi tốc độ quạt từ cấp độ Auto (Tự động) đến các mức mạnh dần 1, 2, 3.", side: "top" } },
-            { element: '[data-tour="ac-quick"]', popover: { title: "Tiện ích nhanh", description: "Điều khiển đảo gió (Swing) hoặc cấu hình hẹn giờ (Timer).", side: "top" } }
+            { element: '[data-tour="ac-temp"]', popover: { title: "Điều chỉnh nhiệt độ", description: "Tăng hoặc giảm nhiệt độ phòng bằng hai nút mũi tên hai bên. Bên dưới còn hiển thị trạng thái Hướng quạt và Tốc độ quạt hiện tại.", side: "bottom" } },
+            { element: '[data-tour="ac-mode"]', popover: { title: "Chế độ hoạt động", description: "Lựa chọn 1 trong 5 chế độ: Tự động, Làm mát, Sưởi ấm, Hút ẩm hoặc Quạt gió.", side: "top" } },
+            { element: '[data-tour="ac-quick"]', popover: { title: "Hướng quạt & Tốc độ quạt", description: "Nhấn để chuyển đổi lần lượt qua từng mức Hướng quạt hoặc Tốc độ quạt.", side: "top" } },
+            { element: '[data-tour="ac-sleep"]', popover: { title: "Chế độ Ngủ ngon", description: "Bật để máy lạnh tự điều chỉnh nhiệt độ theo giờ thức dậy và đối tượng sử dụng. Nhấn vào đây để tự thiết lập.", side: "top" } },
+            { element: '[data-tour="nav-smart"]', popover: { title: "Kịch bản thông minh", description: "Thiết lập tự động hóa cho thiết bị này.", side: "top" } },
+            { element: '[data-tour="nav-timer"]', popover: { title: "Hẹn giờ", description: "Cài đặt thời gian tự động bật/tắt dễ dàng.", side: "top" } }
         ],
         onDestroyStarted: () => {
-            if (typeof window !== 'undefined') localStorage.setItem("tour:ac", "1");
+            if (!isACTourPausedForDrawer && typeof window !== 'undefined') {
+                if (deviceDriverObj && !deviceDriverObj.hasNextStep()) {
+                    localStorage.setItem("tour:ac", "1");
+                }
+            }
             if (deviceDriverObj) deviceDriverObj.destroy();
         }
     });
-    deviceDriverObj.drive();
+    deviceDriverObj.drive(startIndex);
 }
+
+export const pauseACTourForDrawer = () => {
+    // Nếu cả tour object lẫn timer resume đều không tồn tại -> thật sự không có gì để pause
+    if (!deviceDriverObj && !resumeACTimeoutId) return;
+
+    isACTourPausedForDrawer = true;
+
+    if (resumeACTimeoutId) {
+        clearTimeout(resumeACTimeoutId);
+        resumeACTimeoutId = null;
+    }
+
+    if (deviceDriverObj) {
+        const currentIndex = deviceDriverObj.getActiveIndex();
+        if (currentIndex !== undefined) {
+            savedACStepIndex = currentIndex;
+        }
+        deviceDriverObj.destroy();
+        deviceDriverObj = null;
+    }
+
+    if (typeof document !== 'undefined') {
+        document.querySelectorAll('.driver-popover, .driver-overlay, .driver-js-shadow').forEach(el => el.remove());
+        document.querySelectorAll('.driver-active-element').forEach(el => el.classList.remove('driver-active-element'));
+    }
+};
+
+export const resumeACTourAfterDrawer = () => {
+    if (!isACTourPausedForDrawer) return;
+
+    isACTourPausedForDrawer = false;
+
+    if (resumeACTimeoutId) clearTimeout(resumeACTimeoutId);
+
+    resumeACTimeoutId = setTimeout(() => {
+        resumeACTimeoutId = null;
+        if (!isACTourPausedForDrawer) {
+            startACTour(true, savedACStepIndex + 1);
+        }
+    }, 400);
+};
 
 // --- TOUR TIVI ---
 export function startTVTour(force = false) { 

@@ -35,9 +35,9 @@ export type { SleepConfig, SleepTarget };
 type ACState = {
   power: boolean;
   temperature: number;
-  fanSpeed: number; // 0-5, gửi y nguyên xuống backend
-  swing: number; // 0-7 (raw value backend), gửi y nguyên xuống backend
-  mode: number; // 0-4, gửi y nguyên xuống backend
+  fanSpeed: number;
+  swing: number;
+  mode: number;
 };
 
 const DEFAULT_AC_STATE: ACState = {
@@ -45,7 +45,7 @@ const DEFAULT_AC_STATE: ACState = {
   temperature: 24,
   fanSpeed: 0,
   swing: 0,
-  mode: 1, // Cool
+  mode: 1,
 };
 
 // mode: 0 Auto, 1 Cool, 2 Heat, 3 Dry, 4 Fan
@@ -57,8 +57,8 @@ const MODES = [
   { value: 4, label: "Quạt gió" },
 ] as const;
 
-// fan: 0 Auto,1 Low,2 Medium,3 High,4 Min,5 Max -> UI cycle đi đúng thứ tự số
-const FAN_SPEED_MAX = 5;
+// UI cycle đi theo thứ tự hợp lý: Auto -> Min(thấp nhất) -> Low -> Medium -> High -> Max(cao nhất)
+const FAN_SPEED_UI_ORDER = [0, 4, 1, 2, 3, 5] as const;
 const FAN_SPEED_LABEL: Record<number, string> = {
   0: "Tự động",
   1: "Thấp",
@@ -168,7 +168,9 @@ export default function ACsController({ data, roomName }: { roomName: string; da
   };
 
   const cycleFanSpeed = async () => {
-    const nextFanSpeed = fanSpeed >= FAN_SPEED_MAX ? 0 : fanSpeed + 1;
+    const currentIndex = FAN_SPEED_UI_ORDER.indexOf(fanSpeed as (typeof FAN_SPEED_UI_ORDER)[number]);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % FAN_SPEED_UI_ORDER.length;
+    const nextFanSpeed = FAN_SPEED_UI_ORDER[nextIndex];
     setFanSpeed(nextFanSpeed);
     await sendFullState({ fanSpeed: nextFanSpeed });
   };
@@ -193,7 +195,6 @@ export default function ACsController({ data, roomName }: { roomName: string; da
       action: {
         power: power ? "OFF" : "ON",
         temp: nextConfig.temperature,
-        mode: 3,
         fan: fanSpeed,
         sleep: nextConfig.sleep,
         wakeTime: nextConfig.wakeTime,
